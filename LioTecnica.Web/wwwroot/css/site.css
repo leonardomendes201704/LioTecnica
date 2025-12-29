@@ -526,6 +526,24 @@
   background: rgba(255,255,255,.75);
   padding: .8rem;
   min-height: 420px;
+  position: relative;
+  border-top: 4px solid var(--stage-color, rgba(16,82,144,.30));
+}
+.stage-col[data-stage="triagem"]{
+  --stage-color: #0C5AA6;
+  background: linear-gradient(180deg, rgba(12,90,166,.12), rgba(255,255,255,.75));
+}
+.stage-col[data-stage="pendente"]{
+  --stage-color: #B88300;
+  background: linear-gradient(180deg, rgba(184,131,0,.12), rgba(255,255,255,.75));
+}
+.stage-col[data-stage="aprovado"]{
+  --stage-color: #198754;
+  background: linear-gradient(180deg, rgba(25,135,84,.12), rgba(255,255,255,.75));
+}
+.stage-col[data-stage="reprovado"]{
+  --stage-color: #DC3545;
+  background: linear-gradient(180deg, rgba(220,53,69,.12), rgba(255,255,255,.75));
 }
 .stage-drop{
   border-radius: var(--radius-lg);
@@ -539,6 +557,7 @@
   justify-content: space-between;
   gap: .6rem;
   margin-bottom: .7rem;
+  flex-wrap: wrap;
 }
 .stage-meta{
   font-size: .82rem;
@@ -550,6 +569,9 @@
   margin:0;
   font-size: 1rem;
 }
+.stage-title i{
+  color: var(--stage-color, var(--lt-primary));
+}
 .tri-item{
   border-radius: 16px;
   border: 1px solid rgba(16,82,144,.16);
@@ -560,13 +582,30 @@
   cursor: grab;
 }
 .tri-item:active{ cursor: grabbing; }
-.tri-item .name{ font-weight: 900; }
+.tri-item .name{ font-weight: 900; white-space: normal; }
 .tri-item .smalltxt{ font-size: .84rem; color: rgba(13,27,42,.62); }
 .tri-item .matchline{
   display:flex;
   align-items:center;
   gap:.55rem;
   margin-top: .55rem;
+}
+.tri-item-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content: space-between;
+  gap:.5rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.tri-meta{
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 160px;
+}
+.tri-meta .smalltxt{
+  white-space: normal;
+  word-break: break-word;
 }
 
 .form-switch .form-check-input{cursor: pointer;}

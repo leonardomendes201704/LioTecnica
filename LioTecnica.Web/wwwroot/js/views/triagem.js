@@ -218,6 +218,7 @@ function statusTag(s){
 
     function renderVagaFilter(){
       const sel = $("#fVaga");
+      if(!sel) return;
       const cur = sel.value || "all";
       const opts = distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
       sel.innerHTML = `<option value="all">Vaga: todas</option>` + opts;
@@ -302,17 +303,22 @@ function statusTag(s){
         <div class="tri-item cand-card ${c.id===state.selectedId ? "active" : ""}"
              draggable="true"
              data-id="${c.id}"
-             onclick="window.__selectCand('${c.id}')">
-          <div class="d-flex align-items-start justify-content-between gap-2">
+             >
+          <div class="tri-item-head">
             <div class="d-flex align-items-center gap-2">
               <div class="avatar">${escapeHtml(initials(c.nome))}</div>
               <div>
-                <div class="name">${escapeHtml(c.nome || "—")}</div>
+                <div class="name d-flex align-items-center gap-2 flex-wrap">
+                  <span>${escapeHtml(c.nome || "—")}</span>
+                  <button class="btn btn-ghost btn-sm" type="button" title="Detalhes" aria-label="Detalhes" onclick="event.stopPropagation(); window.__openDetails('${c.id}')">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
                 <div class="smalltxt">${escapeHtml(c.email || "—")}</div>
               </div>
             </div>
 
-            <div class="text-end">
+            <div class="tri-meta text-end">
               ${v ? `<div class="pill mono">${escapeHtml(v.codigo || "—")}</div>` : `<div class="pill">Sem vaga</div>`}
               <div class="smalltxt mt-1">${v ? escapeHtml(v.titulo || "—") : "—"}</div>
             </div>
@@ -546,15 +552,16 @@ function statusTag(s){
     }
 
     function renderDetail(){
+      const host = $("#triagemDetailBody");
+      if(!host) return;
       const c = findCand(state.selectedId);
-      $("#detailHost").innerHTML = buildDetailHtml(c);
-      bindDetailActions(c);
-      syncMobileDetail();
+      host.innerHTML = buildDetailHtml(c);
+      bindDetailActions(host, c);
     }
 
-    function bindDetailActions(c){
-      if(!c) return;
-      $$("#detailHost [data-dact]").forEach(btn => {
+    function bindDetailActions(root, c){
+      if(!root || !c) return;
+      root.querySelectorAll("[data-dact]").forEach(btn => {
         btn.addEventListener("click", () => {
           const act = btn.dataset.dact;
           if(act === "decision") openDecision(c.id);
@@ -563,35 +570,18 @@ function statusTag(s){
       });
     }
 
-    function syncMobileDetail(){
-      $("#mobileDetailBody").innerHTML = $("#detailHost").innerHTML;
-
-      const c = findCand(state.selectedId);
+    function openDetails(candId){
+      const c = findCand(candId);
       if(!c) return;
-
-      $$("#mobileDetailBody [data-dact]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const act = btn.dataset.dact;
-          if(act === "decision") openDecision(c.id);
-          if(act === "recalc") recalcMatch(c.id);
-        });
-      });
-    }
-
-    function openMobileDetails(){
-      syncMobileDetail();
-      bootstrap.Offcanvas.getOrCreateInstance($("#offcanvasDetails")).show();
-    }
-
-    // ========= Selection
-    window.__selectCand = (id) => {
-      state.selectedId = id;
+      state.selectedId = c.id;
       saveCands();
       renderBoard();
       renderDetail();
-      if(window.matchMedia("(max-width: 991.98px)").matches){
-        openMobileDetails();
-      }
+      bootstrap.Modal.getOrCreateInstance($("#modalTriagemDetails")).show();
+    }
+
+    window.__openDetails = (id) => {
+      openDetails(id);
     };
 
     // ========= Decision modal
@@ -787,13 +777,17 @@ function statusTag(s){
     }
 
     function wireFilters(){
+      const fSearch = $("#fSearch");
+      const fVaga = $("#fVaga");
+      const fSla = $("#fSla");
+      if(!fSearch || !fVaga || !fSla) return;
+
       const apply = () => {
-        state.filters.q = ($("#fSearch").value || "").trim();
-        state.filters.vagaId = $("#fVaga").value || "all";
-        state.filters.sla = $("#fSla").value || "all";
+        state.filters.q = (fSearch.value || "").trim();
+        state.filters.vagaId = fVaga.value || "all";
+        state.filters.sla = fSla.value || "all";
         renderBoard();
 
-        // se o selecionado sumiu dos filtros, limpa detalhe
         const visibleIds = new Set(getFilteredCands().map(c => c.id));
         if(state.selectedId && !visibleIds.has(state.selectedId)){
           state.selectedId = null;
@@ -802,9 +796,9 @@ function statusTag(s){
         }
       };
 
-      $("#fSearch").addEventListener("input", apply);
-      $("#fVaga").addEventListener("change", apply);
-      $("#fSla").addEventListener("change", apply);
+      fSearch.addEventListener("input", apply);
+      fVaga.addEventListener("change", apply);
+      fSla.addEventListener("change", apply);
     }
 
     function wireButtons(){
