@@ -23,6 +23,7 @@
       --lt-shadow:0 10px 30px rgba(11,58,100,.10);
       --radius-xl:18px;
       --radius-lg:14px;
+      --ui-scale:.75;
     }
     html,body{height:100%;}
     body{
@@ -31,6 +32,7 @@
         radial-gradient(900px 520px at 85% 10%, rgba(16,82,144,.16), transparent 55%),
         var(--lt-bg);
       color:var(--lt-text);
+      zoom:var(--ui-scale);
     }
     .app-shell{min-height:100vh;display:grid;grid-template-columns:290px 1fr;}
     .sidebar{

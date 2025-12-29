@@ -1,0 +1,8 @@
+﻿################################################################################
+# Este arquivo .gitignore foi criado automaticamente pelo Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/LioTecnica/CopilotIndices/17.13.444.19527/CodeChunks.db
+.vs/
+**/bin/
+**/obj/
