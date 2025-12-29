@@ -1,15 +1,20 @@
-<div class="modal fade" id="modalCand" tabindex="-1" aria-hidden="true">
+﻿<div class="modal fade" id="modalCand" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content" style="border-radius: 18px; border: 1px solid var(--lt-border);">
         <div class="modal-header">
           <div>
             <h5 class="modal-title fw-bold" id="modalCandTitle">Novo candidato</h5>
-            <div class="text-muted small">Dados básicos + vínculo com vaga (para triagem/match).</div>
+            <div class="text-muted small">Dados bÃ¡sicos + vÃ­nculo com vaga (para triagem/match).</div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
         <div class="modal-body">
+          @{
+            var fonteOptions = EnumOptionsHelper.GetOptions<CandidatoFonte>();
+            var statusOptions = EnumOptionsHelper.GetOptions<CandidatoStatus>();
+            var selectPlaceholder = EnumOptionsHelper.GetOptions<SelectPlaceholder>();
+          }
           <input type="hidden" id="candId">
 
           <div class="row g-2">
@@ -41,34 +46,37 @@
             <div class="col-12 col-md-2">
               <label class="form-label small text-muted">Fonte</label>
               <select class="form-select" id="candFonte">
-                <option>Email</option>
-                <option>Pasta</option>
-                <option>LinkedIn</option>
-                <option>Indicação</option>
-                <option>Site</option>
+                @foreach (var opt in fonteOptions)
+                {
+                  <option value="@opt.Code">@opt.Text</option>
+                }
               </select>
             </div>
 
             <div class="col-12 col-md-7">
               <label class="form-label small text-muted">Vaga *</label>
-              <select class="form-select" id="candVaga"></select>
-              <div class="form-text">No MVP, vagas são carregadas do localStorage.</div>
+              <select class="form-select" id="candVaga">
+                @foreach (var opt in selectPlaceholder)
+                {
+                  <option value="@opt.Code">@opt.Text</option>
+                }
+              </select>
+              <div class="form-text">No MVP, vagas sÃ£o carregadas do localStorage.</div>
             </div>
 
             <div class="col-12 col-md-5">
               <label class="form-label small text-muted">Status *</label>
               <select class="form-select" id="candStatus">
-                <option value="novo">Novo</option>
-                <option value="triagem">Em triagem</option>
-                <option value="aprovado">Aprovado</option>
-                <option value="reprovado">Reprovado</option>
-                <option value="pendente">Pendente</option>
+                @foreach (var opt in statusOptions)
+                {
+                  <option value="@opt.Code">@opt.Text</option>
+                }
               </select>
             </div>
 
             <div class="col-12">
-              <label class="form-label small text-muted">Resumo / Observações</label>
-              <textarea class="form-control" id="candObs" rows="3" placeholder="Observações do RH, highlights, etc."></textarea>
+              <label class="form-label small text-muted">Resumo / ObservaÃ§Ãµes</label>
+              <textarea class="form-control" id="candObs" rows="3" placeholder="ObservaÃ§Ãµes do RH, highlights, etc."></textarea>
             </div>
 
             <div class="col-12">
@@ -78,7 +86,7 @@
                   <div>
                     <div class="fw-semibold">CV no MVP</div>
                     <div class="small">
-                      Para simular o “texto do currículo”, você pode colar o conteúdo em <strong>Detalhes → Texto do CV</strong>.
+                      Para simular o â€œtexto do currÃ­culoâ€, vocÃª pode colar o conteÃºdo em <strong>Detalhes â†’ Texto do CV</strong>.
                       Depois, o sistema estima o match pela vaga.
                     </div>
                   </div>
@@ -101,3 +109,4 @@
       </div>
     </div>
   </div>
+

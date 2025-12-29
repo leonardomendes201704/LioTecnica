@@ -1,6 +1,6 @@
-@model PageSeedViewModel
+﻿@model PageSeedViewModel
 @{
-    ViewData["Title"] = "Portal RH • Liotécnica — Entrada (Email/Pasta)";
+    ViewData["Title"] = "Portal RH â€¢ LiotÃ©cnica â€” Entrada (Email/Pasta)";
     ViewData["SidebarSubtitle"] = "Entrada (Email/Pasta)";
 }
 
@@ -41,10 +41,10 @@
         <div class="page-title">
           <div>
             <h4>Entrada (Email / Pasta)</h4>
-            <div class="subtitle">Central de ingestão: e-mails, pastas monitoradas e upload manual — tudo cai na fila de triagem.</div>
+            <div class="subtitle">Central de ingestÃ£o: e-mails, pastas monitoradas e upload manual â€” tudo cai na fila de triagem.</div>
           </div>
           <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-            <span class="badge-soft"><i class="bi bi-clock me-1"></i><span id="nowLabel">—</span></span>
+            <span class="badge-soft"><i class="bi bi-clock me-1"></i><span id="nowLabel">â€”</span></span>
             <span class="badge-soft"><i class="bi bi-hdd me-1"></i>localStorage</span>
           </div>
         </div>
@@ -54,9 +54,9 @@
           var kpis = new[]
           {
             new { ColClass = "col-6 col-lg-3", Title = "Fila de Entrada", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiQueue", Value = "0", PillIcon = "bi-inbox", PillText = "itens", Hint = "Arquivos/e-mails aguardando processamento." },
-            new { ColClass = "col-6 col-lg-3", Title = "Processados hoje", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiDone", Value = "0", PillIcon = "bi-check2-circle", PillText = "ok", Hint = "Ingestão completa com texto extraído." },
-            new { ColClass = "col-6 col-lg-3", Title = "Falhas", ValueStyle = "font-size:1.6rem;color:rgba(153,19,34,.95);", ValueId = "kpiFail", Value = "0", PillIcon = "bi-exclamation-triangle", PillText = "atenção", Hint = "PDF corrompido, senha, anexos vazios, etc." },
-            new { ColClass = "col-6 col-lg-3", Title = "Integrações", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiConnect", Value = "2", PillIcon = "bi-plug", PillText = "ativas", Hint = "Email IMAP + Pasta (watcher)." }
+            new { ColClass = "col-6 col-lg-3", Title = "Processados hoje", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiDone", Value = "0", PillIcon = "bi-check2-circle", PillText = "ok", Hint = "IngestÃ£o completa com texto extraÃ­do." },
+            new { ColClass = "col-6 col-lg-3", Title = "Falhas", ValueStyle = "font-size:1.6rem;color:rgba(153,19,34,.95);", ValueId = "kpiFail", Value = "0", PillIcon = "bi-exclamation-triangle", PillText = "atenÃ§Ã£o", Hint = "PDF corrompido, senha, anexos vazios, etc." },
+            new { ColClass = "col-6 col-lg-3", Title = "IntegraÃ§Ãµes", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiConnect", Value = "2", PillIcon = "bi-plug", PillText = "ativas", Hint = "Email IMAP + Pasta (watcher)." }
           };
         }
         @await Html.PartialAsync("_KpiMiniRow", kpis)
@@ -68,7 +68,7 @@
               <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <div>
                   <div class="fw-bold">Fila de entrada</div>
-                  <div class="text-muted small">Selecione um item para ver detalhes e executar ações.</div>
+                  <div class="text-muted small">Selecione um item para ver detalhes e executar aÃ§Ãµes.</div>
                 </div>
                 <div class="d-flex gap-2 flex-wrap justify-content-end">
                   <div class="input-group" style="min-width: 240px;">
@@ -77,19 +77,21 @@
                     </span>
                     <input class="form-control" id="fSearch" placeholder="Remetente, assunto, arquivo..." style="border-color:var(--lt-border);">
                   </div>
+                  @{
+                    var origemOptions = EnumOptionsHelper.GetOptions<OrigemFilter>();
+                    var statusOptions = EnumOptionsHelper.GetOptions<InboxStatusFilter>();
+                  }
                   <select class="form-select" id="fOrigem" style="min-width: 180px; border-color:var(--lt-border);">
-                    <option value="all">Origem: todas</option>
-                    <option value="email">Email</option>
-                    <option value="pasta">Pasta</option>
-                    <option value="upload">Upload</option>
+                    @foreach (var opt in origemOptions)
+                    {
+                      <option value="@opt.Code">@opt.Text</option>
+                    }
                   </select>
                   <select class="form-select" id="fStatus" style="min-width: 180px; border-color:var(--lt-border);">
-                    <option value="all">Status: todos</option>
-                    <option value="novo">Novo</option>
-                    <option value="processando">Processando</option>
-                    <option value="processado">Processado</option>
-                    <option value="falha">Falha</option>
-                    <option value="descartado">Descartado</option>
+                    @foreach (var opt in statusOptions)
+                    {
+                      <option value="@opt.Code">@opt.Text</option>
+                    }
                   </select>
                 </div>
               </div>
@@ -130,7 +132,7 @@
 
               <div class="text-muted small mt-2">
                 <i class="bi bi-info-circle me-1"></i>
-                No produto real: upload → armazenamento (S3/FS) → fila → extração de texto (PDF/Word) → candidato/triagem.
+                No produto real: upload â†’ armazenamento (S3/FS) â†’ fila â†’ extraÃ§Ã£o de texto (PDF/Word) â†’ candidato/triagem.
               </div>
             </div>
           </div>
@@ -142,7 +144,7 @@
                 <i class="bi bi-info-circle mt-1"></i>
                 <div>
                   <div class="fw-bold">Selecione um item da fila</div>
-                  <div class="small mt-1">Aqui você verá metadados, anexos e ações (processar, reprocessar, criar candidato, etc.).</div>
+                  <div class="small mt-1">Aqui vocÃª verÃ¡ metadados, anexos e aÃ§Ãµes (processar, reprocessar, criar candidato, etc.).</div>
                 </div>
               </div>
             </div>
@@ -177,3 +179,4 @@
   </script>
 <script src="~/js/views/entrada-email-pasta.js" asp-append-version="true"></script>
 }
+

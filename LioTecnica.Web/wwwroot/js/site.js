@@ -19,6 +19,26 @@
       .replaceAll("'", "&#039;");
   };
 
+  g.getEnumOptions = (key) => {
+    const data = g.__enumData || {};
+    const list = data[key];
+    return Array.isArray(list) ? list : [];
+  };
+
+  g.getEnumText = (key, code, fallback = "") => {
+    const list = g.getEnumOptions(key);
+    const opt = list.find(o => o.code === code);
+    return opt ? opt.text : (fallback || code || "");
+  };
+
+  g.renderEnumOptions = (key, selectedCode) => {
+    const list = g.getEnumOptions(key);
+    return list.map(opt => {
+      const selected = opt.code === selectedCode ? " selected" : "";
+      return `<option value="${g.escapeHtml(opt.code)}"${selected}>${g.escapeHtml(opt.text)}</option>`;
+    }).join("");
+  };
+
   g.fmtDate = (iso) => {
     if (!iso) return "—";
     const d = new Date(iso);

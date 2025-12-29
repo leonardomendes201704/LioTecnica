@@ -1,7 +1,13 @@
-// ========= Logo (Data URI placeholder)
+﻿// ========= Logo (Data URI placeholder)
     const seed = window.__seedData || {};
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
-// ========= Storage keys (compatível com telas anteriores)
+function enumFirstCode(key, fallback){
+      const list = getEnumOptions(key);
+      return list.length ? list[0].code : fallback;
+    }
+
+    const VAGA_ALL = enumFirstCode("vagaFilterSimple", "all");
+// ========= Storage keys (compatÃ­vel com telas anteriores)
     const VAGAS_KEY = "lt_rh_vagas_v1";
     const CANDS_KEY = "lt_rh_candidatos_v1";
     const INBOX_KEY = "lt_rh_inbox_v1";
@@ -24,7 +30,7 @@
       }catch{ return fallback; }
     }
 
-    // ========= Seed (mínimo para não quebrar a tela)
+    // ========= Seed (mÃ­nimo para nÃ£o quebrar a tela)
     function seedIfEmpty(){
       const vagasSeed = Array.isArray(seed.vagas) ? seed.vagas : [];
       const candsSeed = Array.isArray(seed.candidatos) ? seed.candidatos : [];
@@ -54,7 +60,7 @@ function loadAll(){
 
     function findVaga(id){ return state.vagas.find(v => v.id === id) || null; }
 
-    // ========= Relatórios (catálogo)
+    // ========= RelatÃ³rios (catÃ¡logo)
     const REPORTS = Array.isArray(seed.reports) ? seed.reports : [];
 
     // ========= Filters / period
@@ -97,7 +103,7 @@ function loadAll(){
       });
     }
 
-    // ========= Render catálogo de relatórios
+    // ========= Render catÃ¡logo de relatÃ³rios
     function renderReportCatalog(){
       $("#reportList").innerHTML = REPORTS.map(r => `
         <div class="tile ${r.id===state.reportId ? "active":""}" data-id="${r.id}">
@@ -126,14 +132,14 @@ function loadAll(){
     // ========= Render filtros (vagas)
     function renderVagaOptions(){
       const sel = $("#fVaga");
-      const current = sel.value || "all";
+      const current = sel.value || VAGA_ALL;
       const opts = state.vagas
         .slice()
         .sort((a,b)=> (a.titulo||"").localeCompare(b.titulo||""))
-        .map(v => `<option value="${v.id}">${escapeHtml(v.titulo)} (${escapeHtml(v.codigo||"—")})</option>`)
+        .map(v => `<option value="${v.id}">${escapeHtml(v.titulo)} (${escapeHtml(v.codigo||"â€”")})</option>`)
         .join("");
-      sel.innerHTML = `<option value="all">Todas</option>${opts}`;
-      sel.value = state.filters.vaga || current || "all";
+      sel.innerHTML = renderEnumOptions("vagaFilterSimple", VAGA_ALL) + opts;
+      sel.value = state.filters.vaga || current || VAGA_ALL;
     }
 
     // ========= KPI
@@ -142,7 +148,7 @@ function loadAll(){
       const cands = state.candidatos.length;
       const inbox = state.inbox.filter(x => ["novo","processando"].includes(x.status)).length;
 
-      // conversão simples (processado → candidato) (demo)
+      // conversÃ£o simples (processado â†’ candidato) (demo)
       const processed = state.inbox.filter(x => x.status === "processado" && inPeriod(x.recebidoEm)).length;
       const conv = processed ? Math.round((cands / processed) * 100) : 0;
 
@@ -266,7 +272,7 @@ function loadAll(){
     // ========= Report builders (mocados, baseados nos dados salvos)
     function buildReportData(){
       const r = REPORTS.find(x => x.id === state.reportId);
-      if(!r) return { labels:[], values:[], headers:[], rows:[], title:"—", desc:"" };
+      if(!r) return { labels:[], values:[], headers:[], rows:[], title:"â€”", desc:"" };
 
       if(r.id === "r1"){ // Entrada por origem
         const list = applyCommonFiltersToInbox(state.inbox);
@@ -286,13 +292,13 @@ function loadAll(){
             return [
               escapeHtml(fmtDate(x.recebidoEm)),
               escapeHtml(x.origem),
-              `<span class="mono">${escapeHtml(x.remetente||"—")}</span>`,
-              escapeHtml(x.assunto||"—"),
-              escapeHtml(v ? `${v.titulo} (${v.codigo||"—"})` : "—"),
+              `<span class="mono">${escapeHtml(x.remetente||"â€”")}</span>`,
+              escapeHtml(x.assunto||"â€”"),
+              escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "â€”"),
               x.status === "processado" ? tag(`<i class="bi bi-check2-circle"></i>Processado`,"tag ok") :
               x.status === "processando" ? tag(`<i class="bi bi-arrow-repeat"></i>Processando`,"tag warn") :
               x.status === "falha" ? tag(`<i class="bi bi-exclamation-triangle"></i>Falha`,"tag bad") :
-              tag(`<i class="bi bi-dot"></i>${escapeHtml(x.status||"—")}`,"tag")
+              tag(`<i class="bi bi-dot"></i>${escapeHtml(x.status||"â€”")}`,"tag")
             ];
           });
 
@@ -304,7 +310,7 @@ function loadAll(){
         const buckets = {};
         list.forEach(x => {
           const e = (x.processamento && x.processamento.ultimoErro) ? x.processamento.ultimoErro : "Outros";
-          const key = e.length > 22 ? (e.slice(0,22)+"…") : e;
+          const key = e.length > 22 ? (e.slice(0,22)+"â€¦") : e;
           buckets[key] = (buckets[key]||0)+1;
         });
 
@@ -322,9 +328,9 @@ function loadAll(){
             return [
               escapeHtml(fmtDate(x.recebidoEm)),
               escapeHtml(x.origem),
-              escapeHtml(x.assunto||"—"),
-              escapeHtml(v ? `${v.titulo} (${v.codigo||"—"})` : "—"),
-              `<span class="text-danger">${escapeHtml(x.processamento?.ultimoErro || "—")}</span>`
+              escapeHtml(x.assunto||"â€”"),
+              escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "â€”"),
+              `<span class="text-danger">${escapeHtml(x.processamento?.ultimoErro || "â€”")}</span>`
             ];
           });
 
@@ -334,7 +340,7 @@ function loadAll(){
       if(r.id === "r3"){ // Pipeline candidatos
         const list = state.candidatos.slice();
         const count = {};
-        list.forEach(c => { const s = c.status || "—"; count[s] = (count[s]||0)+1; });
+        list.forEach(c => { const s = c.status || "â€”"; count[s] = (count[s]||0)+1; });
 
         const pairs = Object.entries(count).sort((a,b)=> b[1]-a[1]).slice(0, 7);
         const labels = pairs.map(p => p[0]);
@@ -352,14 +358,14 @@ function loadAll(){
               st.includes("aprov") ? tag(`<i class="bi bi-check2-circle"></i>${escapeHtml(c.status)}`,"tag ok") :
               st.includes("reprov") ? tag(`<i class="bi bi-x-circle"></i>${escapeHtml(c.status)}`,"tag bad") :
               st.includes("match") ? tag(`<i class="bi bi-stars"></i>${escapeHtml(c.status)}`,"tag warn") :
-              tag(`<i class="bi bi-dot"></i>${escapeHtml(c.status||"—")}`,"tag");
+              tag(`<i class="bi bi-dot"></i>${escapeHtml(c.status||"â€”")}`,"tag");
 
             return [
               escapeHtml(fmtDate(c.createdAt)),
-              escapeHtml(c.nome || "—"),
-              c.email ? `<span class="mono">${escapeHtml(c.email)}</span>` : "—",
+              escapeHtml(c.nome || "â€”"),
+              c.email ? `<span class="mono">${escapeHtml(c.email)}</span>` : "â€”",
               badge,
-              escapeHtml(v ? `${v.titulo} (${v.codigo||"—"})` : "—")
+              escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "â€”")
             ];
           });
 
@@ -392,7 +398,7 @@ function loadAll(){
           const ok = obj.processados;
           const rate = obj.recebidos ? Math.round((ok/obj.recebidos)*100) : 0;
           return [
-            escapeHtml(v ? `${v.titulo} (${v.codigo||"—"})` : "Sem vaga"),
+            escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "Sem vaga"),
             `<span class="fw-semibold">${obj.recebidos}</span>`,
             `<span class="fw-semibold" style="color:rgba(25,135,84,.95)">${obj.processados}</span>`,
             `<span class="fw-semibold text-danger">${obj.falhas}</span>`,
@@ -408,7 +414,7 @@ function loadAll(){
       if(r.id === "r5"){ // Ranking matching (demo)
         const list = state.candidatos
           .map(c => {
-            // se não tiver match, gera um número determinístico “demo”
+            // se nÃ£o tiver match, gera um nÃºmero determinÃ­stico â€œdemoâ€
             const seed = (c.id||"").split("").reduce((a,ch)=> a+ch.charCodeAt(0), 0);
             const score = c.lastMatch?.percent ?? (40 + (seed % 61)); // 40..100
             return { ...c, _score: clamp(score,0,100) };
@@ -416,7 +422,7 @@ function loadAll(){
           .sort((a,b)=> b._score - a._score)
           .slice(0, 12);
 
-        const labels = list.slice(0, 6).map(c => (c.nome||"—").split(" ")[0].slice(0,10));
+        const labels = list.slice(0, 6).map(c => (c.nome||"â€”").split(" ")[0].slice(0,10));
         const values = list.slice(0, 6).map(c => c._score);
 
         const headers = ["Candidato", "Email", "Vaga", "Match", "Atualizado"];
@@ -428,9 +434,9 @@ function loadAll(){
             s >= 60 ? tag(`<i class="bi bi-stars"></i>${s}%`,"tag warn") :
                       tag(`<i class="bi bi-stars"></i>${s}%`,"tag bad");
           return [
-            escapeHtml(c.nome || "—"),
-            c.email ? `<span class="mono">${escapeHtml(c.email)}</span>` : "—",
-            escapeHtml(v ? `${v.titulo} (${v.codigo||"—"})` : "—"),
+            escapeHtml(c.nome || "â€”"),
+            c.email ? `<span class="mono">${escapeHtml(c.email)}</span>` : "â€”",
+            escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "â€”"),
             badge,
             escapeHtml(fmtDate(c.updatedAt || c.createdAt))
           ];
@@ -445,8 +451,8 @@ function loadAll(){
     // ========= Render report
     function renderReport(){
       const r = REPORTS.find(x => x.id === state.reportId);
-      $("#reportTitle").textContent = r ? r.title : "—";
-      $("#reportDesc").textContent = r ? r.desc : "Selecione um relatório no catálogo.";
+      $("#reportTitle").textContent = r ? r.title : "â€”";
+      $("#reportDesc").textContent = r ? r.desc : "Selecione um relatÃ³rio no catÃ¡logo.";
 
       const data = buildReportData();
 
@@ -459,16 +465,16 @@ function loadAll(){
       // hint
       const p = state.filters.period;
       const pl = p==="7d"?"7 dias":p==="30d"?"30 dias":p==="90d"?"90 dias":"YTD";
-      $("#resultHint").textContent = `Período: ${pl} • Vaga: ${state.filters.vaga==="all"?"todas":"filtrada"} • Origem/Status: conforme filtros.`;
+      $("#resultHint").textContent = `PerÃ­odo: ${pl} â€¢ Vaga: ${state.filters.vaga==="all"?"todas":"filtrada"} â€¢ Origem/Status: conforme filtros.`;
     }
 
-    // ========= CSV export do relatório atual
+    // ========= CSV export do relatÃ³rio atual
     function exportCurrentCsv(){
       const data = buildReportData();
       const headers = data.headers || [];
       const rows = data.rows || [];
 
-      // remove HTML dos cells para CSV básico
+      // remove HTML dos cells para CSV bÃ¡sico
       const strip = (html) => String(html)
         .replace(/<br\s*\/?>/gi, " ")
         .replace(/<\/?[^>]+>/g, "")
@@ -544,7 +550,7 @@ $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) 
       $("#btnExport").addEventListener("click", exportCurrentCsv);
 
       $("#btnSeedReset").addEventListener("click", () => {
-        const ok = confirm("Restaurar demo? Isso recria seeds mínimas (Vagas/Candidatos/Inbox).");
+        const ok = confirm("Restaurar demo? Isso recria seeds mÃ­nimas (Vagas/Candidatos/Inbox).");
         if(!ok) return;
         localStorage.removeItem(VAGAS_KEY);
         localStorage.removeItem(CANDS_KEY);
@@ -575,3 +581,5 @@ $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) 
       renderReport();
       window.addEventListener("resize", () => renderReport());
     })();
+
+

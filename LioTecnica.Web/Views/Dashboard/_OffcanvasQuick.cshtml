@@ -1,8 +1,8 @@
-<div class="offcanvas offcanvas-end offcanvas-custom" tabindex="-1" id="drawerQuick">
+﻿<div class="offcanvas offcanvas-end offcanvas-custom" tabindex="-1" id="drawerQuick">
     <div class="offcanvas-header border-bottom">
       <div>
-        <div class="fw-bold">Ações rápidas</div>
-        <div class="text-muted small">Atalhos para operação do RH</div>
+        <div class="fw-bold">AÃ§Ãµes rÃ¡pidas</div>
+        <div class="text-muted small">Atalhos para operaÃ§Ã£o do RH</div>
       </div>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
@@ -10,31 +10,35 @@
     <div class="offcanvas-body">
       <div class="card-soft p-3 mb-3">
         <div class="fw-semibold mb-2"><i class="bi bi-plus-circle me-2"></i>Criar vaga (mock)</div>
-        <div class="row g-2">
+        @{
+        var areaOptions = EnumOptionsHelper.GetOptions<VagaArea>();
+        var statusOptions = EnumOptionsHelper.GetOptions<VagaStatus>();
+      }
+      <div class="row g-2">
           <div class="col-12">
-            <label class="form-label small text-muted">Título</label>
+            <label class="form-label small text-muted">TÃ­tulo</label>
             <input class="form-control" placeholder="Ex.: Analista de Marketing Jr">
           </div>
           <div class="col-6">
-            <label class="form-label small text-muted">Área</label>
+            <label class="form-label small text-muted">Ãrea</label>
             <select class="form-select">
-              <option>Marketing</option>
-              <option>Qualidade</option>
-              <option>Produção</option>
-              <option>RH</option>
-              <option>TI</option>
+              @foreach (var opt in areaOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
             </select>
           </div>
           <div class="col-6">
             <label class="form-label small text-muted">Status</label>
             <select class="form-select">
-              <option>Aberta</option>
-              <option>Pausada</option>
-              <option>Fechada</option>
+              @foreach (var opt in statusOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
             </select>
           </div>
           <div class="col-12">
-            <label class="form-label small text-muted">Palavras-chave (separadas por vírgula)</label>
+            <label class="form-label small text-muted">Palavras-chave (separadas por vÃ­rgula)</label>
             <input class="form-control" placeholder="Ex.: power bi, seo, redes sociais, crm">
           </div>
         </div>
@@ -46,7 +50,7 @@
       </div>
 
       <div class="card-soft p-3 mb-3">
-        <div class="fw-semibold mb-2"><i class="bi bi-inbox me-2"></i>Entrada de currículos</div>
+        <div class="fw-semibold mb-2"><i class="bi bi-inbox me-2"></i>Entrada de currÃ­culos</div>
         <div class="d-flex flex-column gap-2">
           <button class="btn btn-ghost" type="button"><i class="bi bi-envelope me-2"></i>Conectar caixa de e-mail</button>
           <button class="btn btn-ghost" type="button"><i class="bi bi-folder2-open me-2"></i>Configurar pasta monitorada</button>
@@ -57,11 +61,13 @@
       <div class="card-soft p-3">
         <div class="fw-semibold mb-2"><i class="bi bi-stars me-2"></i>Motor de match</div>
         <div class="small text-muted mb-2">
-          Ajustes (MVP): pesos, obrigatórios e sinônimos por vaga.
+          Ajustes (MVP): pesos, obrigatÃ³rios e sinÃ´nimos por vaga.
         </div>
         <button class="btn btn-brand w-100" type="button">
-          <i class="bi bi-sliders me-1"></i>Abrir configurações
+          <i class="bi bi-sliders me-1"></i>Abrir configuraÃ§Ãµes
         </button>
       </div>
     </div>
   </div>
+
+

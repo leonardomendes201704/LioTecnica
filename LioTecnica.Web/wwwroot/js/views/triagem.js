@@ -1,6 +1,17 @@
-// ========= Logo (Data URI placeholder)
+﻿// ========= Logo (Data URI placeholder)
     const seed = window.__seedData || {};
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
+function enumFirstCode(key, fallback){
+      const list = getEnumOptions(key);
+      return list.length ? list[0].code : fallback;
+    }
+
+    const VAGA_ALL = enumFirstCode("vagaFilter", "all");
+
+    function formatDecisionReason(code){
+      if(!code) return "";
+      return getEnumText("triagemDecisionReason", code, code);
+    }
 function statusTag(s){
       const map = {
         novo:      { label:"Novo", cls:"" },
@@ -13,11 +24,11 @@ function statusTag(s){
       return `<span class="status-tag ${it.cls}"><i class="bi bi-dot"></i>${escapeHtml(it.label)}</span>`;
     }
 
-    // ========= Storage keys (compatíveis com a tela de Candidatos/Vagas)
+    // ========= Storage keys (compatÃ­veis com a tela de Candidatos/Vagas)
     const VAGAS_KEY = "lt_rh_vagas_v1";
     const CANDS_KEY = "lt_rh_candidatos_v1";
 
-    // Triagem: histórico de decisões (novo key)
+    // Triagem: histÃ³rico de decisÃµes (novo key)
     const TRIAGE_KEY = "lt_rh_triagem_v1";
 
     const state = {
@@ -99,7 +110,7 @@ function statusTag(s){
       return state.candidatos.find(c => c.id === id) || null;
     }
 
-    // ========= Matching (MVP keyword) — mesmo padrão da tela de Candidatos
+    // ========= Matching (MVP keyword) â€” mesmo padrÃ£o da tela de Candidatos
     function calcMatchForCand(cand){
       const v = findVaga(cand.vagaId);
       if(!v) return { score: 0, pass: false, hits: [], missMandatory: [], totalPeso: 1, hitPeso: 0, threshold: 0 };
@@ -149,7 +160,7 @@ function statusTag(s){
       const ok = s >= t;
       const cls = ok ? "ok" : (s >= (t*0.8) ? "warn" : "bad");
       const text = ok ? "Dentro" : "Abaixo";
-      return `<span class="status-tag ${cls}"><i class="bi bi-stars"></i>${s}% • ${text}</span>`;
+      return `<span class="status-tag ${cls}"><i class="bi bi-stars"></i>${s}% â€¢ ${text}</span>`;
     }
 
     // ========= SLA (MVP)
@@ -173,17 +184,17 @@ function statusTag(s){
     // ========= Board data + filters
     function distinctVagas(){
       return state.vagas
-        .map(v => ({ id: v.id, label: `${v.titulo || "—"} (${v.codigo || "—"})` }))
+        .map(v => ({ id: v.id, label: `${v.titulo || "â€”"} (${v.codigo || "â€”"})` }))
         .sort((a,b)=>a.label.localeCompare(b.label, "pt-BR"));
     }
 
     function renderVagaFilter(){
       const sel = $("#fVaga");
       if(!sel) return;
-      const cur = sel.value || "all";
+      const cur = sel.value || VAGA_ALL;
       const opts = distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
-      sel.innerHTML = `<option value="all">Vaga: todas</option>` + opts;
-      sel.value = (cur === "all" || state.vagas.some(v => v.id === cur)) ? cur : "all";
+      sel.innerHTML = renderEnumOptions("vagaFilter", VAGA_ALL) + opts;
+      sel.value = (cur === VAGA_ALL || state.vagas.some(v => v.id === cur)) ? cur : VAGA_ALL;
     }
 
     function getFilteredCands(){
@@ -192,7 +203,7 @@ function statusTag(s){
       const sla = state.filters.sla;
 
       return state.candidatos.filter(c => {
-        // só pipeline de triagem
+        // sÃ³ pipeline de triagem
         if(!["triagem","pendente","aprovado","reprovado"].includes(c.status)) return false;
 
         if(vid !== "all" && c.vagaId !== vid) return false;
@@ -222,10 +233,10 @@ function statusTag(s){
       const list = getFilteredCands();
       const g = groupByStage(list);
 
-      $("#listTriagem").innerHTML = g.triagem.map(renderTriItem).join("") || `<div class="text-muted small">—</div>`;
-      $("#listPendente").innerHTML = g.pendente.map(renderTriItem).join("") || `<div class="text-muted small">—</div>`;
-      $("#listAprovado").innerHTML = g.aprovado.map(renderTriItem).join("") || `<div class="text-muted small">—</div>`;
-      $("#listReprovado").innerHTML = g.reprovado.map(renderTriItem).join("") || `<div class="text-muted small">—</div>`;
+      $("#listTriagem").innerHTML = g.triagem.map(renderTriItem).join("") || `<div class="text-muted small">â€”</div>`;
+      $("#listPendente").innerHTML = g.pendente.map(renderTriItem).join("") || `<div class="text-muted small">â€”</div>`;
+      $("#listAprovado").innerHTML = g.aprovado.map(renderTriItem).join("") || `<div class="text-muted small">â€”</div>`;
+      $("#listReprovado").innerHTML = g.reprovado.map(renderTriItem).join("") || `<div class="text-muted small">â€”</div>`;
 
       $("#countTriagem").textContent = g.triagem.length;
       $("#countPendente").textContent = g.pendente.length;
@@ -270,18 +281,18 @@ function statusTag(s){
               <div class="avatar">${escapeHtml(initials(c.nome))}</div>
               <div>
                 <div class="name d-flex align-items-center gap-2 flex-wrap">
-                  <span>${escapeHtml(c.nome || "—")}</span>
+                  <span>${escapeHtml(c.nome || "â€”")}</span>
                   <button class="btn btn-ghost btn-sm" type="button" title="Detalhes" aria-label="Detalhes" onclick="event.stopPropagation(); window.__openDetails('${c.id}')">
                     <i class="bi bi-eye"></i>
                   </button>
                 </div>
-                <div class="smalltxt">${escapeHtml(c.email || "—")}</div>
+                <div class="smalltxt">${escapeHtml(c.email || "â€”")}</div>
               </div>
             </div>
 
             <div class="tri-meta text-end">
-              ${v ? `<div class="pill mono">${escapeHtml(v.codigo || "—")}</div>` : `<div class="pill">Sem vaga</div>`}
-              <div class="smalltxt mt-1">${v ? escapeHtml(v.titulo || "—") : "—"}</div>
+              ${v ? `<div class="pill mono">${escapeHtml(v.codigo || "â€”")}</div>` : `<div class="pill">Sem vaga</div>`}
+              <div class="smalltxt mt-1">${v ? escapeHtml(v.titulo || "â€”") : "â€”"}</div>
             </div>
           </div>
 
@@ -294,8 +305,8 @@ function statusTag(s){
                 <div class="fw-bold" style="min-width:44px;text-align:right;">${clamp(m.score,0,100)}%</div>
               </div>
               <div class="smalltxt mt-1">
-                mínimo: <span class="mono">${clamp(parseInt(thr||0,10)||0,0,100)}%</span>
-                ${m.pass ? `• <span style="color: rgba(25,135,84,.95); font-weight:700;">dentro</span>` : `• <span style="color: rgba(153,19,34,.95); font-weight:700;">abaixo</span>`}
+                mÃ­nimo: <span class="mono">${clamp(parseInt(thr||0,10)||0,0,100)}%</span>
+                ${m.pass ? `â€¢ <span style="color: rgba(25,135,84,.95); font-weight:700;">dentro</span>` : `â€¢ <span style="color: rgba(153,19,34,.95); font-weight:700;">abaixo</span>`}
               </div>
             </div>
           </div>
@@ -305,7 +316,7 @@ function statusTag(s){
             ${missBadge}
             <button class="btn btn-ghost btn-sm ms-auto" type="button"
                     onclick="event.stopPropagation(); window.__openDecision('${c.id}')">
-              <i class="bi bi-clipboard-check me-1"></i>Decisão
+              <i class="bi bi-clipboard-check me-1"></i>DecisÃ£o
             </button>
           </div>
         </div>
@@ -371,7 +382,7 @@ function statusTag(s){
       state.selectedId = c.id;
       renderBoard();
       renderDetail();
-      toast(`Movido: ${labelStage(prev)} → ${labelStage(newStage)}`);
+      toast(`Movido: ${labelStage(prev)} â†’ ${labelStage(newStage)}`);
     }
 
     function labelStage(s){
@@ -394,7 +405,7 @@ function statusTag(s){
               <i class="bi bi-info-circle mt-1"></i>
               <div>
                 <div class="fw-bold">Selecione um candidato</div>
-                <div class="small mt-1">Clique em um card para ver detalhes, match e histórico de triagem.</div>
+                <div class="small mt-1">Clique em um card para ver detalhes, match e histÃ³rico de triagem.</div>
               </div>
             </div>
           </div>
@@ -407,7 +418,7 @@ function statusTag(s){
       const si = slaInfo(c);
 
       const updated = c.updatedAt ? new Date(c.updatedAt) : null;
-      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
+      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "â€”";
 
       const miss = (m.missMandatory||[]).map(r=>r.termo).slice(0,12);
       const hit = (m.hits||[]).map(r=>r.termo).slice(0,12);
@@ -424,8 +435,8 @@ function statusTag(s){
             <div class="d-flex align-items-center gap-2">
               <div class="avatar" style="width:52px;height:52px;border-radius:16px;">${escapeHtml(initials(c.nome))}</div>
               <div>
-                <div class="fw-bold" style="font-size:1.05rem;">${escapeHtml(c.nome || "—")}</div>
-                <div class="text-muted small">${escapeHtml(c.email || "—")}</div>
+                <div class="fw-bold" style="font-size:1.05rem;">${escapeHtml(c.nome || "â€”")}</div>
+                <div class="text-muted small">${escapeHtml(c.email || "â€”")}</div>
                 <div class="text-muted small">
                   <i class="bi bi-clock-history me-1"></i>Atualizado: ${escapeHtml(updatedTxt)}
                 </div>
@@ -439,9 +450,9 @@ function statusTag(s){
           </div>
 
           <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="pill"><i class="bi bi-briefcase"></i>${escapeHtml(v ? (v.titulo || "—") : "Vaga não vinculada")}</span>
-            ${v ? `<span class="pill mono">${escapeHtml(v.codigo || "—")}</span>` : ""}
-            ${v ? `<span class="pill"><i class="bi bi-stars"></i>Mín.: <strong class="ms-1">${clamp(parseInt(thr||0,10)||0,0,100)}%</strong></span>` : ""}
+            <span class="pill"><i class="bi bi-briefcase"></i>${escapeHtml(v ? (v.titulo || "â€”") : "Vaga nÃ£o vinculada")}</span>
+            ${v ? `<span class="pill mono">${escapeHtml(v.codigo || "â€”")}</span>` : ""}
+            ${v ? `<span class="pill"><i class="bi bi-stars"></i>MÃ­n.: <strong class="ms-1">${clamp(parseInt(thr||0,10)||0,0,100)}%</strong></span>` : ""}
           </div>
 
           <div class="d-flex align-items-center justify-content-between">
@@ -449,7 +460,7 @@ function statusTag(s){
               <div class="fw-bold">Match atual</div>
               <div class="text-muted small">MVP por palavras-chave</div>
             </div>
-            ${v ? matchTag(m.score, thr) : `<span class="status-tag"><i class="bi bi-dash-circle"></i>—</span>`}
+            ${v ? matchTag(m.score, thr) : `<span class="status-tag"><i class="bi bi-dash-circle"></i>â€”</span>`}
           </div>
 
           <div class="mt-2">
@@ -457,25 +468,25 @@ function statusTag(s){
               <div class="progress-bar" style="width:${clamp(m.score,0,100)}%"></div>
             </div>
             <div class="text-muted small mt-1">
-              Encontrados: <strong>${(m.hits||[]).length}</strong> • Obrigatórios faltando: <strong>${(m.missMandatory||[]).length}</strong>
+              Encontrados: <strong>${(m.hits||[]).length}</strong> â€¢ ObrigatÃ³rios faltando: <strong>${(m.missMandatory||[]).length}</strong>
             </div>
           </div>
 
           ${(m.missMandatory||[]).length ? `
             <div class="alert alert-danger mt-3 mb-0" style="border-radius:14px;">
-              <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Obrigatórios faltando</div>
+              <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>ObrigatÃ³rios faltando</div>
               <div class="small">${escapeHtml(miss.join(", "))}</div>
             </div>
           ` : `
             <div class="alert alert-success mt-3 mb-0" style="border-radius:14px;">
-              <div class="fw-semibold mb-1"><i class="bi bi-check2 me-1"></i>Obrigatórios OK</div>
-              <div class="small">${hit.length ? escapeHtml(hit.join(", ")) : "—"}</div>
+              <div class="fw-semibold mb-1"><i class="bi bi-check2 me-1"></i>ObrigatÃ³rios OK</div>
+              <div class="small">${hit.length ? escapeHtml(hit.join(", ")) : "â€”"}</div>
             </div>
           `}
 
           <div class="d-flex flex-wrap gap-2 mt-3">
             <button class="btn btn-brand btn-sm" type="button" data-dact="decision">
-              <i class="bi bi-clipboard-check me-1"></i>Decisão
+              <i class="bi bi-clipboard-check me-1"></i>DecisÃ£o
             </button>
             <button class="btn btn-ghost btn-sm" type="button" data-dact="recalc">
               <i class="bi bi-arrow-repeat me-1"></i>Recalcular match
@@ -484,8 +495,8 @@ function statusTag(s){
 
           <hr class="my-3" style="border-color: rgba(16,82,144,.14);">
 
-          <div class="fw-bold mb-1">Histórico de triagem</div>
-          <div class="text-muted small mb-2">Últimas movimentações (MVP localStorage).</div>
+          <div class="fw-bold mb-1">HistÃ³rico de triagem</div>
+          <div class="text-muted small mb-2">Ãšltimas movimentaÃ§Ãµes (MVP localStorage).</div>
 
           ${log.length ? `
             <div class="list-group" style="border-radius: 14px; overflow:hidden;">
@@ -494,9 +505,9 @@ function statusTag(s){
                   <div class="d-flex align-items-start justify-content-between gap-2">
                     <div>
                       <div class="fw-semibold">
-                        ${escapeHtml(labelStage(x.from))} → ${escapeHtml(labelStage(x.to))}
+                        ${escapeHtml(labelStage(x.from))} â†’ ${escapeHtml(labelStage(x.to))}
                       </div>
-                      <div class="text-muted small">${escapeHtml(x.reason || "—")} ${x.note ? `• ${escapeHtml(x.note)}` : ""}</div>
+                      <div class="text-muted small">${escapeHtml(formatDecisionReason(x.reason) || "-")} ${x.note ? `â€¢ ${escapeHtml(x.note)}` : ""}</div>
                     </div>
                     <div class="text-muted small nowrap">${new Date(x.at).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })}</div>
                   </div>
@@ -505,7 +516,7 @@ function statusTag(s){
             </div>
           ` : `
             <div class="detail-empty">
-              <div class="small">Sem histórico ainda. Use “Decisão” ou arraste para registrar uma movimentação.</div>
+              <div class="small">Sem histÃ³rico ainda. Use â€œDecisÃ£oâ€ ou arraste para registrar uma movimentaÃ§Ã£o.</div>
             </div>
           `}
         </div>
@@ -552,7 +563,7 @@ function statusTag(s){
 
       $("#decCandId").value = c.id;
 
-      // sugestão automática
+      // sugestÃ£o automÃ¡tica
       const v = findVaga(c.vagaId);
       const m = calcMatchForCand(c);
       const suggested = suggestDecision(c, v, m);
@@ -561,7 +572,7 @@ function statusTag(s){
       $("#decReason").value = suggested.reason || "";
       $("#decObs").value = "";
 
-      $("#decisionTitle").textContent = `Decisão • ${c.nome}`;
+      $("#decisionTitle").textContent = `DecisÃ£o â€¢ ${c.nome}`;
 
       bootstrap.Modal.getOrCreateInstance($("#modalDecision")).show();
     }
@@ -570,42 +581,43 @@ function statusTag(s){
 
     function suggestDecision(c, v, m){
       // Regras MVP:
-      // - se obrigatórios faltando => reprovar
-      // - senão se match < threshold => pendente (ou reprovar se muito baixo)
-      // - senão => aprovar
+      // - se obrigatÃ³rios faltando => reprovar
+      // - senÃ£o se match < threshold => pendente (ou reprovar se muito baixo)
+      // - senÃ£o => aprovar
       const thr = m.threshold ?? (v ? v.threshold : 0);
       const miss = (m.missMandatory||[]).length;
       if(miss){
-        return { action:"reprovado", reason:"Faltou requisito obrigatório" };
+        return { action:"reprovado", reason:"missing_mandatory" };
       }
       if(m.score < thr){
         const gap = thr - m.score;
-        if(gap >= 25) return { action:"reprovado", reason:"Match abaixo do mínimo" };
-        return { action:"pendente", reason:"Necessita validação técnica" };
+        if(gap >= 25) return { action:"reprovado", reason:"below_threshold" };
+        return { action:"pendente", reason:"needs_validation" };
       }
-      return { action:"aprovado", reason:"Perfil aderente" };
+      return { action:"aprovado", reason:"profile_fit" };
     }
 
     function applyDecision(){
       const id = $("#decCandId").value;
       const action = $("#decAction").value;
       const reason = ($("#decReason").value || "").trim();
+      const reasonLabel = formatDecisionReason(reason);
       const obs = ($("#decObs").value || "").trim();
 
       const c = findCand(id);
       if(!c) return;
 
       moveStage(id, action, {
-        reason: reason || "Decisão",
+        reason: reason || "Decisao",
         note: obs || ""
       });
 
-      // também grava observação no candidato (append)
+      // tambÃ©m grava observaÃ§Ã£o no candidato (append)
       if(reason || obs){
         const lines = [];
-        if(reason) lines.push(reason);
+        if(reason) lines.push(reasonLabel || reason);
         if(obs) lines.push(obs);
-        const note = lines.join(" • ");
+        const note = lines.join(" â€¢ ");
         c.obs = (c.obs || "").trim();
         c.obs = c.obs ? (c.obs + "\n" + note) : note;
         c.updatedAt = new Date().toISOString();
@@ -634,7 +646,7 @@ function statusTag(s){
     function autoTriage(){
       const list = getFilteredCands();
 
-      // só auto em triagem
+      // sÃ³ auto em triagem
       const tri = list.filter(c => c.status === "triagem");
 
       if(!tri.length){
@@ -649,10 +661,10 @@ function statusTag(s){
         const m = calcMatchForCand(c);
         const sug = suggestDecision(c, v, m);
 
-        // não aprovar automaticamente se for "pendente"
-        // (mantém pendente como pendente quando sugerido, mas aqui move para pendente)
+        // nÃ£o aprovar automaticamente se for "pendente"
+        // (mantÃ©m pendente como pendente quando sugerido, mas aqui move para pendente)
         if(sug.action && sug.action !== "triagem"){
-          moveStage(c.id, sug.action, { reason: "Auto-triagem", note: sug.reason || "" });
+          moveStage(c.id, sug.action, { reason: "Auto-triagem", note: formatDecisionReason(sug.reason) || "" });
           moved++;
         }
       });
@@ -678,7 +690,7 @@ function statusTag(s){
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast("Exportação iniciada.");
+      toast("ExportaÃ§Ã£o iniciada.");
     }
 
     function importJson(){
@@ -708,7 +720,7 @@ function statusTag(s){
             renderVagaFilter();
             renderBoard();
             renderDetail();
-            toast("Importação concluída.");
+            toast("ImportaÃ§Ã£o concluÃ­da.");
           }catch(e){
             console.error(e);
             alert("Falha ao importar JSON. Verifique o arquivo.");
@@ -806,7 +818,7 @@ function statusTag(s){
         toast("Nenhuma vaga encontrada no localStorage. Abra a tela de Vagas e crie/seed primeiro.");
       }
 
-      // se não houver candidato selecionado, tenta um em triagem
+      // se nÃ£o houver candidato selecionado, tenta um em triagem
       if(!state.selectedId){
         state.selectedId = state.candidatos.find(c => c.status === "triagem")?.id || state.candidatos[0]?.id || null;
         saveCands();
@@ -820,3 +832,7 @@ function statusTag(s){
       wireFilters();
       wireButtons();
     })();
+
+
+
+

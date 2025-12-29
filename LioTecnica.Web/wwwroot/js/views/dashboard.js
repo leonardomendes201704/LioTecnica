@@ -1,18 +1,39 @@
-const seed = window.__seedData || {};
+﻿const seed = window.__seedData || {};
 // ========= Top matches (mock)
     const mockRows = Array.isArray(seed.dashboardRows) ? seed.dashboardRows : [];
+
+    function enumFirstCode(key, fallback){
+      const list = getEnumOptions(key);
+      return list.length ? list[0].code : fallback;
+    }
+
+    const VAGA_ALL = enumFirstCode("vagaFilterSimple", "all");
 
     function badgeEtapa(etapa){
       const map = {
         "Recebido": "secondary",
         "Triagem": "primary",
-        "Em análise": "info",
+        "Em anÃ¡lise": "info",
         "Entrevista": "warning",
         "Aprovado": "success",
         "Reprovado": "danger"
       };
       const bs = map[etapa] ?? "primary";
       return `<span class="badge text-bg-${bs} rounded-pill">${etapa}</span>`;
+    }
+
+    function renderVagaFilterOptions(){
+      const sel = $("#fVaga");
+      if(!sel) return;
+      const vagas = Array.isArray(seed.vagas) ? seed.vagas : [];
+      const current = sel.value || VAGA_ALL;
+      const opts = vagas
+        .slice()
+        .sort((a,b)=> (a.titulo||"").localeCompare(b.titulo||""))
+        .map(v => `<option value="${v.id}">${escapeHtml(v.titulo||"-")} (${escapeHtml(v.codigo||"-")})</option>`)
+        .join("");
+      sel.innerHTML = renderEnumOptions("vagaFilterSimple", VAGA_ALL) + opts;
+      sel.value = (current === VAGA_ALL || vagas.some(v => v.id === current)) ? current : VAGA_ALL;
     }
 
     function renderTable(minMatch=0){
@@ -30,7 +51,7 @@ const seed = window.__seedData || {};
             </td>
             <td>
               <div class="fw-semibold">${x.cand}</div>
-              <div class="text-muted small">CV: PDF • 2 páginas</div>
+              <div class="text-muted small">CV: PDF â€¢ 2 pÃ¡ginas</div>
             </td>
             <td>
               <span class="badge-soft"><i class="bi ${x.origem === "Email" ? "bi-envelope" : "bi-folder2"} me-1"></i>${x.origem}</span>
@@ -40,7 +61,7 @@ const seed = window.__seedData || {};
                 <div class="progress flex-grow-1"><div class="progress-bar" style="width:${x.match}%"></div></div>
                 <div class="fw-bold" style="min-width:44px;text-align:right;">${x.match}%</div>
               </div>
-              <div class="text-muted small mt-1">Encontrou: 9 termos • Faltou: 1 obrigatório</div>
+              <div class="text-muted small mt-1">Encontrou: 9 termos â€¢ Faltou: 1 obrigatÃ³rio</div>
             </td>
             <td>${badgeEtapa(x.etapa)}</td>
             <td class="text-end">
@@ -95,16 +116,16 @@ const seed = window.__seedData || {};
 
     // ========= Menu behavior (mock navigation)
     const menuMeta = {
-      dashboard: { title: "Dashboard", sub: "Visão geral do dia: vagas, recebimentos e triagem." },
-      vagas: { title: "Vagas", sub: "Criação, requisitos, pesos e controle total do funil." },
-      candidatos: { title: "Candidatos", sub: "Base de currículos e histórico por candidato." },
+      dashboard: { title: "Dashboard", sub: "VisÃ£o geral do dia: vagas, recebimentos e triagem." },
+      vagas: { title: "Vagas", sub: "CriaÃ§Ã£o, requisitos, pesos e controle total do funil." },
+      candidatos: { title: "Candidatos", sub: "Base de currÃ­culos e histÃ³rico por candidato." },
       triagem: { title: "Triagem", sub: "Aprovar/reprovar e mover etapas com auditoria." },
-      matching: { title: "Matching", sub: "Ajustes de palavras-chave, pesos e critérios obrigatórios." },
-      entrada: { title: "Entrada (Email/Pasta)", sub: "Monitoramento de anexos e ingestão automática." },
-      rm: { title: "RM Labore", sub: "Integração (fase 2): sincronizar vagas e requisitos." },
-      relatorios: { title: "Relatórios", sub: "KPIs, produtividade do RH e exportações." },
-      usuarios: { title: "Usuários & Perfis", sub: "Perfis (Admin/RH/Gestor) e permissões." },
-      config: { title: "Configurações", sub: "Parâmetros do sistema, retention LGPD e integrações." }
+      matching: { title: "Matching", sub: "Ajustes de palavras-chave, pesos e critÃ©rios obrigatÃ³rios." },
+      entrada: { title: "Entrada (Email/Pasta)", sub: "Monitoramento de anexos e ingestÃ£o automÃ¡tica." },
+      rm: { title: "RM Labore", sub: "IntegraÃ§Ã£o (fase 2): sincronizar vagas e requisitos." },
+      relatorios: { title: "RelatÃ³rios", sub: "KPIs, produtividade do RH e exportaÃ§Ãµes." },
+      usuarios: { title: "UsuÃ¡rios & Perfis", sub: "Perfis (Admin/RH/Gestor) e permissÃµes." },
+      config: { title: "ConfiguraÃ§Ãµes", sub: "ParÃ¢metros do sistema, retention LGPD e integraÃ§Ãµes." }
     };
 
     function setActiveMenu(key){
@@ -155,7 +176,7 @@ const seed = window.__seedData || {};
       $("#btnResetFilters").addEventListener("click", () => {
         range.value = 70;
         label.textContent = "70%";
-        $("#fVaga").value = "all";
+        $("#fVaga").value = VAGA_ALL;
         $("#fDe").value = "";
         $("#fAte").value = "";
         renderTable(0);
@@ -185,6 +206,7 @@ const seed = window.__seedData || {};
 
     // ========= Init
     (function init(){
+      renderVagaFilterOptions();
       wireMenus();
       wireFilters();
       wireQuickActions();
@@ -196,3 +218,4 @@ const seed = window.__seedData || {};
       const saved = localStorage.getItem("rh_active_menu") || "dashboard";
       setActiveMenu(saved);
     })();
+

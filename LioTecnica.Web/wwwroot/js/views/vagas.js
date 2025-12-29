@@ -1,7 +1,17 @@
-// ========= Logo (embutido em Data URI - auto contido)
-    // Observação: o arquivo fornecido veio como WebP (mesmo com nome .png).
+﻿// ========= Logo (embutido em Data URI - auto contido)
+    // ObservaÃ§Ã£o: o arquivo fornecido veio como WebP (mesmo com nome .png).
     const seed = window.__seedData || {};
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
+function enumFirstCode(key, fallback){
+      const list = getEnumOptions(key);
+      return list.length ? list[0].code : fallback;
+    }
+
+    const AREA_ALL = enumFirstCode("vagaAreaFilter", "all");
+    const DEFAULT_MODALIDADE = enumFirstCode("vagaModalidade", "Presencial");
+    const DEFAULT_STATUS = enumFirstCode("vagaStatus", "aberta");
+    const DEFAULT_SENIORIDADE = enumFirstCode("vagaSenioridade", "Junior");
+    const DEFAULT_CATEGORIA = enumFirstCode("requisitoCategoria", "Competencia");
 function fmtStatus(s){
       const map = { aberta:"Aberta", pausada:"Pausada", fechada:"Fechada" };
       return map[s] || s;
@@ -78,9 +88,9 @@ function fmtStatus(s){
     function renderAreaFilter(){
       const areas = distinctAreas();
       const sel = $("#fArea");
-      const cur = sel.value || "all";
-      sel.innerHTML = `<option value="all">Área: todas</option>` + areas.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
-      sel.value = areas.includes(cur) ? cur : "all";
+      const cur = sel.value || AREA_ALL;
+      sel.innerHTML = renderEnumOptions("vagaAreaFilter", AREA_ALL) + areas.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
+      sel.value = areas.includes(cur) ? cur : AREA_ALL;
     }
 
     function getFilteredVagas(){
@@ -122,16 +132,16 @@ function fmtStatus(s){
         tr.className = isSel ? "table-active" : "";
         tr.innerHTML = `
           <td>
-            <div class="fw-bold">${escapeHtml(v.titulo || "—")}</div>
+            <div class="fw-bold">${escapeHtml(v.titulo || "â€”")}</div>
             <div class="text-muted small">
-              <span class="mono">${escapeHtml(v.codigo || "—")}</span>
-              <span class="mx-2">•</span>
-              <span>${escapeHtml(v.modalidade || "—")}</span>
-              ${v.cidade || v.uf ? `<span class="mx-2">•</span><span>${escapeHtml([v.cidade, v.uf].filter(Boolean).join(" - "))}</span>` : ""}
+              <span class="mono">${escapeHtml(v.codigo || "â€”")}</span>
+              <span class="mx-2">â€¢</span>
+              <span>${escapeHtml(v.modalidade || "â€”")}</span>
+              ${v.cidade || v.uf ? `<span class="mx-2">â€¢</span><span>${escapeHtml([v.cidade, v.uf].filter(Boolean).join(" - "))}</span>` : ""}
             </div>
           </td>
           <td class="nowrap">${badgeStatus(v.status)}</td>
-          <td class="nowrap">${escapeHtml(v.area || "—")}</td>
+          <td class="nowrap">${escapeHtml(v.area || "â€”")}</td>
           <td class="nowrap">
             <span class="req-chip">${reqTotal} total</span>
             <span class="req-chip mandatory ms-1">${reqObrig} obrig.</span>
@@ -213,7 +223,7 @@ function fmtStatus(s){
       const reqObrig = (v.requisitos || []).filter(r => !!r.obrigatorio).length;
 
       const updated = v.updatedAt ? new Date(v.updatedAt) : null;
-      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
+      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "â€”";
 
       const weights = v.weights || { competencia:40, experiencia:30, formacao:15, localidade:15 };
       const sumW = (weights.competencia||0) + (weights.experiencia||0) + (weights.formacao||0) + (weights.localidade||0);
@@ -223,13 +233,13 @@ function fmtStatus(s){
           <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
             <div>
               <p class="mini-title mb-1">Detalhes</p>
-              <div class="fw-bold" style="font-size: 1.05rem;">${escapeHtml(v.titulo || "—")}</div>
+              <div class="fw-bold" style="font-size: 1.05rem;">${escapeHtml(v.titulo || "â€”")}</div>
               <div class="text-muted small">
-                <span class="mono">${escapeHtml(v.codigo || "—")}</span>
-                <span class="mx-2">•</span>
-                <span>${escapeHtml(v.area || "—")}</span>
-                <span class="mx-2">•</span>
-                <span>${escapeHtml(v.modalidade || "—")}</span>
+                <span class="mono">${escapeHtml(v.codigo || "â€”")}</span>
+                <span class="mx-2">â€¢</span>
+                <span>${escapeHtml(v.area || "â€”")}</span>
+                <span class="mx-2">â€¢</span>
+                <span>${escapeHtml(v.modalidade || "â€”")}</span>
               </div>
             </div>
 
@@ -241,8 +251,8 @@ function fmtStatus(s){
 
           <div class="d-flex flex-wrap gap-2 mb-3">
             <span class="req-chip"><i class="bi bi-list-check me-1"></i>${reqTotal} requisitos</span>
-            <span class="req-chip mandatory"><i class="bi bi-exclamation-triangle me-1"></i>${reqObrig} obrigatórios</span>
-            <span class="badge-soft"><i class="bi bi-stars me-1"></i>Match mín.: ${clamp(parseInt(v.threshold ?? 0,10)||0,0,100)}%</span>
+            <span class="req-chip mandatory"><i class="bi bi-exclamation-triangle me-1"></i>${reqObrig} obrigatÃ³rios</span>
+            <span class="badge-soft"><i class="bi bi-stars me-1"></i>Match mÃ­n.: ${clamp(parseInt(v.threshold ?? 0,10)||0,0,100)}%</span>
           </div>
 
           <ul class="nav nav-pills gap-2 mb-3" id="detailTabs" role="tablist" style="background: rgba(173,200,220,.16); padding: .35rem; border-radius: 999px; border: 1px solid rgba(16,82,144,.14);">
@@ -267,21 +277,21 @@ function fmtStatus(s){
             <!-- RESUMO -->
             <div class="tab-pane fade show active" id="tabResumo" role="tabpanel">
               <div class="mb-2">
-                <div class="fw-semibold">Descrição</div>
-                <div class="text-muted small">${escapeHtml(v.descricao || "—")}</div>
+                <div class="fw-semibold">DescriÃ§Ã£o</div>
+                <div class="text-muted small">${escapeHtml(v.descricao || "â€”")}</div>
               </div>
 
               <div class="row g-2">
                 <div class="col-12 col-md-6">
                   <div class="card-soft p-2" style="box-shadow:none;">
                     <div class="small text-muted">Local</div>
-                    <div class="fw-semibold">${escapeHtml([v.cidade, v.uf].filter(Boolean).join(" - ") || "—")}</div>
+                    <div class="fw-semibold">${escapeHtml([v.cidade, v.uf].filter(Boolean).join(" - ") || "â€”")}</div>
                   </div>
                 </div>
                 <div class="col-12 col-md-6">
                   <div class="card-soft p-2" style="box-shadow:none;">
                     <div class="small text-muted">Senioridade</div>
-                    <div class="fw-semibold">${escapeHtml(v.senioridade || "—")}</div>
+                    <div class="fw-semibold">${escapeHtml(v.senioridade || "â€”")}</div>
                   </div>
                 </div>
               </div>
@@ -304,7 +314,7 @@ function fmtStatus(s){
               <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                 <div>
                   <div class="fw-semibold">Requisitos</div>
-                  <div class="text-muted small">Peso (0–10) + flag de obrigatório.</div>
+                  <div class="text-muted small">Peso (0â€“10) + flag de obrigatÃ³rio.</div>
                 </div>
                 <button class="btn btn-brand btn-sm" type="button" data-dact="addreq">
                   <i class="bi bi-plus-lg me-1"></i>Novo requisito
@@ -326,8 +336,8 @@ function fmtStatus(s){
                       <th style="min-width: 150px;">Categoria</th>
                       <th style="min-width: 220px;">Termo</th>
                       <th style="min-width: 110px;">Peso</th>
-                      <th style="min-width: 220px;">Sinônimos</th>
-                      <th class="text-end" style="min-width: 120px;">Ações</th>
+                      <th style="min-width: 220px;">SinÃ´nimos</th>
+                      <th class="text-end" style="min-width: 120px;">AÃ§Ãµes</th>
                     </tr>
                   </thead>
                   <tbody id="tblReq"></tbody>
@@ -336,24 +346,24 @@ function fmtStatus(s){
 
               <div class="small text-muted mt-2">
                 Regras (MVP): score = soma(pesos encontrados) / soma(pesos totais) * 100.
-                Itens <strong>obrigatórios</strong> podem aplicar penalidade se ausentes.
+                Itens <strong>obrigatÃ³rios</strong> podem aplicar penalidade se ausentes.
               </div>
             </div>
 
             <!-- PESOS & MATCH -->
             <div class="tab-pane fade" id="tabMatch" role="tabpanel">
-              <div class="fw-semibold mb-1">Match mínimo</div>
+              <div class="fw-semibold mb-1">Match mÃ­nimo</div>
               <div class="d-flex align-items-center gap-2">
                 <input type="range" class="form-range" min="0" max="100" value="${clamp(parseInt(v.threshold ?? 0,10)||0,0,100)}" id="thresholdRange">
                 <span class="badge-soft" style="min-width:74px;text-align:center;" id="thresholdLabel">${clamp(parseInt(v.threshold ?? 0,10)||0,0,100)}%</span>
               </div>
-              <div class="text-muted small mb-3">Use isso como “corte” para triagem automática.</div>
+              <div class="text-muted small mb-3">Use isso como â€œcorteâ€ para triagem automÃ¡tica.</div>
 
               <div class="fw-semibold mb-2">Pesos por categoria (soma ideal = 100)</div>
 
-              ${weightRow("Competência", "competencia", weights.competencia ?? 0)}
-              ${weightRow("Experiência", "experiencia", weights.experiencia ?? 0)}
-              ${weightRow("Formação", "formacao", weights.formacao ?? 0)}
+              ${weightRow("Competencia", "competencia", weights.competencia ?? 0)}
+              ${weightRow("ExperiÃªncia", "experiencia", weights.experiencia ?? 0)}
+              ${weightRow("FormaÃ§Ã£o", "formacao", weights.formacao ?? 0)}
               ${weightRow("Localidade", "localidade", weights.localidade ?? 0)}
 
               <div class="d-flex align-items-center justify-content-between mt-3">
@@ -365,9 +375,9 @@ function fmtStatus(s){
 
               <hr class="my-3">
 
-              <div class="fw-semibold mb-1">Simulador rápido (MVP)</div>
-              <div class="text-muted small mb-2">Cole um texto (currículo em texto) e veja o match estimado por palavras-chave.</div>
-              <textarea class="form-control mb-2" id="simText" rows="5" placeholder="Cole aqui o texto do CV (extraído do PDF/DOCX)..."></textarea>
+              <div class="fw-semibold mb-1">Simulador rÃ¡pido (MVP)</div>
+              <div class="text-muted small mb-2">Cole um texto (currÃ­culo em texto) e veja o match estimado por palavras-chave.</div>
+              <textarea class="form-control mb-2" id="simText" rows="5" placeholder="Cole aqui o texto do CV (extraÃ­do do PDF/DOCX)..."></textarea>
               <div class="d-flex gap-2">
                 <button class="btn btn-ghost btn-sm" type="button" data-dact="simulate">
                   <i class="bi bi-play-circle me-1"></i>Simular
@@ -490,15 +500,15 @@ function fmtStatus(s){
               <input class="form-check-input" type="checkbox" ${r.obrigatorio ? "checked" : ""} data-ract="toggle" data-rid="${r.id}">
             </div>
           </td>
-          <td>${escapeHtml(r.categoria || "—")}</td>
+          <td>${escapeHtml(r.categoria || "â€”")}</td>
           <td>
-            <div class="fw-semibold">${escapeHtml(r.termo || "—")}</div>
-            ${r.obs ? `<div class="text-muted small">${escapeHtml(r.obs)}</div>` : `<div class="text-muted small">—</div>`}
+            <div class="fw-semibold">${escapeHtml(r.termo || "â€”")}</div>
+            ${r.obs ? `<div class="text-muted small">${escapeHtml(r.obs)}</div>` : `<div class="text-muted small">â€”</div>`}
           </td>
           <td class="nowrap">
             <span class="badge-soft">${clamp(parseInt(r.peso ?? 0,10)||0,0,10)}</span>
           </td>
-          <td>${escapeHtml(syn || "—")}</td>
+          <td>${escapeHtml(syn || "â€”")}</td>
           <td class="text-end nowrap">
             <button class="btn btn-ghost btn-sm me-1" data-ract="edit" data-rid="${r.id}">
               <i class="bi bi-pencil"></i>
@@ -539,11 +549,11 @@ function fmtStatus(s){
         $("#vagaCodigo").value = v.codigo || "";
         $("#vagaTitulo").value = v.titulo || "";
         $("#vagaArea").value = v.area || "";
-        $("#vagaModalidade").value = v.modalidade || "Presencial";
-        $("#vagaStatus").value = v.status || "";
+        $("#vagaModalidade").value = v.modalidade || DEFAULT_MODALIDADE;
+        $("#vagaStatus").value = v.status || DEFAULT_STATUS;
         $("#vagaCidade").value = v.cidade || "";
         $("#vagaUF").value = v.uf || "";
-        $("#vagaSenioridade").value = v.senioridade || "Júnior";
+        $("#vagaSenioridade").value = v.senioridade || DEFAULT_SENIORIDADE;
         $("#vagaThreshold").value = clamp(parseInt(v.threshold ?? 70,10)||70, 0, 100);
         $("#vagaDescricao").value = v.descricao || "";
       }else{
@@ -551,11 +561,11 @@ function fmtStatus(s){
         $("#vagaCodigo").value = "";
         $("#vagaTitulo").value = "";
         $("#vagaArea").value = "";
-        $("#vagaModalidade").value = "Presencial";
-        $("#vagaStatus").value = "aberta";
+        $("#vagaModalidade").value = DEFAULT_MODALIDADE;
+        $("#vagaStatus").value = DEFAULT_STATUS;
         $("#vagaCidade").value = "";
         $("#vagaUF").value = "SP";
-        $("#vagaSenioridade").value = "Júnior";
+        $("#vagaSenioridade").value = DEFAULT_SENIORIDADE;
         $("#vagaThreshold").value = 70;
         $("#vagaDescricao").value = "";
       }
@@ -576,13 +586,13 @@ function fmtStatus(s){
       const threshold = clamp(parseInt($("#vagaThreshold").value,10)||70, 0, 100);
       const descricao = ($("#vagaDescricao").value || "").trim();
 
-      // validação mínima
+      // validaÃ§Ã£o mÃ­nima
       if(!titulo){
-        toast("Informe o título da vaga.");
+        toast("Informe o tÃ­tulo da vaga.");
         return;
       }
       if(!area){
-        toast("Selecione a área da vaga.");
+        toast("Selecione a Ã¡rea da vaga.");
         return;
       }
       if(!status){
@@ -646,7 +656,7 @@ function fmtStatus(s){
       const v = findVaga(id);
       if(!v) return;
 
-      const ok = confirm(`Excluir a vaga "${v.titulo}"?\n\nIsso remove também os requisitos.`);
+      const ok = confirm(`Excluir a vaga "${v.titulo}"?\n\nIsso remove tambÃ©m os requisitos.`);
       if(!ok) return;
 
       state.vagas = state.vagas.filter(x => x.id !== id);
@@ -658,7 +668,7 @@ function fmtStatus(s){
       updateKpis();
       renderList();
       renderDetail();
-      toast("Vaga excluída.");
+      toast("Vaga excluÃ­da.");
     }
 
     function duplicateVaga(id){
@@ -669,7 +679,7 @@ function fmtStatus(s){
       const copy = JSON.parse(JSON.stringify(v));
       copy.id = uid();
       copy.codigo = (v.codigo ? v.codigo + "-COPY" : "");
-      copy.titulo = (v.titulo ? v.titulo + " (Cópia)" : "Cópia");
+      copy.titulo = (v.titulo ? v.titulo + " (CÃ³pia)" : "CÃ³pia");
       copy.createdAt = now;
       copy.updatedAt = now;
       // novos ids de requisitos
@@ -701,14 +711,14 @@ function fmtStatus(s){
         if(!r) return;
 
         $("#reqId").value = r.id;
-        $("#reqCategoria").value = r.categoria || "Competência";
+        $("#reqCategoria").value = r.categoria || DEFAULT_CATEGORIA;
         $("#reqPeso").value = clamp(parseInt(r.peso ?? 0,10)||0, 0, 10);
         $("#reqObrigatorio").checked = !!r.obrigatorio;
         $("#reqTermo").value = r.termo || "";
         $("#reqSinonimos").value = (r.sinonimos || []).join(", ");
         $("#reqObs").value = r.obs || "";
       }else{
-        $("#reqCategoria").value = "Competência";
+        $("#reqCategoria").value = DEFAULT_CATEGORIA;
         $("#reqPeso").value = 7;
         $("#reqObrigatorio").checked = false;
         $("#reqTermo").value = "";
@@ -716,7 +726,7 @@ function fmtStatus(s){
         $("#reqObs").value = "";
       }
 
-      // guarda vaga atual no dataset do botão salvar
+      // guarda vaga atual no dataset do botÃ£o salvar
       $("#btnSaveReq").dataset.vagaId = vagaId;
 
       modal.show();
@@ -804,7 +814,7 @@ function fmtStatus(s){
       saveState();
       renderList();
       renderDetail();
-      toast(r.obrigatorio ? "Requisito marcado como obrigatório." : "Requisito marcado como não obrigatório.");
+      toast(r.obrigatorio ? "Requisito marcado como obrigatÃ³rio." : "Requisito marcado como nÃ£o obrigatÃ³rio.");
     }
 
     // ========= Pesos/Threshold
@@ -829,7 +839,7 @@ function fmtStatus(s){
       saveState();
       renderList();
       renderDetail();
-      toast("Pesos e match mínimo salvos.");
+      toast("Pesos e match mÃ­nimo salvos.");
     }
 
     // ========= Simulador (keyword match)
@@ -874,7 +884,7 @@ function simulateMatch(vagaId, fromMobile=false){
       });
 
       let score = Math.round((hitPeso / totalPeso) * 100);
-      // penalidade simples por obrigatórios faltando (MVP)
+      // penalidade simples por obrigatÃ³rios faltando (MVP)
       if(missMandatory.length){
         score = Math.max(0, score - Math.min(40, missMandatory.length * 15));
       }
@@ -885,11 +895,11 @@ function simulateMatch(vagaId, fromMobile=false){
         <div class="card-soft p-3" style="box-shadow:none;">
           <div class="d-flex align-items-center justify-content-between">
             <div>
-              <div class="fw-bold">Resultado da simulação</div>
+              <div class="fw-bold">Resultado da simulaÃ§Ã£o</div>
               <div class="text-muted small">Score por palavras-chave (MVP)</div>
             </div>
             <span class="badge text-bg-${pass ? "success" : "danger"} rounded-pill">
-              ${pass ? "Dentro" : "Fora"} do match mínimo
+              ${pass ? "Dentro" : "Fora"} do match mÃ­nimo
             </span>
           </div>
 
@@ -899,22 +909,22 @@ function simulateMatch(vagaId, fromMobile=false){
               <div class="fw-bold" style="min-width:54px;text-align:right;">${score}%</div>
             </div>
             <div class="text-muted small mt-1">
-              Match mínimo da vaga: <strong>${clamp(parseInt(v.threshold||0,10)||0,0,100)}%</strong>
-              • Encontrados: <strong>${hits.length}</strong>
-              • Obrigatórios faltando: <strong>${missMandatory.length}</strong>
+              Match mÃ­nimo da vaga: <strong>${clamp(parseInt(v.threshold||0,10)||0,0,100)}%</strong>
+              â€¢ Encontrados: <strong>${hits.length}</strong>
+              â€¢ ObrigatÃ³rios faltando: <strong>${missMandatory.length}</strong>
             </div>
           </div>
 
           ${missMandatory.length ? `
             <div class="alert alert-danger mt-3 mb-0" style="border-radius:14px;">
-              <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Obrigatórios não encontrados</div>
+              <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>ObrigatÃ³rios nÃ£o encontrados</div>
               <div class="small">${missMandatory.map(r => escapeHtml(r.termo)).join(", ")}</div>
             </div>
           ` : ""}
 
           <div class="mt-3">
             <div class="fw-semibold mb-1">Encontrados</div>
-            <div class="small text-muted">${hits.length ? hits.map(r => escapeHtml(r.termo)).join(", ") : "—"}</div>
+            <div class="small text-muted">${hits.length ? hits.map(r => escapeHtml(r.termo)).join(", ") : "â€”"}</div>
           </div>
         </div>
       `;
@@ -946,7 +956,7 @@ function simulateMatch(vagaId, fromMobile=false){
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast("Exportação iniciada.");
+      toast("ExportaÃ§Ã£o iniciada.");
     }
 
     function importJson(){
@@ -961,18 +971,18 @@ function simulateMatch(vagaId, fromMobile=false){
         reader.onload = () => {
           try{
             const data = JSON.parse(reader.result);
-            if(!data || !Array.isArray(data.vagas)) throw new Error("Formato inválido.");
-            // validação simples
+            if(!data || !Array.isArray(data.vagas)) throw new Error("Formato invÃ¡lido.");
+            // validaÃ§Ã£o simples
             state.vagas = data.vagas.map(v => ({
               id: v.id || uid(),
               codigo: v.codigo || "",
               titulo: v.titulo || "",
               area: v.area || "",
-              modalidade: v.modalidade || "Presencial",
-              status: v.status || "aberta",
+              modalidade: v.modalidade || DEFAULT_MODALIDADE,
+              status: v.status || DEFAULT_STATUS,
               cidade: v.cidade || "",
               uf: v.uf || "",
-              senioridade: v.senioridade || "Júnior",
+              senioridade: v.senioridade || DEFAULT_SENIORIDADE,
               threshold: clamp(parseInt(v.threshold ?? 70,10)||70,0,100),
               descricao: v.descricao || "",
               createdAt: v.createdAt || new Date().toISOString(),
@@ -980,7 +990,7 @@ function simulateMatch(vagaId, fromMobile=false){
               weights: v.weights || { competencia:40, experiencia:30, formacao:15, localidade:15 },
               requisitos: Array.isArray(v.requisitos) ? v.requisitos.map(r => ({
                 id: r.id || uid(),
-                categoria: r.categoria || "Competência",
+                categoria: r.categoria || DEFAULT_CATEGORIA,
                 termo: r.termo || "",
                 peso: clamp(parseInt(r.peso ?? 0,10)||0,0,10),
                 obrigatorio: !!r.obrigatorio,
@@ -995,7 +1005,7 @@ function simulateMatch(vagaId, fromMobile=false){
             updateKpis();
             renderList();
             renderDetail();
-            toast("Importação concluída.");
+            toast("ImportaÃ§Ã£o concluÃ­da.");
           }catch(e){
             console.error(e);
             alert("Falha ao importar JSON. Verifique o arquivo.");
@@ -1081,7 +1091,7 @@ function simulateMatch(vagaId, fromMobile=false){
       wireFilters();
       wireButtons();
 
-      // garantir que haja seleção
+      // garantir que haja seleÃ§Ã£o
       if(!state.selectedId && state.vagas.length){
         state.selectedId = state.vagas[0].id;
         saveState();
@@ -1089,3 +1099,7 @@ function simulateMatch(vagaId, fromMobile=false){
         renderDetail();
       }
     })();
+
+
+
+

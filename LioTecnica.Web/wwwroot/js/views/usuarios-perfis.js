@@ -1,8 +1,14 @@
-// ========= Logo (data URI real do arquivo recebido)
-    // Obs: apesar do nome do arquivo ser .png, o conteúdo é WebP (ok).
+﻿// ========= Logo (data URI real do arquivo recebido)
+    // Obs: apesar do nome do arquivo ser .png, o conteÃºdo Ã© WebP (ok).
     const seed = window.__seedData || {};
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAKCWdu4XVRGx3dfRl/z/9LIqSxD6o3/BCxQeXQe+KQ8t8JvF8fHhG6w6d2P9/3vC3o3b9n+uWZbQ+oYk7hYp7tqW9j7p1gq5v2yqG0U4jQ4wB3lK2uZ1c9bQ8d2d8u5m2Cw2hKk9wQfV7mQ6s1Gx8hB4yKqHf1eW3bRj+4gQyC7d5o0cQqv0mH0tY0HqGmJt1g3d3BqzR7m6cQ3yGq1mJrJf0d1nUuQ7k1hPq2mQ8s2vZzC0a4k5dQ2w9hYQf4g1jHhM5oZz8rY8p2m+QJ3nJm6GgA=";
-// ========= Storage keys (compatível com outras telas)
+function enumFirstCode(key, fallback){
+      const list = getEnumOptions(key);
+      return list.length ? list[0].code : fallback;
+    }
+
+    const ROLE_ALL = enumFirstCode("roleFilter", "all");
+// ========= Storage keys (compatÃ­vel com outras telas)
     const USERS_KEY = "lt_rh_users_v1";
     const ROLES_KEY = "lt_rh_roles_v1";
 
@@ -14,9 +20,9 @@
       { key:"triagem", label:"Triagem" },
       { key:"matching", label:"Matching" },
       { key:"entrada", label:"Entrada (Email/Pasta)" },
-      { key:"relatorios", label:"Relatórios" },
-      { key:"config", label:"Configurações" },
-      { key:"usuarios", label:"Usuários & Perfis" },
+      { key:"relatorios", label:"RelatÃ³rios" },
+      { key:"config", label:"ConfiguraÃ§Ãµes" },
+      { key:"usuarios", label:"UsuÃ¡rios & Perfis" },
     ];
     const ACTIONS = [
       { key:"view", label:"Visualizar" },
@@ -84,7 +90,7 @@ function loadAll(){
 
     // ========= Role helpers
     function roleById(id){ return state.roles.find(r => r.id===id) || null; }
-    function roleName(id){ return roleById(id)?.name || "—"; }
+    function roleName(id){ return roleById(id)?.name || "â€”"; }
     function userById(id){ return state.users.find(u => u.id===id) || null; }
 
     // ========= KPIs
@@ -103,14 +109,14 @@ function loadAll(){
     // ========= Filters (users)
     function renderRoleFilterOptions(){
       const sel = $("#uRole");
-      const current = sel.value || "all";
+      const current = sel.value || ROLE_ALL;
       const opts = state.roles
         .slice()
         .sort((a,b)=>(a.name||"").localeCompare(b.name||""))
         .map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`)
         .join("");
-      sel.innerHTML = `<option value="all">Todos</option>${opts}`;
-      sel.value = state.filters.role || current || "all";
+      sel.innerHTML = renderEnumOptions("roleFilter", ROLE_ALL) + opts;
+      sel.value = state.filters.role || current || ROLE_ALL;
     }
 
     function applyUserFilters(users){
@@ -132,7 +138,7 @@ function loadAll(){
       if(status==="active") return `<span class="tag ok"><i class="bi bi-check2-circle"></i>Ativo</span>`;
       if(status==="invited") return `<span class="tag warn"><i class="bi bi-envelope"></i>Convidado</span>`;
       if(status==="disabled") return `<span class="tag bad"><i class="bi bi-slash-circle"></i>Desativado</span>`;
-      return `<span class="tag"><i class="bi bi-dot"></i>${escapeHtml(status||"—")}</span>`;
+      return `<span class="tag"><i class="bi bi-dot"></i>${escapeHtml(status||"â€”")}</span>`;
     }
     function mfaTag(enabled){
       return enabled
@@ -147,12 +153,12 @@ function loadAll(){
 
       $("#usersHint").textContent = filtered.length
         ? "Dica: clique na linha para ver detalhes no drawer."
-        : "Nenhum usuário com os filtros atuais.";
+        : "Nenhum usuÃ¡rio com os filtros atuais.";
 
       const tbody = $("#usersTbody");
       tbody.innerHTML = filtered.map(u=>{
         const roles = (u.roleIds||[]).map(id => `<span class="pill"><i class="bi bi-person-badge"></i>${escapeHtml(roleName(id))}</span>`).join(" ");
-        const last = u.lastLoginAt ? fmtDate(u.lastLoginAt) : "—";
+        const last = u.lastLoginAt ? fmtDate(u.lastLoginAt) : "â€”";
 
         return `
           <tr data-id="${u.id}" class="user-row" style="cursor:pointer;">
@@ -160,14 +166,14 @@ function loadAll(){
               <div class="d-flex align-items-center gap-2">
                 <div class="avatar">${escapeHtml(initials(u.name, "U"))}</div>
                 <div class="lh-1">
-                  <div class="fw-bold">${escapeHtml(u.name || "—")}</div>
+                  <div class="fw-bold">${escapeHtml(u.name || "â€”")}</div>
                   <small class="text-muted">${escapeHtml(u.id.slice(0,8))}</small>
                 </div>
               </div>
             </td>
-            <td class="mono">${escapeHtml(u.email||"—")}</td>
-            <td>${escapeHtml(u.dept||"—")}</td>
-            <td>${roles || "—"}</td>
+            <td class="mono">${escapeHtml(u.email||"â€”")}</td>
+            <td>${escapeHtml(u.dept||"â€”")}</td>
+            <td>${roles || "â€”"}</td>
             <td>${statusTag(u.status)}</td>
             <td>${mfaTag(!!u.mfaEnabled)}</td>
             <td>${escapeHtml(last)}</td>
@@ -210,12 +216,12 @@ function loadAll(){
       if(!u) return;
 
       $("#drawerAvatar").textContent = initials(u.name, "U");
-      $("#drawerName").textContent = u.name || "—";
-      $("#drawerEmail").textContent = u.email || "—";
-      $("#drawerDept").textContent = u.dept || "—";
+      $("#drawerName").textContent = u.name || "â€”";
+      $("#drawerEmail").textContent = u.email || "â€”";
+      $("#drawerDept").textContent = u.dept || "â€”";
       $("#drawerCreated").textContent = fmtDate(u.createdAt);
-      $("#drawerLastLogin").textContent = u.lastLoginAt ? fmtDate(u.lastLoginAt) : "—";
-      $("#drawerRoles").textContent = (u.roleIds||[]).map(roleName).join(", ") || "—";
+      $("#drawerLastLogin").textContent = u.lastLoginAt ? fmtDate(u.lastLoginAt) : "â€”";
+      $("#drawerRoles").textContent = (u.roleIds||[]).map(roleName).join(", ") || "â€”";
       $("#drawerMfa").textContent = u.mfaEnabled ? "Habilitado" : "Desabilitado";
 
       const st = u.status;
@@ -223,7 +229,7 @@ function loadAll(){
       if(st==="active"){ tag.className="tag ok"; tag.innerHTML = `<i class="bi bi-check2-circle"></i>Ativo`; }
       else if(st==="invited"){ tag.className="tag warn"; tag.innerHTML = `<i class="bi bi-envelope"></i>Convidado`; }
       else if(st==="disabled"){ tag.className="tag bad"; tag.innerHTML = `<i class="bi bi-slash-circle"></i>Desativado`; }
-      else { tag.className="tag"; tag.innerHTML = `<i class="bi bi-dot"></i>${escapeHtml(st||"—")}`; }
+      else { tag.className="tag"; tag.innerHTML = `<i class="bi bi-dot"></i>${escapeHtml(st||"â€”")}`; }
 
       const oc = new bootstrap.Offcanvas($("#offcanvasUser"));
       oc.show();
@@ -250,13 +256,13 @@ function loadAll(){
         if(!state.selectedUserId) return;
         const u = userById(state.selectedUserId);
         if(!u) return;
-        const ok = confirm(`Excluir usuário "${u.name}"? (demo)`);
+        const ok = confirm(`Excluir usuÃ¡rio "${u.name}"? (demo)`);
         if(!ok) return;
         state.users = state.users.filter(x=>x.id!==u.id);
         saveUsers();
         renderKPIs();
         renderUsers();
-        showToast("Usuário", "Excluído (demo).");
+        showToast("UsuÃ¡rio", "ExcluÃ­do (demo).");
       });
     }
 
@@ -264,7 +270,7 @@ function loadAll(){
     function openUserModal(userId){
       const modal = new bootstrap.Modal($("#modalUser"));
       const isEdit = !!userId;
-      $("#userModalTitle").textContent = isEdit ? "Editar usuário" : "Novo usuário";
+      $("#userModalTitle").textContent = isEdit ? "Editar usuÃ¡rio" : "Novo usuÃ¡rio";
 
       const u = isEdit ? userById(userId) : null;
 
@@ -323,7 +329,7 @@ function loadAll(){
       const roleIds = $$("#userRolesChecks .role-check").filter(x=>x.checked).map(x=>x.value);
 
       if(!name || !email){
-        showToast("Validação", "Informe Nome e Email.");
+        showToast("ValidaÃ§Ã£o", "Informe Nome e Email.");
         return;
       }
 
@@ -334,7 +340,7 @@ function loadAll(){
         u.name = name; u.email=email; u.dept=dept; u.status=status; u.mfaEnabled=mfaEnabled; u.roleIds=roleIds;
         u.updatedAt = now;
         saveUsers();
-        showToast("Usuário", "Atualizado com sucesso.");
+        showToast("UsuÃ¡rio", "Atualizado com sucesso.");
       }else{
         const u = {
           id: uid(),
@@ -348,7 +354,7 @@ function loadAll(){
         };
         state.users.push(u);
         saveUsers();
-        showToast("Usuário", "Criado com sucesso.");
+        showToast("UsuÃ¡rio", "Criado com sucesso.");
       }
 
       renderKPIs();
@@ -365,7 +371,7 @@ function loadAll(){
       saveUsers();
       renderKPIs();
       renderUsers();
-      showToast("Status", `Usuário agora está: ${u.status}.`);
+      showToast("Status", `UsuÃ¡rio agora estÃ¡: ${u.status}.`);
 
       if(keepDrawerOpen) openUserDrawer(userId);
     }
@@ -383,10 +389,10 @@ function loadAll(){
                 <div class="iconbox"><i class="bi bi-shield-lock"></i></div>
                 <div>
                   <div class="fw-bold">${escapeHtml(r.name)}</div>
-                  <div class="text-muted small">${escapeHtml(r.desc || "—")}</div>
+                  <div class="text-muted small">${escapeHtml(r.desc || "â€”")}</div>
                 </div>
               </div>
-              ${r.builtIn ? `<span class="pill"><i class="bi bi-stars"></i>padrão</span>` : `<span class="pill"><i class="bi bi-person-badge"></i>custom</span>`}
+              ${r.builtIn ? `<span class="pill"><i class="bi bi-stars"></i>padrÃ£o</span>` : `<span class="pill"><i class="bi bi-person-badge"></i>custom</span>`}
             </div>
           </div>
         `).join("");
@@ -403,7 +409,7 @@ function loadAll(){
     function renderRoleEditor(){
       const r = roleById(state.selectedRoleId);
       if(!r){
-        $("#roleEditorTitle").textContent = "—";
+        $("#roleEditorTitle").textContent = "â€”";
         $("#roleEditorDesc").textContent = "Selecione um perfil ao lado.";
         $("#roleName").value = "";
         $("#roleDesc").value = "";
@@ -412,7 +418,7 @@ function loadAll(){
       }
 
       $("#roleEditorTitle").textContent = `Editor de perfil: ${r.name}`;
-      $("#roleEditorDesc").textContent = r.desc || "—";
+      $("#roleEditorDesc").textContent = r.desc || "â€”";
       $("#roleName").value = r.name || "";
       $("#roleDesc").value = r.desc || "";
 
@@ -476,7 +482,7 @@ function loadAll(){
       const name = ($("#roleName").value||"").trim();
       const desc = ($("#roleDesc").value||"").trim();
       if(!name){
-        showToast("Validação", "Informe o nome do perfil.");
+        showToast("ValidaÃ§Ã£o", "Informe o nome do perfil.");
         return;
       }
 
@@ -488,7 +494,7 @@ function loadAll(){
       renderRolesList();
       renderRoleFilterOptions();
       renderUsers(); // para atualizar nomes de perfis nas linhas
-      showToast("Perfil", "Permissões salvas com sucesso.");
+      showToast("Perfil", "PermissÃµes salvas com sucesso.");
     }
 
     function cloneSelectedRole(){
@@ -496,7 +502,7 @@ function loadAll(){
       if(!r) return;
       const nr = {
         id: uid(),
-        name: r.name + " (Cópia)",
+        name: r.name + " (CÃ³pia)",
         desc: r.desc || "",
         perms: JSON.parse(JSON.stringify(r.perms || emptyPerms())),
         builtIn: false,
@@ -518,12 +524,12 @@ function loadAll(){
       if(!r) return;
 
       if(r.builtIn){
-        showToast("Perfil", "Perfis padrão não podem ser excluídos (demo).");
+        showToast("Perfil", "Perfis padrÃ£o nÃ£o podem ser excluÃ­dos (demo).");
         return;
       }
 
       const usedBy = state.users.filter(u => (u.roleIds||[]).includes(r.id)).length;
-      const ok = confirm(`Excluir perfil "${r.name}"? Usuários afetados: ${usedBy}. (demo)`);
+      const ok = confirm(`Excluir perfil "${r.name}"? UsuÃ¡rios afetados: ${usedBy}. (demo)`);
       if(!ok) return;
 
       // remove role from users
@@ -541,7 +547,7 @@ function loadAll(){
       renderRoleFilterOptions();
       renderRolesList();
       renderRoleEditor();
-      showToast("Perfil", "Excluído com sucesso.");
+      showToast("Perfil", "ExcluÃ­do com sucesso.");
     }
 
     // ========= Create role modal
@@ -554,7 +560,7 @@ function loadAll(){
       const name = ($("#newRoleName").value||"").trim();
       const desc = ($("#newRoleDesc").value||"").trim();
       if(!name){
-        showToast("Validação", "Informe o nome do perfil.");
+        showToast("ValidaÃ§Ã£o", "Informe o nome do perfil.");
         return;
       }
       const r = {
@@ -566,7 +572,7 @@ function loadAll(){
         createdAt:new Date().toISOString(),
         updatedAt:new Date().toISOString()
       };
-      // perm mínima: dashboard.view
+      // perm mÃ­nima: dashboard.view
       r.perms.dashboard.view = true;
 
       state.roles.push(r);
@@ -579,13 +585,13 @@ function loadAll(){
       renderRoleFilterOptions();
       renderUsers();
       bootstrap.Modal.getInstance($("#modalRole")).hide();
-      showToast("Perfil", "Criado com sucesso. Ajuste as permissões ao lado.");
+      showToast("Perfil", "Criado com sucesso. Ajuste as permissÃµes ao lado.");
     }
 
-    // ========= CSV export (usuários)
+    // ========= CSV export (usuÃ¡rios)
     function exportUsersCsv(){
       const users = applyUserFilters(state.users);
-      const headers = ["Nome","Email","Departamento","Status","MFA","Perfis","Último login","Criado em"];
+      const headers = ["Nome","Email","Departamento","Status","MFA","Perfis","Ãšltimo login","Criado em"];
       const strip = (s)=>String(s ?? "").replace(/\s+/g," ").trim().replaceAll('"','""');
       const csv = [
         headers.map(h=>`"${strip(h)}"`).join(";"),
@@ -633,7 +639,7 @@ $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) 
 
     function wireTopButtons(){
       $("#btnSeedReset").addEventListener("click", ()=>{
-        const ok = confirm("Restaurar demo? Isso recria roles/usuários iniciais.");
+        const ok = confirm("Restaurar demo? Isso recria roles/usuÃ¡rios iniciais.");
         if(!ok) return;
         localStorage.removeItem(USERS_KEY);
         localStorage.removeItem(ROLES_KEY);
@@ -645,7 +651,7 @@ $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) 
 
       $("#btnExportUsers").addEventListener("click", exportUsersCsv);
 
-      // botão primário muda conforme aba
+      // botÃ£o primÃ¡rio muda conforme aba
       $("#btnPrimaryAction").addEventListener("click", ()=>{
         const usersActive = $("#tab-users").classList.contains("active");
         if(usersActive) openUserModal(null);
@@ -654,7 +660,7 @@ $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) 
 
       $("#btnNewUser").addEventListener("click", ()=> openUserModal(null));
       $("#btnNewRole").addEventListener("click", ()=> openRoleModal());
-      $("#btnAuditMock").addEventListener("click", ()=> showToast("Auditoria", "Mock: em produção, listar ações (login, alteração de role, exportações)."));
+      $("#btnAuditMock").addEventListener("click", ()=> showToast("Auditoria", "Mock: em produÃ§Ã£o, listar aÃ§Ãµes (login, alteraÃ§Ã£o de role, exportaÃ§Ãµes)."));
     }
 
     function wireUsersFilters(){
@@ -687,7 +693,7 @@ $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) 
       const onTabShown = (ev)=>{
         const id = ev.target?.id;
         if(id==="tab-users"){
-          $("#btnPrimaryAction").innerHTML = `<i class="bi bi-person-plus"></i><span class="d-none d-sm-inline ms-1">Novo usuário</span>`;
+          $("#btnPrimaryAction").innerHTML = `<i class="bi bi-person-plus"></i><span class="d-none d-sm-inline ms-1">Novo usuÃ¡rio</span>`;
         }else{
           $("#btnPrimaryAction").innerHTML = `<i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline ms-1">Novo perfil</span>`;
         }
@@ -722,3 +728,4 @@ $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) 
 
       renderAll();
     })();
+

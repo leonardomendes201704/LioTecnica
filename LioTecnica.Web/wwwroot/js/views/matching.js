@@ -1,6 +1,12 @@
-// ========= Logo (Data URI placeholder)
+﻿// ========= Logo (Data URI placeholder)
     const seed = window.__seedData || {};
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
+function enumFirstCode(key, fallback){
+      const list = getEnumOptions(key);
+      return list.length ? list[0].code : fallback;
+    }
+
+    const VAGA_ALL = enumFirstCode("vagaFilter", "all");
 // ========= Storage keys
     const VAGAS_KEY = "lt_rh_vagas_v1";
     const CANDS_KEY = "lt_rh_candidatos_v1";
@@ -36,7 +42,7 @@
       const raw = localStorage.getItem(CANDS_KEY);
       let cur = { candidatos: state.candidatos, selectedId: state.selectedId };
       try{
-        // se já existia, respeita o formato e só substitui os candidatos/selected
+        // se jÃ¡ existia, respeita o formato e sÃ³ substitui os candidatos/selected
         if(raw){
           const d = JSON.parse(raw);
           cur = { ...d, candidatos: state.candidatos, selectedId: state.selectedId };
@@ -124,7 +130,7 @@
       state.matchCache[key] = result;
       saveMatchCache();
 
-      // também grava em lastMatch do candidato (sem quebrar outras telas)
+      // tambÃ©m grava em lastMatch do candidato (sem quebrar outras telas)
       cand.lastMatch = { score, pass, at: result.at, vagaId: vaga.id };
       cand.updatedAt = new Date().toISOString();
       saveCands();
@@ -138,7 +144,7 @@
       const ok = s >= t;
       const cls = ok ? "ok" : (s >= (t*0.8) ? "warn" : "bad");
       const text = ok ? "Dentro" : "Abaixo";
-      return `<span class="status-tag ${cls}"><i class="bi bi-stars"></i>${s}% • ${text}</span>`;
+      return `<span class="status-tag ${cls}"><i class="bi bi-stars"></i>${s}% â€¢ ${text}</span>`;
     }
 
     // ========= Filters
@@ -192,10 +198,10 @@
 
     function renderVagaFilter(){
       const sel = $("#fVaga");
-      const cur = sel.value || "all";
+      const cur = sel.value || VAGA_ALL;
       const opts = distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
-      sel.innerHTML = `<option value="all">Vaga: todas</option>` + opts;
-      sel.value = (cur === "all" || state.vagas.some(v => v.id === cur)) ? cur : "all";
+      sel.innerHTML = renderEnumOptions("vagaFilter", VAGA_ALL) + opts;
+      sel.value = (cur === VAGA_ALL || state.vagas.some(v => v.id === cur)) ? cur : VAGA_ALL;
     }
 
     // ========= Render list
@@ -277,13 +283,13 @@
             <div class="d-flex align-items-center gap-2">
               <div class="avatar">${escapeHtml(initials(c.nome))}</div>
               <div>
-                <div class="fw-bold">${escapeHtml(c.nome||"—")}</div>
-                <div class="text-muted small">${escapeHtml(c.email||"—")}</div>
+                <div class="fw-bold">${escapeHtml(c.nome||"â€”")}</div>
+                <div class="text-muted small">${escapeHtml(c.email||"â€”")}</div>
               </div>
             </div>
             <div class="text-end">
-              ${v ? `<div class="pill mono">${escapeHtml(v.codigo||"—")}</div>` : `<div class="pill">Sem vaga</div>`}
-              <div class="text-muted small mt-1">${v ? escapeHtml(v.titulo||"—") : "—"}</div>
+              ${v ? `<div class="pill mono">${escapeHtml(v.codigo||"â€”")}</div>` : `<div class="pill">Sem vaga</div>`}
+              <div class="text-muted small mt-1">${v ? escapeHtml(v.titulo||"â€”") : "â€”"}</div>
             </div>
           </div>
 
@@ -313,7 +319,7 @@
               <i class="bi bi-info-circle mt-1"></i>
               <div>
                 <div class="fw-bold">Selecione um candidato</div>
-                <div class="small mt-1">A tela exibirá score, requisitos e explicação do cálculo.</div>
+                <div class="small mt-1">A tela exibirÃ¡ score, requisitos e explicaÃ§Ã£o do cÃ¡lculo.</div>
               </div>
             </div>
           </div>`;
@@ -342,8 +348,8 @@
       const explain = `
         <div class="text-muted small">
           <div><span class="mono">score = (peso_encontrado / peso_total) * 100</span></div>
-          <div class="mt-1">Penalidade (MVP): <span class="mono">-15 pontos</span> por obrigatório faltando (máx. <span class="mono">-40</span>).</div>
-          <div class="mt-1">Critério: <span class="mono">score ≥ threshold</span> ⇒ “Dentro”.</div>
+          <div class="mt-1">Penalidade (MVP): <span class="mono">-15 pontos</span> por obrigatÃ³rio faltando (mÃ¡x. <span class="mono">-40</span>).</div>
+          <div class="mt-1">CritÃ©rio: <span class="mono">score â‰¥ threshold</span> â‡’ â€œDentroâ€.</div>
         </div>
       `;
 
@@ -353,22 +359,22 @@
             <div class="d-flex align-items-center gap-2">
               <div class="avatar" style="width:52px;height:52px;border-radius:16px;">${escapeHtml(initials(c.nome))}</div>
               <div>
-                <div class="fw-bold" style="font-size:1.05rem;">${escapeHtml(c.nome||"—")}</div>
-                <div class="text-muted small">${escapeHtml(c.email||"—")}</div>
+                <div class="fw-bold" style="font-size:1.05rem;">${escapeHtml(c.nome||"â€”")}</div>
+                <div class="text-muted small">${escapeHtml(c.email||"â€”")}</div>
                 <div class="text-muted small"><i class="bi bi-clock-history me-1"></i>Atualizado: ${escapeHtml(fmtDate(c.updatedAt))}</div>
               </div>
             </div>
 
             <div class="text-end">
               ${matchTag(m.score, m.threshold)}
-              <div class="text-muted small mt-1">Mínimo: <span class="mono fw-semibold">${clamp(parseInt(m.threshold||0,10)||0,0,100)}%</span></div>
+              <div class="text-muted small mt-1">MÃ­nimo: <span class="mono fw-semibold">${clamp(parseInt(m.threshold||0,10)||0,0,100)}%</span></div>
               <div class="text-muted small">${m.fromCache ? `<i class="bi bi-hdd me-1"></i>cache` : `<i class="bi bi-cpu me-1"></i>calculado`}</div>
             </div>
           </div>
 
           <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="pill"><i class="bi bi-briefcase"></i>${escapeHtml(v.titulo||"—")}</span>
-            <span class="pill mono">${escapeHtml(v.codigo||"—")}</span>
+            <span class="pill"><i class="bi bi-briefcase"></i>${escapeHtml(v.titulo||"â€”")}</span>
+            <span class="pill mono">${escapeHtml(v.codigo||"â€”")}</span>
             <span class="pill"><i class="bi bi-collection me-1"></i>Requisitos: <strong class="ms-1">${reqs.length}</strong></span>
             <span class="pill"><i class="bi bi-check2-circle me-1"></i>Encontrados: <strong class="ms-1">${hits.length}</strong></span>
             <span class="pill"><i class="bi bi-exclamation-triangle me-1"></i>Obrig. faltando: <strong class="ms-1">${miss.length}</strong></span>
@@ -398,17 +404,17 @@
                   const icon = isHit ? "check2-circle" : (isMiss ? "x-circle" : "dash-circle");
                   const tag = isHit ? `<span class="status-tag ok"><i class="bi bi-check2"></i>OK</span>` :
                               (isMiss ? `<span class="status-tag bad"><i class="bi bi-x-lg"></i>Faltando</span>` :
-                                        `<span class="status-tag"><i class="bi bi-dash"></i>Não achou</span>`);
+                                        `<span class="status-tag"><i class="bi bi-dash"></i>NÃ£o achou</span>`);
                   return `
                     <div class="req-row ${cls}">
                       <div class="d-flex align-items-start justify-content-between gap-2">
                         <div>
-                          <div class="fw-semibold"><i class="bi bi-${icon} me-1"></i>${escapeHtml(r.termo||"—")}</div>
+                          <div class="fw-semibold"><i class="bi bi-${icon} me-1"></i>${escapeHtml(r.termo||"â€”")}</div>
                           <div class="text-muted small">
                             Peso: <span class="mono">${clamp(parseInt(r.peso||0,10)||0,0,10)}</span>
-                            ${r.obrigatorio ? `• <span class="fw-semibold" style="color:rgba(153,19,34,.95)">obrigatório</span>` : `• desejável`}
+                            ${r.obrigatorio ? `â€¢ <span class="fw-semibold" style="color:rgba(153,19,34,.95)">obrigatÃ³rio</span>` : `â€¢ desejÃ¡vel`}
                           </div>
-                          ${(r.sinonimos && r.sinonimos.length) ? `<div class="text-muted small mt-1">Sinônimos: ${escapeHtml(r.sinonimos.join(", "))}</div>` : ``}
+                          ${(r.sinonimos && r.sinonimos.length) ? `<div class="text-muted small mt-1">SinÃ´nimos: ${escapeHtml(r.sinonimos.join(", "))}</div>` : ``}
                         </div>
                         <div>${tag}</div>
                       </div>
@@ -419,7 +425,7 @@
             </div>
 
             <div class="col-12 col-lg-6">
-              <div class="fw-bold mb-2">Explicação do cálculo</div>
+              <div class="fw-bold mb-2">ExplicaÃ§Ã£o do cÃ¡lculo</div>
               <div class="card-soft p-3" style="box-shadow:none;">
                 <div class="d-flex align-items-start gap-2">
                   <i class="bi bi-info-circle mt-1"></i>
@@ -433,7 +439,7 @@
                   <div class="fw-bold mono">${m.hitPeso}/${m.totalPeso}</div>
                 </div>
                 <div class="d-flex align-items-center justify-content-between mt-1">
-                  <div class="text-muted small">Penalidade (obrigatórios)</div>
+                  <div class="text-muted small">Penalidade (obrigatÃ³rios)</div>
                   <div class="fw-bold mono">${miss.length ? ("-" + Math.min(40, miss.length*15)) : "0"}</div>
                 </div>
 
@@ -441,8 +447,8 @@
                   <div class="d-flex align-items-start gap-2">
                     <i class="bi bi-lightning-charge mt-1"></i>
                     <div>
-                      <div class="fw-semibold">Ação rápida</div>
-                      <div class="small">Recalcule o match após atualizar o texto do CV ou requisitos da vaga.</div>
+                      <div class="fw-semibold">AÃ§Ã£o rÃ¡pida</div>
+                      <div class="small">Recalcule o match apÃ³s atualizar o texto do CV ou requisitos da vaga.</div>
                       <div class="d-flex flex-wrap gap-2 mt-2">
                         <button class="btn btn-brand btn-sm" type="button" id="btnRecalcOne">
                           <i class="bi bi-arrow-repeat me-1"></i>Recalcular este candidato
@@ -457,7 +463,7 @@
 
                 <div class="mt-3">
                   <div class="fw-bold">Trecho do CV (texto)</div>
-                  <div class="text-muted small">No MVP, o texto vem do parser (PDF/Word) e é usado para matching.</div>
+                  <div class="text-muted small">No MVP, o texto vem do parser (PDF/Word) e Ã© usado para matching.</div>
                   <textarea class="form-control mt-2" rows="8" id="cvTextArea" style="border-color:var(--lt-border);">${escapeHtml(c.cvText||"")}</textarea>
                   <div class="d-flex flex-wrap gap-2 mt-2">
                     <button class="btn btn-ghost btn-sm" type="button" id="btnSaveCvText">
@@ -568,7 +574,7 @@
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast("Exportação iniciada.");
+      toast("ExportaÃ§Ã£o iniciada.");
     }
     function importJson(){
       const inp = document.createElement("input");
@@ -596,7 +602,7 @@
             state.selectedId = state.candidatos[0]?.id || null;
             renderVagaFilter();
             renderList();
-            toast("Importação concluída.");
+            toast("ImportaÃ§Ã£o concluÃ­da.");
           }catch(e){
             console.error(e);
             alert("Falha ao importar JSON. Verifique o arquivo.");
@@ -707,3 +713,4 @@
 
       renderList();
     })();
+

@@ -1,7 +1,7 @@
-@model PageSeedViewModel
+﻿@model PageSeedViewModel
 @{
-    ViewData["Title"] = "Portal RH • Liotécnica — Vagas";
-    ViewData["SidebarSubtitle"] = "Vagas • Requisitos • Match";
+    ViewData["Title"] = "Portal RH â€¢ LiotÃ©cnica â€” Vagas";
+    ViewData["SidebarSubtitle"] = "Vagas â€¢ Requisitos â€¢ Match";
 }
 
 
@@ -18,7 +18,7 @@
 
           <div class="searchbox position-relative d-none d-md-block">
             <i class="bi bi-search"></i>
-            <input id="globalSearch" class="form-control" placeholder="Buscar por título, código, área..." />
+            <input id="globalSearch" class="form-control" placeholder="Buscar por tÃ­tulo, cÃ³digo, Ã¡rea..." />
           </div>
 
           <div class="d-flex align-items-center gap-2">
@@ -43,10 +43,10 @@
         <div class="page-title">
           <div>
             <h4>Vagas</h4>
-            <div class="subtitle">Crie vagas, defina requisitos com peso e marque itens obrigatórios para o matching.</div>
+            <div class="subtitle">Crie vagas, defina requisitos com peso e marque itens obrigatÃ³rios para o matching.</div>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <span class="badge-soft"><i class="bi bi-clock me-1"></i><span id="nowLabel">—</span></span>
+            <span class="badge-soft"><i class="bi bi-clock me-1"></i><span id="nowLabel">â€”</span></span>
             <span class="badge-soft"><i class="bi bi-lightning-charge me-1"></i>MVP localStorage</span>
           </div>
         </div>
@@ -87,20 +87,27 @@
                     <span class="input-group-text" style="border-color:var(--lt-border); background: rgba(255,255,255,.65);">
                       <i class="bi bi-search"></i>
                     </span>
-                    <input class="form-control" id="fSearch" placeholder="Buscar por título, código, área..." style="border-color:var(--lt-border);">
+                    <input class="form-control" id="fSearch" placeholder="Buscar por tÃ­tulo, cÃ³digo, Ã¡rea..." style="border-color:var(--lt-border);">
                   </div>
                 </div>
+                @{
+                  var statusOptions = EnumOptionsHelper.GetOptions<VagaStatusFilter>();
+                  var areaFilterOptions = EnumOptionsHelper.GetOptions<VagaAreaFilter>();
+                }
                 <div class="col-6 col-md-3">
                   <select class="form-select" id="fStatus" style="border-color:var(--lt-border);">
-                    <option value="all">Status: todos</option>
-                    <option value="aberta">Aberta</option>
-                    <option value="pausada">Pausada</option>
-                    <option value="fechada">Fechada</option>
+                    @foreach (var opt in statusOptions)
+                    {
+                      <option value="@opt.Code">@opt.Text</option>
+                    }
                   </select>
                 </div>
                 <div class="col-6 col-md-3">
                   <select class="form-select" id="fArea" style="border-color:var(--lt-border);">
-                    <option value="all">Área: todas</option>
+                    @foreach (var opt in areaFilterOptions)
+                    {
+                      <option value="@opt.Code">@opt.Text</option>
+                    }
                   </select>
                 </div>
               </div>
@@ -111,10 +118,10 @@
                     <tr>
                       <th style="min-width: 240px;">Vaga</th>
                       <th style="min-width: 120px;">Status</th>
-                      <th style="min-width: 130px;">Área</th>
+                      <th style="min-width: 130px;">Ãrea</th>
                       <th style="min-width: 150px;">Requisitos</th>
-                      <th style="min-width: 120px;">Match mín.</th>
-                      <th class="text-end" style="min-width: 230px;">Ações</th>
+                      <th style="min-width: 120px;">Match mÃ­n.</th>
+                      <th class="text-end" style="min-width: 230px;">AÃ§Ãµes</th>
                     </tr>
                   </thead>
                   <tbody id="tblVagas"></tbody>
@@ -154,3 +161,4 @@
   </script>
 <script src="~/js/views/vagas.js" asp-append-version="true"></script>
 }
+

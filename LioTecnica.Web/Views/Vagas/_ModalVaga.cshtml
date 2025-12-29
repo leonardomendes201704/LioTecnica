@@ -1,4 +1,4 @@
-<div class="modal fade" id="modalVaga" tabindex="-1" aria-hidden="true">
+﻿<div class="modal fade" id="modalVaga" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content" style="border-radius: 18px; border: 1px solid var(--lt-border);">
         <div class="modal-header">
@@ -10,49 +10,60 @@
         </div>
 
         <div class="modal-body">
+          @{
+            var selectPlaceholder = EnumOptionsHelper.GetOptions<SelectPlaceholder>();
+            var areaOptions = EnumOptionsHelper.GetOptions<VagaArea>();
+            var modalidadeOptions = EnumOptionsHelper.GetOptions<VagaModalidade>();
+            var statusOptions = EnumOptionsHelper.GetOptions<VagaStatus>();
+            var senioridadeOptions = EnumOptionsHelper.GetOptions<VagaSenioridade>();
+          }
           <input type="hidden" id="vagaId">
 
           <div class="row g-2">
             <div class="col-12 col-md-4">
-              <label class="form-label small text-muted">Código</label>
+              <label class="form-label small text-muted">CÃ³digo</label>
               <input class="form-control" id="vagaCodigo" placeholder="Ex.: MKT-JR-001">
             </div>
             <div class="col-12 col-md-8">
-              <label class="form-label small text-muted">Título *</label>
+              <label class="form-label small text-muted">TÃ­tulo *</label>
               <input class="form-control" id="vagaTitulo" placeholder="Ex.: Analista de Marketing Jr">
             </div>
 
             <div class="col-12 col-md-4">
-              <label class="form-label small text-muted">Área *</label>
+              <label class="form-label small text-muted">Ãrea *</label>
               <select class="form-select" id="vagaArea">
-                <option value="">Selecione...</option>
-                <option>Marketing</option>
-                <option>Qualidade</option>
-                <option>Produção</option>
-                <option>RH</option>
-                <option>TI</option>
-                <option>Compras</option>
-                <option>Logística</option>
-                <option>Financeiro</option>
+                @foreach (var opt in selectPlaceholder)
+                {
+                  <option value="@opt.Code">@opt.Text</option>
+                }
+                @foreach (var opt in areaOptions)
+                {
+                  <option value="@opt.Code">@opt.Text</option>
+                }
               </select>
             </div>
 
             <div class="col-12 col-md-4">
               <label class="form-label small text-muted">Modalidade</label>
               <select class="form-select" id="vagaModalidade">
-                <option>Presencial</option>
-                <option>Híbrido</option>
-                <option>Remoto</option>
+                @foreach (var opt in modalidadeOptions)
+                {
+                  <option value="@opt.Code">@opt.Text</option>
+                }
               </select>
             </div>
 
             <div class="col-12 col-md-4">
               <label class="form-label small text-muted">Status *</label>
               <select class="form-select" id="vagaStatus">
-                <option value="">Selecione...</option>
-                <option value="aberta">Aberta</option>
-                <option value="pausada">Pausada</option>
-                <option value="fechada">Fechada</option>
+                @foreach (var opt in selectPlaceholder)
+                {
+                  <option value="@opt.Code">@opt.Text</option>
+                }
+                @foreach (var opt in statusOptions)
+                {
+                  <option value="@opt.Code">@opt.Text</option>
+                }
               </select>
             </div>
 
@@ -68,16 +79,15 @@
             <div class="col-12 col-md-3">
               <label class="form-label small text-muted">Senioridade</label>
               <select class="form-select" id="vagaSenioridade">
-                <option>Júnior</option>
-                <option>Pleno</option>
-                <option>Sênior</option>
-                <option>Especialista</option>
-                <option>Gestão</option>
+                @foreach (var opt in senioridadeOptions)
+                {
+                  <option value="@opt.Code">@opt.Text</option>
+                }
               </select>
             </div>
 
             <div class="col-12 col-md-3">
-              <label class="form-label small text-muted">Match mínimo</label>
+              <label class="form-label small text-muted">Match mÃ­nimo</label>
               <div class="input-group">
                 <input type="number" class="form-control" id="vagaThreshold" min="0" max="100" value="70">
                 <span class="input-group-text">%</span>
@@ -85,7 +95,7 @@
             </div>
 
             <div class="col-12">
-              <label class="form-label small text-muted">Descrição</label>
+              <label class="form-label small text-muted">DescriÃ§Ã£o</label>
               <textarea class="form-control" id="vagaDescricao" rows="4" placeholder="Resumo da vaga, responsabilidades, etc."></textarea>
             </div>
 
@@ -96,7 +106,7 @@
                   <div>
                     <div class="fw-semibold">Dica (MVP)</div>
                     <div class="small">
-                      Salve a vaga e, em seguida, use <strong>Detalhes</strong> para cadastrar <strong>Requisitos</strong> com <strong>peso</strong> e marcar itens <strong>obrigatórios</strong>.
+                      Salve a vaga e, em seguida, use <strong>Detalhes</strong> para cadastrar <strong>Requisitos</strong> com <strong>peso</strong> e marcar itens <strong>obrigatÃ³rios</strong>.
                     </div>
                   </div>
                 </div>
@@ -116,3 +126,4 @@
       </div>
     </div>
   </div>
+

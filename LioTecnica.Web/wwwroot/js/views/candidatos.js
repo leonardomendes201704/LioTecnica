@@ -1,6 +1,15 @@
 // ========= Logo (mesmo Data URI usado antes)
     const seed = window.__seedData || {};
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
+    function enumFirstCode(key, fallback){
+      const list = getEnumOptions(key);
+      return list.length ? list[0].code : fallback;
+    }
+
+    const VAGA_ALL = enumFirstCode("vagaFilter", "all");
+    const SELECT_PLACEHOLDER = enumFirstCode("selectPlaceholder", "");
+    const DEFAULT_CAND_FONTE = enumFirstCode("candidatoFonte", "Email");
+    const DEFAULT_CAND_STATUS = enumFirstCode("candidatoStatus", "novo");
 function statusTag(s){
       const map = {
         novo:      { label:"Novo", cls:"" },
@@ -158,14 +167,15 @@ function statusTag(s){
     function renderVagaFilters(){
       // filtro do grid
       const sel = $("#fVaga");
-      const cur = sel.value || "all";
+      const cur = sel.value || VAGA_ALL;
       const opts = distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
-      sel.innerHTML = `<option value="all">Vaga: todas</option>` + opts;
-      sel.value = (cur === "all" || state.vagas.some(v => v.id === cur)) ? cur : "all";
+      sel.innerHTML = renderEnumOptions("vagaFilter", VAGA_ALL) + opts;
+      sel.value = (cur === VAGA_ALL || state.vagas.some(v => v.id === cur)) ? cur : VAGA_ALL;
 
       // dropdown do modal
       const sel2 = $("#candVaga");
-      sel2.innerHTML = `<option value="">Selecione...</option>` + distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
+      sel2.innerHTML = renderEnumOptions("selectPlaceholder", SELECT_PLACEHOLDER)
+        + distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
     }
 
     function getFilteredCands(){
@@ -367,11 +377,7 @@ function openDetailModal(id){
                   <div class="card-soft p-2" style="box-shadow:none;">
                     <div class="small text-muted">Status</div>
                     <select class="form-select form-select-sm mt-1" id="detailStatus">
-                      <option value="novo" ${c.status==="novo"?"selected":""}>Novo</option>
-                      <option value="triagem" ${c.status==="triagem"?"selected":""}>Em triagem</option>
-                      <option value="aprovado" ${c.status==="aprovado"?"selected":""}>Aprovado</option>
-                      <option value="reprovado" ${c.status==="reprovado"?"selected":""}>Reprovado</option>
-                      <option value="pendente" ${c.status==="pendente"?"selected":""}>Pendente</option>
+                      ${renderEnumOptions("candidatoStatus", c.status)}
                     </select>
                   </div>
                 </div>
@@ -476,7 +482,8 @@ function openDetailModal(id){
       const opts = distinctVagas()
         .map(v => `<option value="${v.id}" ${v.id===selectedId?"selected":""}>${escapeHtml(v.label)}</option>`)
         .join("");
-      return `<option value="">Selecione...</option>` + opts;
+      const placeholder = renderEnumOptions("selectPlaceholder", selectedId ? null : SELECT_PLACEHOLDER);
+      return placeholder + opts;
     }
 
     function renderDetail(){
@@ -520,8 +527,8 @@ function openDetailModal(id){
         $("#candFone").value = c.fone || "";
         $("#candCidade").value = c.cidade || "";
         $("#candUF").value = (c.uf || "").toUpperCase().slice(0,2);
-        $("#candFonte").value = c.fonte || "Email";
-        $("#candStatus").value = c.status || "novo";
+        $("#candFonte").value = c.fonte || DEFAULT_CAND_FONTE;
+        $("#candStatus").value = c.status || DEFAULT_CAND_STATUS;
         $("#candVaga").value = c.vagaId || "";
         $("#candObs").value = c.obs || "";
       }else{
@@ -531,8 +538,8 @@ function openDetailModal(id){
         $("#candFone").value = "";
         $("#candCidade").value = "";
         $("#candUF").value = "SP";
-        $("#candFonte").value = "Email";
-        $("#candStatus").value = "novo";
+        $("#candFonte").value = DEFAULT_CAND_FONTE;
+        $("#candStatus").value = DEFAULT_CAND_STATUS;
         $("#candVaga").value = state.vagas[0]?.id || "";
         $("#candObs").value = "";
       }
@@ -699,8 +706,8 @@ function openDetailModal(id){
               fone: c.fone || "",
               cidade: c.cidade || "",
               uf: (c.uf || "").toUpperCase().slice(0,2),
-              fonte: c.fonte || "Email",
-              status: c.status || "novo",
+              fonte: c.fonte || DEFAULT_CAND_FONTE,
+              status: c.status || DEFAULT_CAND_STATUS,
               vagaId: c.vagaId || "",
               obs: c.obs || "",
               cvText: c.cvText || "",
