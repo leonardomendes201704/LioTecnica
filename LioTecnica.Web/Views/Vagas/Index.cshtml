@@ -5,7 +5,9 @@
 
 
 
-  @await Html.PartialAsync("_Modals")
+  @await Html.PartialAsync("_ModalVagaDetalhes")
+  @await Html.PartialAsync("_ModalVaga")
+  @await Html.PartialAsync("_ModalReq")
 
   <!-- ============ TOASTS ============ -->
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
@@ -78,48 +80,16 @@
         </div>
 
         <!-- KPIs -->
-        <div class="row g-3">
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Total</div>
-                <div class="value" id="kpiTotal">0</div>
-                <div class="hint">vagas cadastradas</div>
-              </div>
-              <div class="icon"><i class="bi bi-collection"></i></div>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Abertas</div>
-                <div class="value" id="kpiAbertas">0</div>
-                <div class="hint">em andamento</div>
-              </div>
-              <div class="icon"><i class="bi bi-briefcase"></i></div>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Pausadas</div>
-                <div class="value" id="kpiPausadas">0</div>
-                <div class="hint">aguardando</div>
-              </div>
-              <div class="icon"><i class="bi bi-pause-circle"></i></div>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Fechadas</div>
-                <div class="value" id="kpiFechadas">0</div>
-                <div class="hint">encerradas</div>
-              </div>
-              <div class="icon"><i class="bi bi-lock"></i></div>
-            </div>
-          </div>
-        </div>
+                @{
+          var kpis = new[]
+          {
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Total", ValueId = "kpiTotal", Value = "0", Hint = "vagas cadastradas", Icon = "bi-collection" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Abertas", ValueId = "kpiAbertas", Value = "0", Hint = "em andamento", Icon = "bi-briefcase" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Pausadas", ValueId = "kpiPausadas", Value = "0", Hint = "aguardando", Icon = "bi-pause-circle" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Fechadas", ValueId = "kpiFechadas", Value = "0", Hint = "encerradas", Icon = "bi-lock" }
+          };
+        }
+        @await Html.PartialAsync("_KpiCardRow", kpis)
 
         <div class="row g-3 mt-1">
           <!-- LISTA -->

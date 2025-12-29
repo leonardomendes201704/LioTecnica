@@ -1,0 +1,39 @@
+@functions {
+  private string NavMobileActive(string controller)
+  {
+    var current = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    return current.Equals(controller, StringComparison.OrdinalIgnoreCase) ? "fw-semibold" : "";
+  }
+}
+@{
+  var sidebarSubtitle = ViewData["SidebarSubtitle"]?.ToString() ?? "Recrutamento & Match";
+}
+<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasSidebar">
+    <div class="offcanvas-header border-bottom">
+      <div class="d-flex align-items-center gap-2">
+        <img id="logoMobile" alt="Liotécnica" style="width:34px;height:34px;border-radius:10px;background:#fff;padding:6px;object-fit:contain;">
+        <div class="lh-1">
+          <div class="fw-bold" style="color:var(--lt-primary)">Portal RH</div>
+          <small class="text-muted">@sidebarSubtitle</small>
+        </div>
+      </div>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0 sidebar-scroll">
+      <div class="p-2">
+        <div class="small text-uppercase text-muted px-2 mt-2">Navegação</div>
+        <div class="nav flex-column">
+          <a class="nav-link rounded-3 px-3 py-2 @NavMobileActive("Dashboard")" asp-controller="Dashboard" asp-action="Index"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+          <a class="nav-link rounded-3 px-3 py-2 @NavMobileActive("Vagas")" asp-controller="Vagas" asp-action="Index"><i class="bi bi-briefcase me-2"></i>Vagas</a>
+          <a class="nav-link rounded-3 px-3 py-2 @NavMobileActive("Candidatos")" asp-controller="Candidatos" asp-action="Index"><i class="bi bi-people me-2"></i>Candidatos</a>
+          <a class="nav-link rounded-3 px-3 py-2 @NavMobileActive("Triagem")" asp-controller="Triagem" asp-action="Index"><i class="bi bi-funnel me-2"></i>Triagem</a>
+          <a class="nav-link rounded-3 px-3 py-2 @NavMobileActive("Matching")" asp-controller="Matching" asp-action="Index"><i class="bi bi-stars me-2"></i>Matching</a>
+          <a class="nav-link rounded-3 px-3 py-2 @NavMobileActive("EntradaEmailPasta")" asp-controller="EntradaEmailPasta" asp-action="Index"><i class="bi bi-inbox me-2"></i>Entrada (Email/Pasta)</a>
+          <a class="nav-link rounded-3 px-3 py-2 @NavMobileActive("Relatorios")" asp-controller="Relatorios" asp-action="Index"><i class="bi bi-graph-up me-2"></i>Relatórios</a>
+          <a class="nav-link rounded-3 px-3 py-2 @NavMobileActive("UsuariosPerfis")" asp-controller="UsuariosPerfis" asp-action="Index"><i class="bi bi-person-gear me-2"></i>Usuários & Perfis</a>
+          <a class="nav-link rounded-3 px-3 py-2" href="#"><i class="bi bi-diagram-3 me-2"></i>RM Labore</a>
+          <a class="nav-link rounded-3 px-3 py-2" href="#"><i class="bi bi-gear me-2"></i>Configurações</a>
+        </div>
+      </div>
+    </div>
+  </div>

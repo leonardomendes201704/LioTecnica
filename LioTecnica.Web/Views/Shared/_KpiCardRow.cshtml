@@ -1,0 +1,16 @@
+﻿@model IEnumerable<dynamic>
+<div class="row g-3">
+@foreach (var item in Model)
+{
+  <div class="@item.ColClass">
+    <div class="card-soft kpi">
+      <div class="meta">
+        <div class="label">@item.Label</div>
+        <div class="value" id="@item.ValueId">@item.Value</div>
+        <div class="hint">@item.Hint</div>
+      </div>
+      <div class="icon"><i class="bi @item.Icon"></i></div>
+    </div>
+  </div>
+}
+</div>

@@ -4,7 +4,8 @@
 }
 
 
-  @await Html.PartialAsync("_Modals")
+  @await Html.PartialAsync("_ModalCandDetalhes")
+  @await Html.PartialAsync("_ModalCand")
 
   <!-- ============ TOASTS ============ -->
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
@@ -77,48 +78,16 @@
         </div>
 
         <!-- KPIs -->
-        <div class="row g-3">
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Total</div>
-                <div class="value" id="kpiTotal">0</div>
-                <div class="hint">candidatos</div>
-              </div>
-              <div class="icon"><i class="bi bi-people"></i></div>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Em triagem</div>
-                <div class="value" id="kpiTriagem">0</div>
-                <div class="hint">aguardando análise</div>
-              </div>
-              <div class="icon"><i class="bi bi-funnel"></i></div>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Aprovados</div>
-                <div class="value" id="kpiAprov">0</div>
-                <div class="hint">em avanço</div>
-              </div>
-              <div class="icon"><i class="bi bi-check2-circle"></i></div>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Reprovados</div>
-                <div class="value" id="kpiReprov">0</div>
-                <div class="hint">fora do perfil</div>
-              </div>
-              <div class="icon"><i class="bi bi-x-circle"></i></div>
-            </div>
-          </div>
-        </div>
+                @{
+          var kpis = new[]
+          {
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Total", ValueId = "kpiTotal", Value = "0", Hint = "candidatos", Icon = "bi-people" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Em triagem", ValueId = "kpiTriagem", Value = "0", Hint = "aguardando análise", Icon = "bi-funnel" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Aprovados", ValueId = "kpiAprov", Value = "0", Hint = "em avanço", Icon = "bi-check2-circle" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Reprovados", ValueId = "kpiReprov", Value = "0", Hint = "fora do perfil", Icon = "bi-x-circle" }
+          };
+        }
+        @await Html.PartialAsync("_KpiCardRow", kpis)
 
         <div class="row g-3 mt-1">
           <!-- LISTA -->

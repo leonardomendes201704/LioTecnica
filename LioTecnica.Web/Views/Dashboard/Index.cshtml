@@ -62,51 +62,16 @@
         </div>
 
         <!-- KPIs -->
-        <div class="row g-3">
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Vagas abertas</div>
-                <div class="value" id="kpiVagas">12</div>
-                <div class="hint">+2 na última semana</div>
-              </div>
-              <div class="icon"><i class="bi bi-briefcase"></i></div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">CVs recebidos hoje</div>
-                <div class="value" id="kpiCvsHoje">37</div>
-                <div class="hint">Entrada email/pasta</div>
-              </div>
-              <div class="icon"><i class="bi bi-inbox"></i></div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Pendentes de match</div>
-                <div class="value" id="kpiPendentes">9</div>
-                <div class="hint">Fila de processamento</div>
-              </div>
-              <div class="icon"><i class="bi bi-hourglass-split"></i></div>
-            </div>
-          </div>
-
-          <div class="col-12 col-md-6 col-xl-3">
-            <div class="card-soft kpi">
-              <div class="meta">
-                <div class="label">Aprovados (7 dias)</div>
-                <div class="value" id="kpiAprovados">18</div>
-                <div class="hint">+6 vs semana anterior</div>
-              </div>
-              <div class="icon"><i class="bi bi-patch-check"></i></div>
-            </div>
-          </div>
-        </div>
+                @{
+          var kpis = new[]
+          {
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Vagas abertas", ValueId = "kpiVagas", Value = "12", Hint = "+2 na última semana", Icon = "bi-briefcase" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "CVs recebidos hoje", ValueId = "kpiCvsHoje", Value = "37", Hint = "Entrada email/pasta", Icon = "bi-inbox" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Pendentes de match", ValueId = "kpiPendentes", Value = "9", Hint = "Fila de processamento", Icon = "bi-hourglass-split" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Aprovados (7 dias)", ValueId = "kpiAprovados", Value = "18", Hint = "+6 vs semana anterior", Icon = "bi-patch-check" }
+          };
+        }
+        @await Html.PartialAsync("_KpiCardRow", kpis)
 
         <!-- CHART + FUNIL -->
         <div class="row g-3 mt-1">
@@ -223,134 +188,10 @@
     
 
   <!-- RIGHT DRAWER: FILTERS -->
-  <div class="offcanvas offcanvas-end offcanvas-custom" tabindex="-1" id="drawerFilters">
-    <div class="offcanvas-header border-bottom">
-      <div>
-        <div class="fw-bold">Filtros e Visões</div>
-        <div class="text-muted small">Ajuste o dashboard para a operação do RH</div>
-      </div>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-    </div>
-    <div class="offcanvas-body">
-      <div class="card-soft p-3 mb-3">
-        <div class="fw-semibold mb-2"><i class="bi bi-briefcase me-2"></i>Vaga</div>
-        <select class="form-select" id="fVaga">
-          <option value="all" selected>Todas</option>
-          <option>Analista de Marketing Jr</option>
-          <option>Engenheiro de Processos</option>
-          <option>Supervisor de Qualidade</option>
-          <option>Assistente de RH</option>
-        </select>
-      </div>
-
-      <div class="card-soft p-3 mb-3">
-        <div class="fw-semibold mb-2"><i class="bi bi-calendar3 me-2"></i>Período</div>
-        <div class="row g-2">
-          <div class="col-6">
-            <label class="form-label small text-muted">De</label>
-            <input type="date" class="form-control" id="fDe">
-          </div>
-          <div class="col-6">
-            <label class="form-label small text-muted">Até</label>
-            <input type="date" class="form-control" id="fAte">
-          </div>
-        </div>
-      </div>
-
-      <div class="card-soft p-3 mb-3">
-        <div class="fw-semibold mb-2"><i class="bi bi-stars me-2"></i>Match mínimo</div>
-        <input type="range" class="form-range" min="0" max="100" value="70" id="fMatchMin">
-        <div class="d-flex justify-content-between small text-muted">
-          <span>0%</span><span>50%</span><span>100%</span>
-        </div>
-        <div class="mt-2 badge-soft">Atual: <span id="matchMinLabel">70%</span></div>
-      </div>
-
-      <div class="d-grid gap-2">
-        <button class="btn btn-brand" type="button" id="btnApplyFilters">
-          <i class="bi bi-check2-circle me-1"></i>Aplicar
-        </button>
-        <button class="btn btn-ghost" type="button" id="btnResetFilters">
-          <i class="bi bi-arrow-counterclockwise me-1"></i>Limpar
-        </button>
-      </div>
-
-      <hr class="my-4">
-
-      <div class="small text-muted">
-        MVP: filtros aplicam em dados mock. Na implementação real, isso vira query no backend + paginação.
-      </div>
-    </div>
-  </div>
+  @await Html.PartialAsync("_OffcanvasFilters")
 
   <!-- RIGHT DRAWER: QUICK ACTIONS -->
-  <div class="offcanvas offcanvas-end offcanvas-custom" tabindex="-1" id="drawerQuick">
-    <div class="offcanvas-header border-bottom">
-      <div>
-        <div class="fw-bold">Ações rápidas</div>
-        <div class="text-muted small">Atalhos para operação do RH</div>
-      </div>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-    </div>
-
-    <div class="offcanvas-body">
-      <div class="card-soft p-3 mb-3">
-        <div class="fw-semibold mb-2"><i class="bi bi-plus-circle me-2"></i>Criar vaga (mock)</div>
-        <div class="row g-2">
-          <div class="col-12">
-            <label class="form-label small text-muted">Título</label>
-            <input class="form-control" placeholder="Ex.: Analista de Marketing Jr">
-          </div>
-          <div class="col-6">
-            <label class="form-label small text-muted">Área</label>
-            <select class="form-select">
-              <option>Marketing</option>
-              <option>Qualidade</option>
-              <option>Produção</option>
-              <option>RH</option>
-              <option>TI</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label small text-muted">Status</label>
-            <select class="form-select">
-              <option>Aberta</option>
-              <option>Pausada</option>
-              <option>Fechada</option>
-            </select>
-          </div>
-          <div class="col-12">
-            <label class="form-label small text-muted">Palavras-chave (separadas por vírgula)</label>
-            <input class="form-control" placeholder="Ex.: power bi, seo, redes sociais, crm">
-          </div>
-        </div>
-        <div class="d-grid mt-3">
-          <button class="btn btn-brand" type="button" id="btnMockCreateVaga">
-            <i class="bi bi-check2 me-1"></i>Salvar (mock)
-          </button>
-        </div>
-      </div>
-
-      <div class="card-soft p-3 mb-3">
-        <div class="fw-semibold mb-2"><i class="bi bi-inbox me-2"></i>Entrada de currículos</div>
-        <div class="d-flex flex-column gap-2">
-          <button class="btn btn-ghost" type="button"><i class="bi bi-envelope me-2"></i>Conectar caixa de e-mail</button>
-          <button class="btn btn-ghost" type="button"><i class="bi bi-folder2-open me-2"></i>Configurar pasta monitorada</button>
-          <button class="btn btn-ghost" type="button"><i class="bi bi-play-circle me-2"></i>Rodar processamento agora</button>
-        </div>
-      </div>
-
-      <div class="card-soft p-3">
-        <div class="fw-semibold mb-2"><i class="bi bi-stars me-2"></i>Motor de match</div>
-        <div class="small text-muted mb-2">
-          Ajustes (MVP): pesos, obrigatórios e sinônimos por vaga.
-        </div>
-        <button class="btn btn-brand w-100" type="button">
-          <i class="bi bi-sliders me-1"></i>Abrir configurações
-        </button>
-      </div>
-    </div>
-  </div>
+  @await Html.PartialAsync("_OffcanvasQuick")
 
   <!-- Bootstrap JS -->
 

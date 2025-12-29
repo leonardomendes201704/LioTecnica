@@ -9,16 +9,7 @@
   
 
   <!-- MOBILE DETAILS OFFCANVAS -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasDetails" style="border-left:1px solid var(--lt-border); box-shadow:-20px 0 40px rgba(11,58,100,.12);">
-    <div class="offcanvas-header border-bottom">
-      <div>
-        <div class="fw-bold">Matching</div>
-        <div class="text-muted small">Detalhes da avaliação</div>
-      </div>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-    </div>
-    <div class="offcanvas-body" id="mobileDetailBody"></div>
-  </div>
+  @await Html.PartialAsync("_OffcanvasDetails")
 
   <!-- TOAST -->
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100;">
@@ -130,32 +121,16 @@
 
           <hr class="my-3" style="border-color: rgba(16,82,144,.14);">
 
-          <div class="row g-2">
-            <div class="col-6 col-lg-3">
-              <div class="kpi">
-                <div class="n" id="kpiTotal">0</div>
-                <div class="l">Candidatos filtrados</div>
-              </div>
-            </div>
-            <div class="col-6 col-lg-3">
-              <div class="kpi">
-                <div class="n" id="kpiInside">0</div>
-                <div class="l">Dentro do mínimo</div>
-              </div>
-            </div>
-            <div class="col-6 col-lg-3">
-              <div class="kpi">
-                <div class="n" id="kpiMandatoryFail">0</div>
-                <div class="l">Falha obrigatória</div>
-              </div>
-            </div>
-            <div class="col-6 col-lg-3">
-              <div class="kpi">
-                <div class="n" id="kpiAvg">0%</div>
-                <div class="l">Média de match</div>
-              </div>
-            </div>
-          </div>
+          @{
+  var kpis = new[]
+  {
+    new { ColClass = "col-6 col-lg-3", ValueId = "kpiTotal", Value = "0", Label = "Candidatos filtrados" },
+    new { ColClass = "col-6 col-lg-3", ValueId = "kpiInside", Value = "0", Label = "Dentro do mínimo" },
+    new { ColClass = "col-6 col-lg-3", ValueId = "kpiMandatoryFail", Value = "0", Label = "Falha obrigatória" },
+    new { ColClass = "col-6 col-lg-3", ValueId = "kpiAvg", Value = "0%", Label = "Média de match" }
+  };
+}
+@await Html.PartialAsync("_KpiSimpleRow", kpis)
         </div>
 
         <!-- Split -->

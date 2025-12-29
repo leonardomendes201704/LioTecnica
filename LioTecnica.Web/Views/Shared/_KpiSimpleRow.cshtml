@@ -1,0 +1,12 @@
+﻿@model IEnumerable<dynamic>
+<div class="row g-2">
+@foreach (var item in Model)
+{
+  <div class="@item.ColClass">
+    <div class="kpi">
+      <div class="n" id="@item.ValueId">@item.Value</div>
+      <div class="l">@item.Label</div>
+    </div>
+  </div>
+}
+</div>

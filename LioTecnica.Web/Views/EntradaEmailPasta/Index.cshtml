@@ -77,48 +77,16 @@
         </div>
 
         <!-- KPIs -->
-        <div class="row g-2 mb-3">
-          <div class="col-6 col-lg-3">
-            <div class="card-soft p-3">
-              <div class="mini-title mb-1">Fila de Entrada</div>
-              <div class="d-flex align-items-end justify-content-between">
-                <div class="fw-bold" style="font-size:1.6rem;color:var(--lt-primary);" id="kpiQueue">0</div>
-                <span class="pill"><i class="bi bi-inbox"></i>itens</span>
-              </div>
-              <div class="text-muted small mt-1">Arquivos/e-mails aguardando processamento.</div>
-            </div>
-          </div>
-          <div class="col-6 col-lg-3">
-            <div class="card-soft p-3">
-              <div class="mini-title mb-1">Processados hoje</div>
-              <div class="d-flex align-items-end justify-content-between">
-                <div class="fw-bold" style="font-size:1.6rem;color:var(--lt-primary);" id="kpiDone">0</div>
-                <span class="pill"><i class="bi bi-check2-circle"></i>ok</span>
-              </div>
-              <div class="text-muted small mt-1">Ingestão completa com texto extraído.</div>
-            </div>
-          </div>
-          <div class="col-6 col-lg-3">
-            <div class="card-soft p-3">
-              <div class="mini-title mb-1">Falhas</div>
-              <div class="d-flex align-items-end justify-content-between">
-                <div class="fw-bold" style="font-size:1.6rem;color:rgba(153,19,34,.95);" id="kpiFail">0</div>
-                <span class="pill"><i class="bi bi-exclamation-triangle"></i>atenção</span>
-              </div>
-              <div class="text-muted small mt-1">PDF corrompido, senha, anexos vazios, etc.</div>
-            </div>
-          </div>
-          <div class="col-6 col-lg-3">
-            <div class="card-soft p-3">
-              <div class="mini-title mb-1">Integrações</div>
-              <div class="d-flex align-items-end justify-content-between">
-                <div class="fw-bold" style="font-size:1.6rem;color:var(--lt-primary);" id="kpiConnect">2</div>
-                <span class="pill"><i class="bi bi-plug"></i>ativas</span>
-              </div>
-              <div class="text-muted small mt-1">Email IMAP + Pasta (watcher).</div>
-            </div>
-          </div>
-        </div>
+                @{
+          var kpis = new[]
+          {
+            new { ColClass = "col-6 col-lg-3", Title = "Fila de Entrada", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiQueue", Value = "0", PillIcon = "bi-inbox", PillText = "itens", Hint = "Arquivos/e-mails aguardando processamento." },
+            new { ColClass = "col-6 col-lg-3", Title = "Processados hoje", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiDone", Value = "0", PillIcon = "bi-check2-circle", PillText = "ok", Hint = "Ingestão completa com texto extraído." },
+            new { ColClass = "col-6 col-lg-3", Title = "Falhas", ValueStyle = "font-size:1.6rem;color:rgba(153,19,34,.95);", ValueId = "kpiFail", Value = "0", PillIcon = "bi-exclamation-triangle", PillText = "atenção", Hint = "PDF corrompido, senha, anexos vazios, etc." },
+            new { ColClass = "col-6 col-lg-3", Title = "Integrações", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiConnect", Value = "2", PillIcon = "bi-plug", PillText = "ativas", Hint = "Email IMAP + Pasta (watcher)." }
+          };
+        }
+        @await Html.PartialAsync("_KpiMiniRow", kpis)
 
         <div class="grid2">
           <!-- LEFT: Queue -->
