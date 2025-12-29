@@ -682,8 +682,6 @@
       $("#logoMobile").src = LOGO_DATA_URI;
     }
     function wireClock(){
-      const now = new Date();
-      $("#year").textContent = now.getFullYear();
       const tick = () => {
         const d = new Date();
         $("#nowLabel").textContent = d.toLocaleString("pt-BR", { weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });

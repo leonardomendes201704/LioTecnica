@@ -121,13 +121,9 @@
     }
 
     // ========= Toast
-    const toastEl = $("#appToast");
-    const toast = new bootstrap.Toast(toastEl, { delay: 2600 });
     function showToast(title, body){
-      $("#toastTitle").textContent = title || "Notificação";
-      $("#toastBody").textContent = body || "—";
-      $("#toastTime").textContent = "agora";
-      toast.show();
+      if (typeof window.toast !== "function") return;
+      window.toast(body || "-", title || "Notifica??o");
     }
 
     // ========= Role helpers
@@ -669,9 +665,7 @@
       $("#logoMobile").src = LOGO_DATA_URI;
     }
     function wireClock(){
-      const now = new Date();
-      $("#year").textContent = now.getFullYear();
-      $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) + "-" + String(now.getMonth()+1).padStart(2,"0");
+$("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) + "-" + String(now.getMonth()+1).padStart(2,"0");
 
       const tick = () => {
         const d = new Date();

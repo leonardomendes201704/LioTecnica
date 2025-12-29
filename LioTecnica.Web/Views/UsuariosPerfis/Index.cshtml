@@ -12,15 +12,7 @@
   @await Html.PartialAsync("_OffcanvasUser")
 
       @section Topbar {
-<div class="d-flex align-items-center gap-2">
-            <button class="btn btn-ghost d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar">
-              <i class="bi bi-list"></i>
-            </button>
-            <div class="d-none d-md-block">
-              <div class="fw-bold" style="color:var(--lt-primary); line-height:1.05;">Liotécnica • Portal RH</div>
-              <small class="text-muted">Tela: Usuários & Perfis</small>
-            </div>
-          </div>
+@await Html.PartialAsync("_TopbarBrand", "Tela: Usu?rios & Perfis")
 
           <div class="d-flex align-items-center gap-2">
             <button class="btn btn-ghost" type="button" id="btnSeedReset" title="Restaurar demo">
@@ -35,17 +27,7 @@
               <i class="bi bi-person-plus"></i><span class="d-none d-sm-inline ms-1">Novo usuário</span>
             </button>
 
-            <div class="dropdown">
-              <button class="btn btn-ghost dropdown-toggle" data-bs-toggle="dropdown">
-                <i class="bi bi-person-circle me-1"></i><span class="d-none d-sm-inline">Admin</span>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="#"><i class="bi bi-person-gear me-2"></i>Meu perfil</a></li>
-                <li><a class="dropdown-item" href="#"><i class="bi bi-bell me-2"></i>Notificações</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
-              </ul>
-            </div>
+                        @await Html.PartialAsync("_TopbarUserMenu", "Admin")
           </div>
 }
 
@@ -244,16 +226,17 @@
         <div style="height:14px;"></div>
       </section>
 
-      @section Footer {
-<div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div>© <span id="year"></span> Liotécnica • Portal RH (MVP)</div>
-          <div class="d-flex align-items-center gap-3">
-            <span><i class="bi bi-person-gear me-1"></i>Usuários & Perfis</span>
-            <span><i class="bi bi-shield-check me-1"></i>LGPD</span>
-            <span class="mono muted" id="buildId">build: demo</span>
-          </div>
-        </div>
-}
+            @section Footer {
+        @{
+          var footerItems = new[]
+          {
+            new { Icon = "bi-person-gear", Text = "Usu?rios & Perfis", Id = "", Class = "" },
+            new { Icon = "bi-shield-check", Text = "LGPD", Id = "", Class = "" },
+            new { Icon = "", Text = "build: demo", Id = "buildId", Class = "mono muted" }
+          };
+        }
+        @await Html.PartialAsync("_Footer", footerItems)
+      }
 
     
 
@@ -261,17 +244,7 @@
   @await Html.PartialAsync("_ModalRole")
 
   <!-- TOASTS -->
-  <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1090;">
-    <div id="appToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="border-radius:14px;border:1px solid var(--lt-border);">
-      <div class="toast-header">
-        <i class="bi bi-bell me-2" style="color:var(--lt-primary)"></i>
-        <strong class="me-auto" id="toastTitle">Notificação</strong>
-        <small class="text-muted" id="toastTime">agora</small>
-        <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast"></button>
-      </div>
-      <div class="toast-body" id="toastBody">—</div>
-    </div>
-  </div>
+  @await Html.PartialAsync("_Toast", new { Title = "Notifica??o", IconColor = "var(--lt-primary)" })
 
   <!-- Bootstrap JS (CDN) -->
 

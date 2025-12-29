@@ -1071,9 +1071,6 @@ function simulateMatch(vagaId, fromMobile=false){
 
     // ========= Init + bindings
     function wireClock(){
-      const now = new Date();
-      $("#year").textContent = now.getFullYear();
-
       const tick = () => {
         const d = new Date();
         $("#nowLabel").textContent = d.toLocaleString("pt-BR", {

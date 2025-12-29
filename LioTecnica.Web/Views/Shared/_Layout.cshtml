@@ -1,19 +1,3 @@
-@functions {
-  private string NavActive(string controller)
-  {
-    var current = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
-    return current.Equals(controller, StringComparison.OrdinalIgnoreCase) ? "active" : "";
-  }
-
-  private string NavMobileActive(string controller)
-  {
-    var current = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
-    return current.Equals(controller, StringComparison.OrdinalIgnoreCase) ? "fw-semibold" : "";
-  }
-}
-@{
-  var sidebarSubtitle = ViewData["SidebarSubtitle"]?.ToString() ?? "Recrutamento & Match";
-}
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -44,30 +28,30 @@
           <img id="logoDesktop" alt="Liotécnica" src="https://ugc.production.linktr.ee/cR5FRLAQhMjM5iY6KkQV_N7guc4j7zk8o2yfc?io=true&size=avatar-v3_0">
           <div class="title">
             <strong>Portal RH</strong>
-            <span>@sidebarSubtitle</span>
+            <span>@ViewHelpers.SidebarSubtitle(ViewData)</span>
           </div>
         </div>
 
         <div class="sidebar-scroll">
         <div class="nav-section">Operação</div>
         <nav class="nav flex-column">
-          <a class="nav-link @NavActive("Dashboard")" asp-controller="Dashboard" asp-action="Index"><i class="bi bi-speedometer2"></i>Dashboard</a>
-          <a class="nav-link @NavActive("Vagas")" asp-controller="Vagas" asp-action="Index"><i class="bi bi-briefcase"></i>Vagas</a>
-          <a class="nav-link @NavActive("Candidatos")" asp-controller="Candidatos" asp-action="Index"><i class="bi bi-people"></i>Candidatos</a>
-          <a class="nav-link @NavActive("Triagem")" asp-controller="Triagem" asp-action="Index"><i class="bi bi-funnel"></i>Triagem</a>
-          <a class="nav-link @NavActive("Matching")" asp-controller="Matching" asp-action="Index"><i class="bi bi-stars"></i>Matching</a>
+          <a class="nav-link @ViewHelpers.NavActive(ViewContext, "Dashboard")" asp-controller="Dashboard" asp-action="Index"><i class="bi bi-speedometer2"></i>Dashboard</a>
+          <a class="nav-link @ViewHelpers.NavActive(ViewContext, "Vagas")" asp-controller="Vagas" asp-action="Index"><i class="bi bi-briefcase"></i>Vagas</a>
+          <a class="nav-link @ViewHelpers.NavActive(ViewContext, "Candidatos")" asp-controller="Candidatos" asp-action="Index"><i class="bi bi-people"></i>Candidatos</a>
+          <a class="nav-link @ViewHelpers.NavActive(ViewContext, "Triagem")" asp-controller="Triagem" asp-action="Index"><i class="bi bi-funnel"></i>Triagem</a>
+          <a class="nav-link @ViewHelpers.NavActive(ViewContext, "Matching")" asp-controller="Matching" asp-action="Index"><i class="bi bi-stars"></i>Matching</a>
         </nav>
 
         <div class="nav-section mt-2">Integrações</div>
         <nav class="nav flex-column">
-          <a class="nav-link @NavActive("EntradaEmailPasta")" asp-controller="EntradaEmailPasta" asp-action="Index"><i class="bi bi-inbox"></i>Entrada (Email/Pasta)</a>
+          <a class="nav-link @ViewHelpers.NavActive(ViewContext, "EntradaEmailPasta")" asp-controller="EntradaEmailPasta" asp-action="Index"><i class="bi bi-inbox"></i>Entrada (Email/Pasta)</a>
           <a class="nav-link" href="#"><i class="bi bi-diagram-3"></i>RM Labore</a>
         </nav>
 
         <div class="nav-section mt-2">Gestão</div>
         <nav class="nav flex-column">
-          <a class="nav-link @NavActive("Relatorios")" asp-controller="Relatorios" asp-action="Index"><i class="bi bi-graph-up"></i>Relatórios</a>
-          <a class="nav-link @NavActive("UsuariosPerfis")" asp-controller="UsuariosPerfis" asp-action="Index"><i class="bi bi-person-gear"></i>Usuários & Perfis</a>
+          <a class="nav-link @ViewHelpers.NavActive(ViewContext, "Relatorios")" asp-controller="Relatorios" asp-action="Index"><i class="bi bi-graph-up"></i>Relatórios</a>
+          <a class="nav-link @ViewHelpers.NavActive(ViewContext, "UsuariosPerfis")" asp-controller="UsuariosPerfis" asp-action="Index"><i class="bi bi-person-gear"></i>Usuários & Perfis</a>
           <a class="nav-link" href="#"><i class="bi bi-gear"></i>Configurações</a>
         </nav>
         </div>

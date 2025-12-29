@@ -50,15 +50,27 @@
       .trim();
   };
 
-  g.toast = (msg) => {
+  g.toast = (msg, title = "Portal RH") => {
     const toastEl = document.getElementById("appToast");
     if (!toastEl || !g.bootstrap) return;
-    const whenEl = document.getElementById("toastWhen");
-    const msgEl = document.getElementById("toastMsg");
-    if (msgEl) msgEl.textContent = msg;
+    const titleEl = document.getElementById("toastTitle");
+    const whenEl = document.getElementById("toastTime") || document.getElementById("toastWhen");
+    const msgEl = document.getElementById("toastBody") || document.getElementById("toastMsg");
+    if (titleEl) titleEl.textContent = title || "Portal RH";
+    if (msgEl) msgEl.textContent = msg ?? "";
     if (whenEl) whenEl.textContent = "agora";
     g.bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2400 }).show();
   };
+
+  g.setYear = () => {
+    const yearEl = document.getElementById("year");
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", g.setYear, { once: true });
+  } else {
+    g.setYear();
+  }
 })();
 
 (() => {
