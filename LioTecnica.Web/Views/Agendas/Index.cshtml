@@ -1,0 +1,1366 @@
+﻿@model PageSeedViewModel
+@{
+    ViewData["Title"] = "Portal RH • Devcraft Studio — Agenda";
+    ViewData["SidebarSubtitle"] = "Agenda • Entrevistas • Eventos";
+}
+
+<style>
+    :root {
+        --lt-brand: #105290;
+        --lt-accent: #006E63;
+        --lt-bg: #F6FBFF;
+        --lt-card: rgba(255,255,255,.78);
+        --lt-border: rgba(16,82,144,.16);
+        --lt-text: #0b1b2b;
+        --lt-muted: #6b7b8a;
+        --lt-radius: 16px;
+    }
+
+    .card-soft {
+        background: var(--lt-card);
+        border: 1px solid var(--lt-border);
+        border-radius: var(--lt-radius);
+        box-shadow: 0 12px 32px rgba(0,0,0,.05);
+        backdrop-filter: blur(8px);
+    }
+
+    .mini-title {
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-size: .72rem;
+        color: var(--lt-muted);
+        margin: 0;
+    }
+
+    .badge-soft {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .35rem .55rem;
+        border-radius: 999px;
+        background: rgba(16,82,144,.10);
+        border: 1px solid rgba(16,82,144,.16);
+        color: var(--lt-text);
+        font-size: .825rem;
+        white-space: nowrap;
+    }
+
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .38rem .6rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,.55);
+        border: 1px solid var(--lt-border);
+        color: var(--lt-text);
+        font-size: .82rem;
+        white-space: nowrap;
+    }
+
+    .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+    }
+
+    .btn-ghost {
+        background: rgba(255,255,255,.55);
+        border: 1px solid var(--lt-border);
+        color: var(--lt-text);
+    }
+
+        .btn-ghost:hover {
+            background: rgba(255,255,255,.9);
+        }
+
+    .btn-brand {
+        background: var(--lt-brand);
+        border-color: var(--lt-brand);
+        color: #fff;
+    }
+
+        .btn-brand:hover {
+            filter: brightness(.96);
+            color: #fff;
+        }
+
+    .searchbox {
+        min-width: 320px;
+    }
+
+        .searchbox i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--lt-muted);
+        }
+
+        .searchbox input {
+            padding-left: 38px;
+            border-color: var(--lt-border);
+            background: rgba(255,255,255,.65);
+        }
+    /* FullCalendar “encaixado” no card (ALINHA colunas + OCUPA 100% largura) */
+    #calendarHost {
+        min-height: 640px;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden; /* evita scrollbar horizontal na página */
+    }
+
+    #calendar {
+        min-height: 640px;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Containers seguros em 100% */
+    #calendarHost .fc {
+        width: 100%;
+        max-width: 100%;
+        font-size: .92rem;
+    }
+
+    #calendarHost .fc-view-harness {
+        width: 100%;
+    }
+
+    /* mantém header e body sincronizados quando aparece scrollbar vertical */
+    #calendarHost .fc-scroller {
+        scrollbar-gutter: stable;
+    }
+
+    /* se existir regra global do site tipo table{border-collapse:collapse}, isso quebra o sync */
+    #calendarHost .fc table {
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        padding: 15px;
+    }
+
+    /* ✅ estica o “scrollgrid” e as tabelas que definem as colunas */
+    #calendarHost .fc .fc-scrollgrid,
+    #calendarHost .fc .fc-scrollgrid table,
+    #calendarHost .fc .fc-col-header table,
+    #calendarHost .fc .fc-timegrid-cols table,
+    #calendarHost .fc .fc-timegrid-slots table {
+        width: 100% !important;
+        table-layout: fixed; /* distribui igualmente e mantém alinhamento */
+    }
+
+    /* (alguns layouts usam esse TD líquido como base de largura) */
+    #calendarHost .fc .fc-scrollgrid-section-liquid > td {
+        width: 100% !important;
+    }
+
+    /* Bordas e grid */
+    #calendarHost .fc .fc-scrollgrid,
+    #calendarHost .fc .fc-timegrid,
+    #calendarHost .fc .fc-timegrid-body,
+    #calendarHost .fc .fc-timegrid-slots table {
+        border-color: rgba(16,82,144,.14);
+    }
+
+    #calendarHost .fc .fc-scrollgrid {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(16,82,144,.14);
+    }
+
+    #calendarHost .fc-theme-standard td,
+    #calendarHost .fc-theme-standard th {
+        border-color: rgba(16,82,144,.14);
+    }
+
+    #calendarHost .fc .fc-col-header-cell-cushion {
+        color: var(--lt-text);
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    #calendarHost .fc .fc-timegrid-slot-label {
+        color: var(--lt-muted);
+        font-size: .82rem;
+    }
+
+    #calendarHost .fc .fc-day-today {
+        background: rgba(0,110,99,.05) !important;
+    }
+
+    #calendarHost .fc .fc-timegrid-now-indicator-line {
+        border-color: var(--lt-accent);
+    }
+
+    #calendarHost .fc .fc-timegrid-now-indicator-arrow {
+        border-color: var(--lt-accent);
+    }
+
+    /* === FIX: body (colunas) ocupar 100% como o cabeçalho === */
+    #calendarHost .fc .fc-scroller-harness,
+    #calendarHost .fc .fc-scroller-harness-liquid,
+    #calendarHost .fc .fc-scroller-harness-liquid > .fc-scroller,
+    #calendarHost .fc .fc-timegrid-body,
+    #calendarHost .fc .fc-timegrid-cols,
+    #calendarHost .fc .fc-timegrid-cols table,
+    #calendarHost .fc .fc-timegrid-slots table {
+        width: 100% !important;
+    }
+
+    /* em layout flex, sem min-width:0 o filho não “estica” corretamente */
+    #calendarHost .fc .fc-timegrid-body {
+        min-width: 0 !important;
+    }
+
+    #calendarHost .fc .fc-timegrid-cols {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+
+    /* =========================================================
+       FIX DEFINITIVO: sincronizar a largura da coluna "axis"
+       (dia inteiro / horários) entre header e timegrid
+       ========================================================= */
+    #calendarHost .fc .fc-timegrid-axis,
+    #calendarHost .fc .fc-timegrid-axis-frame,
+    #calendarHost .fc .fc-timegrid-axis-cushion {
+        width: 78px !important;
+        min-width: 78px !important;
+        max-width: 78px !important;
+        box-sizing: border-box;
+    }
+
+    #calendarHost .fc .fc-timegrid-axis-cushion {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+
+    /* Lista lateral */
+    .side-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+    }
+
+    .evt-item {
+        display: flex;
+        gap: .65rem;
+        align-items: flex-start;
+        padding: .55rem .6rem;
+        border-radius: 14px;
+        border: 1px solid rgba(16,82,144,.14);
+        background: rgba(255,255,255,.55);
+        cursor: pointer;
+    }
+
+        .evt-item:hover {
+            background: rgba(255,255,255,.9);
+        }
+
+    .evt-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        margin-top: .3rem;
+        border: 2px solid rgba(0,0,0,.08);
+        flex: 0 0 auto;
+    }
+
+    .evt-title {
+        font-weight: 800;
+        color: var(--lt-text);
+        line-height: 1.15;
+    }
+
+    .evt-meta {
+        color: var(--lt-muted);
+        font-size: .82rem;
+    }
+
+    .evt-badges {
+        display: flex;
+        gap: .35rem;
+        flex-wrap: wrap;
+        margin-top: .25rem;
+    }
+
+        .evt-badges .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .18rem .45rem;
+            border-radius: 999px;
+            border: 1px solid rgba(16,82,144,.14);
+            background: rgba(16,82,144,.07);
+            color: var(--lt-text);
+            font-size: .75rem;
+            white-space: nowrap;
+        }
+
+    .kpi {
+        border: 1px solid var(--lt-border);
+        background: rgba(255,255,255,.55);
+        border-radius: 16px;
+        padding: .85rem .9rem;
+        height: 100%;
+    }
+
+        .kpi .label {
+            color: var(--lt-muted);
+            font-size: .82rem;
+        }
+
+        .kpi .value {
+            font-size: 1.35rem;
+            font-weight: 900;
+            letter-spacing: -.02em;
+            color: var(--lt-text);
+        }
+
+        .kpi .hint {
+            color: var(--lt-muted);
+            font-size: .8rem;
+        }
+</style>
+
+@section Topbar {
+    @await Html.PartialAsync("_TopbarBrand", "Tela: Agenda (dia/semana)")
+
+    <div class="searchbox position-relative d-none d-md-block">
+        <i class="bi bi-search"></i>
+        <input id="globalSearch" class="form-control" placeholder="Buscar eventos por título, candidato, vaga..." />
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-ghost" type="button" id="btnExportJson" title="Exportar agenda (JSON)">
+            <i class="bi bi-download"></i><span class="d-none d-sm-inline ms-1">Exportar</span>
+        </button>
+
+        <button class="btn btn-ghost" type="button" id="btnImportJson" title="Importar agenda (JSON)">
+            <i class="bi bi-upload"></i><span class="d-none d-sm-inline ms-1">Importar</span>
+        </button>
+
+        <button class="btn btn-brand" type="button" id="btnNewEvent">
+            <i class="bi bi-plus-lg"></i><span class="d-none d-sm-inline ms-1">Novo evento</span>
+        </button>
+
+        @await Html.PartialAsync("_TopbarUserMenu", "RH")
+    </div>
+}
+
+
+<!-- ============ TOASTS ============ -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1085;">
+    <div id="appToast" class="toast align-items-center" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMsg">—</div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+        </div>
+    </div>
+</div>
+
+<!-- IMPORT (hidden) -->
+<input type="file" id="importFile" class="d-none" accept="application/json" />
+
+<!-- CONTENT -->
+<section class="content">
+    <div class="page-title">
+        <div>
+            <h4>Agenda</h4>
+            <div class="subtitle">Selecione um horário para criar • Arraste para mover • Puxe a borda para redimensionar • Clique para ver detalhes.</div>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    @{
+        var kpis = new[]
+        {
+    new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Hoje",        ValueId = "kpiToday",      Value = "0", Hint = "eventos",                  Icon = "bi-sun" },
+    new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Semana",      ValueId = "kpiWeek",       Value = "0", Hint = "eventos",                  Icon = "bi-calendar-week" },
+    new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Pendentes",   ValueId = "kpiPending",    Value = "0", Hint = "aguardando confirmação",     Icon = "bi-hourglass-split" },
+    new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Entrevistas", ValueId = "kpiInterviews", Value = "0", Hint = "na semana",                 Icon = "bi-camera-video" }
+    };
+    }
+    @await Html.PartialAsync("_KpiCardRow", kpis)
+
+
+    <div class="row g-3 mt-1">
+        <!-- CALENDAR -->
+        <div class="col-12 col-xl-9">
+            <div class="card-soft p-3">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-ghost btn-sm" type="button" id="calPrev" title="Anterior"><i class="bi bi-chevron-left"></i></button>
+                        <button class="btn btn-ghost btn-sm" type="button" id="calToday" title="Hoje"><i class="bi bi-bullseye me-1"></i>Hoje</button>
+                        <button class="btn btn-ghost btn-sm" type="button" id="calNext" title="Próximo"><i class="bi bi-chevron-right"></i></button>
+                    </div>
+
+                    <div class="fw-bold" id="calTitle" style="font-size:1.05rem;">—</div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="btn-group" role="group" aria-label="Modo de visualização">
+                            <button class="btn btn-ghost btn-sm" type="button" data-view="timeGridDay" id="btnViewDay">
+                                <i class="bi bi-view-stacked me-1"></i>Dia
+                            </button>
+                            <button class="btn btn-ghost btn-sm" type="button" data-view="timeGridWeek" id="btnViewWeek">
+                                <i class="bi bi-calendar-week me-1"></i>Semana
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="calendarHost">
+                    <div id="calendar"></div>
+                </div>
+
+                <div class="text-muted small mt-2">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Dica: selecione um intervalo no grid para criar rapidamente. Clique no evento para abrir detalhes/editar.
+                </div>
+            </div>
+        </div>
+
+        <!-- SIDEBAR -->
+        <div class="col-12 col-xl-3">
+            <div class="card-soft p-3 mb-3">
+                <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                    <div>
+                        <p class="mini-title mb-1">Próximos</p>
+                        <div class="fw-bold">Eventos em foco</div>
+                        <div class="text-muted small">Lista respeita filtros + data exibida.</div>
+                    </div>
+                    <span class="badge-soft"><i class="bi bi-filter"></i><span id="sideCount">0</span></span>
+                </div>
+
+                <ul class="side-list" id="sideList"></ul>
+
+                <div class="text-center text-muted small py-3 d-none" id="sideEmpty">
+                    Nenhum evento encontrado.
+                </div>
+            </div>
+
+            <div class="card-soft p-3 d-none">
+                <div class="mb-2">
+                    <p class="mini-title mb-1">Filtros</p>
+                    <div class="fw-bold">Refinar agenda</div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small">Buscar</label>
+                    <input class="form-control" id="fSearch" placeholder="título, candidato, vaga..." style="border-color:var(--lt-border); background: rgba(255,255,255,.65);" />
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small">Tipo</label>
+                    <select class="form-select" id="fType" style="border-color:var(--lt-border); background: rgba(255,255,255,.65);"></select>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small">Status</label>
+                    <select class="form-select" id="fStatus" style="border-color:var(--lt-border); background: rgba(255,255,255,.65);">
+                        <option value="all">Todos</option>
+                        <option value="confirmado">Confirmado</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                    <button class="btn btn-ghost btn-sm" type="button" id="btnClearFilters">
+                        <i class="bi bi-eraser me-1"></i>Limpar
+                    </button>
+                    <button class="btn btn-brand btn-sm" type="button" id="btnApplyFilters">
+                        <i class="bi bi-check2 me-1"></i>Aplicar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="height:14px;"></div>
+</section>
+
+<!-- ============ MODAL: CREATE / EDIT EVENT ============ -->
+<div class="modal fade" id="modalEvent" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content card-soft">
+            <div class="modal-header" style="border-bottom:1px solid var(--lt-border);">
+                <div>
+                    <div class="mini-title mb-1" id="eventModalMode">Novo evento</div>
+                    <div class="fw-bold" style="font-size:1.05rem;" id="eventModalTitle">Agendar</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="evId" />
+
+                <div class="row g-2">
+                    <div class="col-12 col-md-8">
+                        <label class="form-label small">Título</label>
+                        <input class="form-control" id="evTitle" placeholder="Ex.: Entrevista • Maria Souza" style="border-color:var(--lt-border);" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small">Tipo</label>
+                        <select class="form-select" id="evType" style="border-color:var(--lt-border);"></select>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Início</label>
+                        <input type="datetime-local" class="form-control" id="evStart" style="border-color:var(--lt-border);" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Fim</label>
+                        <input type="datetime-local" class="form-control" id="evEnd" style="border-color:var(--lt-border);" />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Local</label>
+                        <input class="form-control" id="evLocation" placeholder="Google Meet / Presencial / Sala 2..." style="border-color:var(--lt-border);" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small">Status</label>
+                        <select class="form-select" id="evStatus" style="border-color:var(--lt-border);">
+                            <option value="confirmado">Confirmado</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small">Responsável</label>
+                        <input class="form-control" id="evOwner" placeholder="Ana (RH)" style="border-color:var(--lt-border);" />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Candidato</label>
+                        <input class="form-control" id="evCandidate" placeholder="Nome do candidato" style="border-color:var(--lt-border);" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Vaga</label>
+                        <div class="input-group">
+                            <input class="form-control" id="evVagaTitle" placeholder="Título da vaga" style="border-color:var(--lt-border);" />
+                            <span class="input-group-text mono" style="border-color:var(--lt-border); background: rgba(255,255,255,.65);">CODE</span>
+                            <input class="form-control mono" id="evVagaCode" placeholder="DEVNET-001" style="border-color:var(--lt-border);" />
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small">Observações</label>
+                        <textarea class="form-control" id="evNotes" rows="3" placeholder="Roteiro, links, feedback..." style="border-color:var(--lt-border);"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="border-top:1px solid var(--lt-border);">
+                <button class="btn btn-ghost" type="button" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Cancelar</button>
+                <button class="btn btn-brand" type="button" id="btnSaveEvent"><i class="bi bi-check2 me-1"></i>Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ MODAL: VIEW EVENT ============ -->
+<div class="modal fade" id="modalView" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content card-soft">
+            <div class="modal-header" style="border-bottom:1px solid var(--lt-border);">
+                <div class="w-100">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                        <div>
+                            <div class="mini-title mb-1">Detalhes do evento</div>
+                            <div class="fw-bold" style="font-size:1.08rem;" id="viewTitle">—</div>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <span class="badge-soft" id="viewType">—</span>
+                            <span class="badge-soft" id="viewStatus">—</span>
+                        </div>
+                    </div>
+                    <div class="text-muted small mt-1" id="viewWhen">—</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="viewId" />
+
+                <div class="row g-2">
+                    <div class="col-12 col-md-6">
+                        <div class="card-soft p-2" style="box-shadow:none;">
+                            <div class="small text-muted">Candidato</div>
+                            <div class="fw-semibold" id="viewCandidate">—</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="card-soft p-2" style="box-shadow:none;">
+                            <div class="small text-muted">Vaga</div>
+                            <div class="fw-semibold" id="viewVaga">—</div>
+                            <div class="text-muted small mono" id="viewVagaCode">—</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="card-soft p-2" style="box-shadow:none;">
+                            <div class="small text-muted">Local</div>
+                            <div class="fw-semibold" id="viewLocation">—</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="card-soft p-2" style="box-shadow:none;">
+                            <div class="small text-muted">Responsável</div>
+                            <div class="fw-semibold" id="viewOwner">—</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card-soft p-2" style="box-shadow:none;">
+                            <div class="small text-muted">Observações</div>
+                            <div class="text-muted" id="viewNotes" style="white-space:pre-wrap;">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="border-top:1px solid var(--lt-border);">
+                <button class="btn btn-ghost" type="button" id="btnDuplicate"><i class="bi bi-files me-1"></i>Duplicar (+7d)</button>
+                <button class="btn btn-ghost" type="button" id="btnEdit"><i class="bi bi-pencil me-1"></i>Editar</button>
+                <button class="btn btn-ghost text-danger" type="button" id="btnDelete"><i class="bi bi-trash3 me-1"></i>Excluir</button>
+                <button class="btn btn-brand" type="button" data-bs-dismiss="modal"><i class="bi bi-check2 me-1"></i>Ok</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Footer {
+    @{
+        var footerItems = new[]
+        {
+            new { Icon = "bi-people", Text = "Candidatos" },
+            new { Icon = "bi-file-earmark-text", Text = "CV" },
+            new { Icon = "bi-stars", Text = "Match" }
+          };
+    }
+    @await Html.PartialAsync("_Footer", footerItems)
+      }
+
+<!-- MOCK JSON (seed) -->
+<script type="application/json" id="agenda-seed-json">
+    {
+      "types":[
+        {"code":"all","label":"Todos","icon":"bi-grid-3x3-gap","color":"#6c757d"},
+        {"code":"entrevista","label":"Entrevista","icon":"bi-camera-video","color":"#0d6efd"},
+        {"code":"triagem","label":"Triagem","icon":"bi-funnel","color":"#0dcaf0"},
+        {"code":"reuniao","label":"Reunião","icon":"bi-people","color":"#198754"},
+        {"code":"feedback","label":"Feedback","icon":"bi-chat-left-dots","color":"#6f42c1"},
+        {"code":"onboarding","label":"Onboarding","icon":"bi-person-check","color":"#fd7e14"}
+      ],
+      "eventsTemplate":[
+        {"id":"E-1001","title":"Entrevista • João Silva","type":"entrevista","status":"confirmado","dayOffset":1,"start":"09:00","end":"10:00","location":"Google Meet","candidate":{"name":"João Silva"},"vaga":{"title":"Dev .NET","code":"DEVNET-001"},"owner":"Ana (RH)","notes":"Foco em .NET 8, Razor e boas práticas."},
+        {"id":"E-1002","title":"Triagem • Currículos (batch)","type":"triagem","status":"pendente","dayOffset":1,"start":"10:30","end":"11:15","location":"Portal RH","candidate":{"name":"—"},"vaga":{"title":"Estágio RH","code":"ESTRH-004"},"owner":"Bruno (RH)","notes":"Separar por tags + atualizar status."},
+        {"id":"E-1003","title":"Reunião • Alinhamento com gestor","type":"reuniao","status":"confirmado","dayOffset":2,"start":"14:00","end":"14:45","location":"Sala 2","candidate":{"name":"—"},"vaga":{"title":"Dev .NET","code":"DEVNET-001"},"owner":"Ana (RH)","notes":"Definir etapa técnica + perguntas de triagem."},
+        {"id":"E-1004","title":"Feedback • Maria Souza","type":"feedback","status":"confirmado","dayOffset":3,"start":"16:00","end":"16:30","location":"Google Meet","candidate":{"name":"Maria Souza"},"vaga":{"title":"Analista Suporte","code":"SUP-002"},"owner":"Ana (RH)","notes":"Retorno da entrevista e próximos passos."},
+        {"id":"E-1005","title":"Onboarding • Boas-vindas (mock)","type":"onboarding","status":"pendente","dayOffset":4,"start":"09:30","end":"10:15","location":"Presencial","candidate":{"name":"Carlos Lima"},"vaga":{"title":"Aux. Adm.","code":"ADM-003"},"owner":"Bruno (RH)","notes":"Checklist: docs + acesso + agenda do 1º dia."}
+      ]
+    }
+</script>
+
+@section Scripts {
+    <!-- FullCalendar (global bundle) -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script>
+    <!-- Locales (pt-br) -->
+    <script src="https://cdn.jsdelivr.net/npm/@@fullcalendar/core@6.1.20/locales-all.global.min.js"></script>
+    <!-- Bootstrap 5 theme plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/@@fullcalendar/bootstrap5@6.1.20/index.global.min.js"></script>
+
+    <script>
+        // =========================
+        // Agenda MVP (mock + localStorage)
+        // =========================
+
+        const STORAGE_KEY = "rh.agenda.v1";
+        const ui = (id) => document.getElementById(id);
+        const pad2 = (n) => String(n).padStart(2, "0");
+
+        function toast(msg) {
+          ui("toastMsg").textContent = msg;
+          const el = ui("appToast");
+          const t = bootstrap.Toast.getOrCreateInstance(el, { delay: 2200 });
+          t.show();
+        }
+
+        function toLocalIso(dt) {
+          if (!dt) return null;
+          return `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}-${pad2(dt.getDate())}T${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`;
+        }
+        function parseLocalIso(s) {
+          // "YYYY-MM-DDTHH:mm" -> Date (local)
+          if (!s) return null;
+          const [d, t] = s.split("T");
+          const [Y, M, D] = d.split("-").map(Number);
+          const [h, m] = (t || "00:00").split(":").map(Number);
+          return new Date(Y, (M-1), D, h || 0, m || 0, 0, 0);
+        }
+        function startOfWeek(d) {
+          // Monday-based
+          const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          const day = dt.getDay(); // 0 Sun .. 6 Sat
+          const diff = (day === 0 ? -6 : 1) - day;
+          dt.setDate(dt.getDate() + diff);
+          dt.setHours(0,0,0,0);
+          return dt;
+        }
+        function addDays(d, days) {
+          const dt = new Date(d.getTime());
+          dt.setDate(dt.getDate() + days);
+          return dt;
+        }
+        function uid(prefix="EV") {
+          return `${prefix}-${Math.random().toString(16).slice(2, 10)}${Date.now().toString(16).slice(-4)}`;
+        }
+
+        // ---- Seed (mock JSON)
+        function getSeedDoc() {
+          try {
+            return JSON.parse(document.getElementById("agenda-seed-json").textContent.trim());
+          } catch {
+            return { types: [], eventsTemplate: [] };
+          }
+        }
+
+        function buildSeedEventsFromTemplate() {
+          const seed = getSeedDoc();
+          const base = startOfWeek(new Date()); // coloca o demo sempre na semana atual
+          const byType = Object.fromEntries((seed.types || []).map(t => [t.code, t]));
+          const events = (seed.eventsTemplate || []).map(t => {
+            const typeDef = byType[t.type] || { color:"#6c757d", icon:"bi-calendar" };
+            const date = addDays(base, Number(t.dayOffset || 0));
+            const [sh, sm] = (t.start || "09:00").split(":").map(Number);
+            const [eh, em] = (t.end || "10:00").split(":").map(Number);
+            const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), sh||0, sm||0, 0, 0);
+            const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), eh||0, em||0, 0, 0);
+
+            return {
+              id: t.id || uid("E"),
+              title: t.title || "Evento",
+              start: toLocalIso(start),
+              end: toLocalIso(end),
+              allDay: false,
+
+              backgroundColor: typeDef.color,
+              borderColor: typeDef.color,
+              textColor: "#fff",
+
+              extendedProps: {
+                type: t.type || "reuniao",
+                status: t.status || "confirmado",
+                location: t.location || "",
+                owner: t.owner || "",
+                candidate: (t.candidate && t.candidate.name) ? t.candidate.name : "",
+                vagaTitle: (t.vaga && t.vaga.title) ? t.vaga.title : "",
+                vagaCode: (t.vaga && t.vaga.code) ? t.vaga.code : "",
+                notes: t.notes || "",
+                icon: typeDef.icon || "bi-calendar"
+              }
+            };
+          });
+
+          return { types: seed.types || [], events };
+        }
+
+        function defaultState() {
+          const seed = buildSeedEventsFromTemplate();
+          return {
+            version: 1,
+            settings: {
+              view: "timeGridWeek",
+              filters: { q: "", type: "all", status: "all" }
+            },
+            types: seed.types,
+            events: seed.events
+          };
+        }
+
+        function loadState() {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return defaultState();
+            const st = JSON.parse(raw);
+            if (!st || !Array.isArray(st.events)) return defaultState();
+            // se não tiver types, reaproveita do seed
+            if (!Array.isArray(st.types) || st.types.length === 0) {
+              st.types = defaultState().types;
+            }
+            st.settings = st.settings || { view: "timeGridWeek", filters: { q:"", type:"all", status:"all" } };
+            st.settings.filters = st.settings.filters || { q:"", type:"all", status:"all" };
+            return st;
+          } catch {
+            return defaultState();
+          }
+        }
+
+        function saveState() {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state, null, 2));
+        }
+
+        function normalizeEventForStore(e) {
+          return {
+            id: e.id,
+            title: e.title || "Evento",
+            start: e.start,
+            end: e.end,
+            allDay: !!e.allDay,
+            backgroundColor: e.backgroundColor || null,
+            borderColor: e.borderColor || null,
+            textColor: e.textColor || null,
+            extendedProps: { ...(e.extendedProps || {}) }
+          };
+        }
+
+        function upsertEvent(storedEvent) {
+          const idx = state.events.findIndex(x => x.id === storedEvent.id);
+          if (idx >= 0) state.events[idx] = storedEvent;
+          else state.events.unshift(storedEvent);
+          saveState();
+        }
+
+        function deleteEventById(id) {
+          state.events = state.events.filter(x => x.id !== id);
+          saveState();
+        }
+
+        // ---- Filters
+        function applyFiltersToUI() {
+          const f = state.settings.filters;
+          ui("globalSearch").value = f.q || "";
+          ui("fSearch").value = f.q || "";
+          ui("fType").value = f.type || "all";
+          ui("fStatus").value = f.status || "all";
+        }
+
+        function getFilteredEvents() {
+          const f = state.settings.filters || { q:"", type:"all", status:"all" };
+          const q = (f.q || "").trim().toLowerCase();
+
+          return state.events.filter(ev => {
+            const p = ev.extendedProps || {};
+            const hay = [
+              ev.title,
+              p.candidate,
+              p.vagaTitle,
+              p.vagaCode,
+              p.location,
+              p.owner,
+              p.notes
+            ].filter(Boolean).join(" ").toLowerCase();
+
+            const okQ = !q || hay.includes(q);
+            const okType = (f.type === "all") || (p.type === f.type);
+            const okStatus = (f.status === "all") || (p.status === f.status);
+            return okQ && okType && okStatus;
+          });
+        }
+
+        function rebuildTypeSelects() {
+          const types = (state.types || []).filter(t => t && t.code && t.label);
+          const mkOpt = (t) => `<option value="${t.code}">${t.label}</option>`;
+
+          ui("fType").innerHTML = types.map(mkOpt).join("");
+          ui("evType").innerHTML = types.filter(t => t.code !== "all").map(mkOpt).join("");
+        }
+
+        // ---- KPIs
+        function isSameDay(a, b) {
+          return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+        }
+        function isInSameWeek(date, base) {
+          const w0 = startOfWeek(base);
+          const w1 = addDays(w0, 7);
+          return date >= w0 && date < w1;
+        }
+        function refreshKpis() {
+          const now = new Date();
+          const filtered = getFilteredEvents();
+
+          let today = 0, week = 0, pending = 0, interviews = 0;
+          filtered.forEach(e => {
+            const s = parseLocalIso(e.start);
+            const p = e.extendedProps || {};
+            if (s && isSameDay(s, now)) today++;
+            if (s && isInSameWeek(s, now)) week++;
+            if (p.status === "pendente") pending++;
+            if (p.type === "entrevista" && s && isInSameWeek(s, now)) interviews++;
+          });
+
+          ui("kpiToday").textContent = today;
+          ui("kpiWeek").textContent = week;
+          ui("kpiPending").textContent = pending;
+          ui("kpiInterviews").textContent = interviews;
+        }
+
+        // ---- Sidebar list (based on current view range)
+        function fmtTimeRange(start, end) {
+          if (!start) return "—";
+          const s = start.toLocaleString("pt-BR", { weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+          if (!end) return s;
+          const e = end.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+          return `${s} → ${e}`;
+        }
+
+        function refreshSideList() {
+          const filtered = getFilteredEvents();
+          const range = calendar ? calendar.view : null;
+
+          let inRange = filtered;
+          if (range) {
+            const start = range.activeStart;
+            const end = range.activeEnd;
+            inRange = filtered.filter(ev => {
+              const s = parseLocalIso(ev.start);
+              return s && s >= start && s < end;
+            });
+          }
+
+          // ordena por início
+          inRange.sort((a,b) => (a.start || "").localeCompare(b.start || ""));
+
+          ui("sideCount").textContent = inRange.length;
+          const host = ui("sideList");
+          host.innerHTML = "";
+
+          if (inRange.length === 0) {
+            ui("sideEmpty").classList.remove("d-none");
+            return;
+          }
+          ui("sideEmpty").classList.add("d-none");
+
+          inRange.slice(0, 12).forEach(ev => {
+            const p = ev.extendedProps || {};
+            const dotColor = ev.backgroundColor || "#6c757d";
+            const start = parseLocalIso(ev.start);
+            const end = parseLocalIso(ev.end);
+
+            const li = document.createElement("li");
+            li.className = "evt-item";
+            li.innerHTML = `
+              <span class="evt-dot" style="background:${dotColor}"></span>
+              <div style="min-width:0;">
+                <div class="evt-title">${escapeHtml(ev.title || "Evento")}</div>
+                <div class="evt-meta">${escapeHtml(fmtTimeRange(start, end))}</div>
+                <div class="evt-badges">
+                  <span class="tag"><i class="bi ${escapeHtml(p.icon || "bi-calendar")}"></i>${escapeHtml((p.type || "—"))}</span>
+                  <span class="tag"><i class="bi bi-flag"></i>${escapeHtml((p.status || "—"))}</span>
+                  ${p.candidate ? `<span class="tag"><i class="bi bi-person"></i>${escapeHtml(p.candidate)}</span>` : ``}
+                </div>
+              </div>
+            `;
+            li.addEventListener("click", () => openViewModalById(ev.id));
+            host.appendChild(li);
+          });
+        }
+
+        function escapeHtml(s) {
+          return String(s ?? "")
+            .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+        }
+
+        // ---- Calendar header
+        function refreshCalendarTitle() {
+          ui("calTitle").textContent = calendar ? calendar.view.title : "—";
+          const v = calendar ? calendar.view.type : state.settings.view;
+          const dayBtn = ui("btnViewDay");
+          const weekBtn = ui("btnViewWeek");
+          dayBtn.classList.toggle("btn-brand", v === "timeGridDay");
+          dayBtn.classList.toggle("btn-ghost", v !== "timeGridDay");
+          weekBtn.classList.toggle("btn-brand", v === "timeGridWeek");
+          weekBtn.classList.toggle("btn-ghost", v !== "timeGridWeek");
+        }
+
+        // ---- Modals helpers
+        const modalEvent = new bootstrap.Modal(ui("modalEvent"));
+        const modalView = new bootstrap.Modal(ui("modalView"));
+
+        function setEventModalMode(isEdit) {
+          ui("eventModalMode").textContent = isEdit ? "Editar evento" : "Novo evento";
+          ui("eventModalTitle").textContent = isEdit ? "Atualizar" : "Agendar";
+        }
+
+        function setEventFormDefaults(startDt, endDt) {
+          ui("evId").value = "";
+          ui("evTitle").value = "";
+          ui("evType").value = "entrevista";
+          ui("evStatus").value = "confirmado";
+          ui("evLocation").value = "";
+          ui("evOwner").value = "Ana (RH)";
+          ui("evCandidate").value = "";
+          ui("evVagaTitle").value = "";
+          ui("evVagaCode").value = "";
+          ui("evNotes").value = "";
+
+          const s = startDt || new Date();
+          const e = endDt || new Date(s.getTime() + 60*60*1000);
+          ui("evStart").value = toLocalIso(s);
+          ui("evEnd").value = toLocalIso(e);
+        }
+
+        function fillEventFormFromStored(ev) {
+          const p = ev.extendedProps || {};
+          ui("evId").value = ev.id || "";
+          ui("evTitle").value = ev.title || "";
+          ui("evType").value = p.type || "entrevista";
+          ui("evStatus").value = p.status || "confirmado";
+          ui("evLocation").value = p.location || "";
+          ui("evOwner").value = p.owner || "";
+          ui("evCandidate").value = p.candidate || "";
+          ui("evVagaTitle").value = p.vagaTitle || "";
+          ui("evVagaCode").value = p.vagaCode || "";
+          ui("evNotes").value = p.notes || "";
+          ui("evStart").value = ev.start || "";
+          ui("evEnd").value = ev.end || "";
+        }
+
+        function collectEventFromForm() {
+          const seed = getSeedDoc();
+          const byType = Object.fromEntries((seed.types || []).map(t => [t.code, t]));
+          const type = ui("evType").value || "reuniao";
+          const typeDef = byType[type] || { color:"#6c757d", icon:"bi-calendar" };
+
+          const id = ui("evId").value || uid("E");
+          const title = (ui("evTitle").value || "").trim() || "Evento";
+          const start = ui("evStart").value || toLocalIso(new Date());
+          let end = ui("evEnd").value;
+          if (!end) {
+            const s = parseLocalIso(start);
+            end = toLocalIso(new Date((s || new Date()).getTime() + 60*60*1000));
+          }
+
+          return normalizeEventForStore({
+            id,
+            title,
+            start,
+            end,
+            allDay: false,
+            backgroundColor: typeDef.color,
+            borderColor: typeDef.color,
+            textColor: "#fff",
+            extendedProps: {
+              type,
+              status: ui("evStatus").value || "confirmado",
+              location: (ui("evLocation").value || "").trim(),
+              owner: (ui("evOwner").value || "").trim(),
+              candidate: (ui("evCandidate").value || "").trim(),
+              vagaTitle: (ui("evVagaTitle").value || "").trim(),
+              vagaCode: (ui("evVagaCode").value || "").trim(),
+              notes: (ui("evNotes").value || "").trim(),
+              icon: typeDef.icon || "bi-calendar"
+            }
+          });
+        }
+
+        function openCreateModal(startDt, endDt) {
+          setEventModalMode(false);
+          setEventFormDefaults(startDt, endDt);
+          modalEvent.show();
+        }
+
+        function openEditModalById(id) {
+          const ev = state.events.find(x => x.id === id);
+          if (!ev) return;
+          setEventModalMode(true);
+          fillEventFormFromStored(ev);
+          modalEvent.show();
+        }
+
+        function openViewModalById(id) {
+          const ev = state.events.find(x => x.id === id);
+          if (!ev) return;
+
+          const p = ev.extendedProps || {};
+          ui("viewId").value = ev.id || "";
+
+          ui("viewTitle").textContent = ev.title || "—";
+          ui("viewType").innerHTML = `<i class="bi ${p.icon || "bi-calendar"} me-1"></i>${p.type || "—"}`;
+          ui("viewStatus").innerHTML = `<i class="bi bi-flag me-1"></i>${p.status || "—"}`;
+
+          const s = parseLocalIso(ev.start);
+          const e = parseLocalIso(ev.end);
+          ui("viewWhen").textContent = fmtTimeRange(s, e);
+
+          ui("viewCandidate").textContent = p.candidate || "—";
+          ui("viewVaga").textContent = p.vagaTitle || "—";
+          ui("viewVagaCode").textContent = p.vagaCode || "—";
+          ui("viewLocation").textContent = p.location || "—";
+          ui("viewOwner").textContent = p.owner || "—";
+          ui("viewNotes").textContent = p.notes || "—";
+
+          modalView.show();
+        }
+
+        // ---- Calendar integration
+        function eventsForCalendar() {
+          // FullCalendar lê start/end como strings e interpreta local (sem Z)
+          return getFilteredEvents().map(ev => ({
+            ...ev,
+            // garante extendedProps no event, pro click/drop
+            extendedProps: { ...(ev.extendedProps || {}) }
+          }));
+        }
+
+        function rebuildCalendar() {
+          if (!calendar) return;
+
+          calendar.batchRendering(() => {
+            calendar.removeAllEvents();
+            calendar.addEventSource(eventsForCalendar());
+          });
+
+          refreshCalendarTitle();
+          refreshSideList();
+          refreshKpis();
+        }
+
+        function updateStoredFromFcEvent(fcEvent) {
+          const id = fcEvent.id;
+          const ev = state.events.find(x => x.id === id);
+          if (!ev) return;
+
+          ev.title = fcEvent.title;
+          ev.start = toLocalIso(fcEvent.start);
+          ev.end = fcEvent.end ? toLocalIso(fcEvent.end) : ev.end;
+          ev.allDay = !!fcEvent.allDay;
+
+          // mantém cores / props
+          const p = ev.extendedProps || {};
+          const p2 = fcEvent.extendedProps || {};
+          ev.extendedProps = { ...p, ...p2 };
+          upsertEvent(ev);
+        }
+
+        // ---- Export / Import
+        function downloadJson(obj, filename) {
+          const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+
+        function importJsonText(text) {
+          let parsed = null;
+          try { parsed = JSON.parse(text); } catch { parsed = null; }
+          if (!parsed || !Array.isArray(parsed.events)) {
+            toast("JSON inválido (esperado: { events: [...] }).");
+            return;
+          }
+          // mantém types se vierem, senão usa seed
+          if (!Array.isArray(parsed.types) || parsed.types.length === 0) {
+            parsed.types = state.types;
+          }
+          parsed.settings = parsed.settings || state.settings || { view:"timeGridWeek", filters:{ q:"", type:"all", status:"all" } };
+          parsed.settings.filters = parsed.settings.filters || { q:"", type:"all", status:"all" };
+
+          state = parsed;
+          saveState();
+          rebuildTypeSelects();
+          applyFiltersToUI();
+          rebuildCalendar();
+          toast("Agenda importada com sucesso.");
+        }
+
+        // =========================
+        // INIT
+        // =========================
+        let state = loadState();
+        let calendar = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+          // fill type selects
+          rebuildTypeSelects();
+
+          // load filters into UI
+          applyFiltersToUI();
+
+          // init calendar
+          const calEl = ui("calendar");
+          calendar = new FullCalendar.Calendar(calEl, {
+            locale: "pt-br",
+            timeZone: "local",
+            themeSystem: "bootstrap5",
+            allDaySlot: false,
+            initialView: state.settings.view || "timeGridWeek",
+            nowIndicator: true,
+            editable: true,
+            selectable: true,
+            selectMirror: true,
+            eventResizableFromStart: true,
+
+            slotMinTime: "07:00:00",
+            slotMaxTime: "21:00:00",
+            expandRows: true,
+            height: "auto",
+
+            headerToolbar: false, // usamos toolbar custom no card
+
+            // fonte (filtrada)
+            events: eventsForCalendar(),
+
+            select: function(info) {
+              // criar evento pela seleção
+              openCreateModal(info.start, info.end);
+              calendar.unselect();
+            },
+
+            eventClick: function(info) {
+              info.jsEvent.preventDefault();
+              openViewModalById(info.event.id);
+            },
+
+            eventDrop: function(info) {
+              updateStoredFromFcEvent(info.event);
+              rebuildCalendar();
+              toast("Evento movido.");
+            },
+
+            eventResize: function(info) {
+              updateStoredFromFcEvent(info.event);
+              rebuildCalendar();
+              toast("Duração atualizada.");
+            }
+          });
+
+          calendar.render();
+
+          // força recálculo após o layout “assentar”
+          requestAnimationFrame(() => calendar.updateSize());
+          setTimeout(() => calendar.updateSize(), 50);
+          
+          // e quando redimensionar a janela
+          let __calResizeT = null;
+          window.addEventListener("resize", () => {
+              clearTimeout(__calResizeT);
+              __calResizeT = setTimeout(() => calendar.updateSize(), 120);
+          });
+
+          refreshCalendarTitle();
+          refreshSideList();
+          refreshKpis();
+
+          // Toolbar buttons
+          ui("calPrev").addEventListener("click", () => { calendar.prev(); refreshCalendarTitle(); refreshSideList(); });
+          ui("calNext").addEventListener("click", () => { calendar.next(); refreshCalendarTitle(); refreshSideList(); });
+          ui("calToday").addEventListener("click", () => { calendar.today(); refreshCalendarTitle(); refreshSideList(); });
+
+          // View toggle
+          ui("btnViewDay").addEventListener("click", () => {
+            calendar.changeView("timeGridDay");
+            state.settings.view = "timeGridDay";
+            saveState();
+            refreshCalendarTitle();
+            refreshSideList();
+          });
+          ui("btnViewWeek").addEventListener("click", () => {
+            calendar.changeView("timeGridWeek");
+            state.settings.view = "timeGridWeek";
+            saveState();
+            refreshCalendarTitle();
+            refreshSideList();
+          });
+
+          // New event
+          ui("btnNewEvent").addEventListener("click", () => openCreateModal());
+
+          // Save (create/edit)
+          ui("btnSaveEvent").addEventListener("click", () => {
+            const ev = collectEventFromForm();
+            upsertEvent(ev);
+            rebuildCalendar();
+            modalEvent.hide();
+            toast("Evento salvo.");
+          });
+
+          // View modal actions
+          ui("btnEdit").addEventListener("click", () => {
+            const id = ui("viewId").value;
+            modalView.hide();
+            openEditModalById(id);
+          });
+
+          ui("btnDelete").addEventListener("click", () => {
+            const id = ui("viewId").value;
+            if (!id) return;
+            if (!confirm("Excluir este evento?")) return;
+            deleteEventById(id);
+            rebuildCalendar();
+            modalView.hide();
+            toast("Evento excluído.");
+          });
+
+          ui("btnDuplicate").addEventListener("click", () => {
+            const id = ui("viewId").value;
+            const src = state.events.find(x => x.id === id);
+            if (!src) return;
+
+            const s = parseLocalIso(src.start);
+            const e = parseLocalIso(src.end);
+            const plus7s = s ? addDays(s, 7) : new Date();
+            const plus7e = e ? addDays(e, 7) : new Date(plus7s.getTime() + 60*60*1000);
+
+            const copy = JSON.parse(JSON.stringify(src));
+            copy.id = uid("E");
+            copy.title = (copy.title || "Evento") + " (cópia)";
+            copy.start = toLocalIso(plus7s);
+            copy.end = toLocalIso(plus7e);
+
+            upsertEvent(copy);
+            rebuildCalendar();
+            modalView.hide();
+            toast("Evento duplicado (+7 dias).");
+          });
+
+          // Filters wiring
+          function syncFiltersFromUI() {
+            state.settings.filters.q = (ui("fSearch").value || ui("globalSearch").value || "").trim();
+            state.settings.filters.type = ui("fType").value || "all";
+            state.settings.filters.status = ui("fStatus").value || "all";
+            saveState();
+          }
+
+          ui("btnApplyFilters").addEventListener("click", () => {
+            syncFiltersFromUI();
+            applyFiltersToUI();
+            rebuildCalendar();
+            toast("Filtros aplicados.");
+          });
+
+          ui("btnClearFilters").addEventListener("click", () => {
+            state.settings.filters = { q:"", type:"all", status:"all" };
+            saveState();
+            applyFiltersToUI();
+            rebuildCalendar();
+            toast("Filtros limpos.");
+          });
+
+          ui("globalSearch").addEventListener("input", () => {
+            ui("fSearch").value = ui("globalSearch").value;
+          });
+
+          // Export/Import
+          ui("btnExportJson").addEventListener("click", () => {
+            downloadJson(state, `agenda-rh-${new Date().toISOString().slice(0,10)}.json`);
+          });
+
+          ui("btnImportJson").addEventListener("click", () => ui("importFile").click());
+          ui("importFile").addEventListener("change", async (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            const text = await f.text();
+            importJsonText(text);
+            e.target.value = "";
+          });
+        });
+    </script>
+}
