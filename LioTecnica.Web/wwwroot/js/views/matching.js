@@ -54,7 +54,7 @@ function enumFirstCode(key, fallback){
 // ========= Storage keys
     const VAGAS_KEY = "lt_rh_vagas_v1";
     const CANDS_KEY = "lt_rh_candidatos_v1";
-    const MATCH_KEY = "lt_rh_matching_cache_v1"; // cache simples de score/hits por candidato+vaga (MVP)
+    const MATCH_KEY = "lt_rh_matching_cache_v1"; // cache simples de score/hits por candidato+vaga
 
     const state = {
       vagas: [],
@@ -136,7 +136,7 @@ function enumFirstCode(key, fallback){
       }
     }
 
-    // ========= Matching engine (MVP)
+    // ========= Matching engine
     function calcMatch(cand, vaga){
       if(!cand || !vaga) return { score: 0, pass:false, hits:[], missMandatory:[], totalPeso:1, hitPeso:0, threshold: 0 };
 

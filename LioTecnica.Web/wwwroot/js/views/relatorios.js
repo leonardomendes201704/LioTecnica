@@ -527,7 +527,7 @@ function loadAll(){
     
     function renderReport(){
       const r = REPORTS.find(x => x.id === state.reportId);
-      $("#reportTitle").textContent = r ? r.title : "â€”";
+        $("#reportTitle").textContent = r ? r.title : "•";
       $("#reportDesc").textContent = r ? r.desc : "Selecione um relatório no catálogo.";
 
       const data = buildReportData();

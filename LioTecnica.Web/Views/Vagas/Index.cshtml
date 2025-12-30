@@ -1,6 +1,6 @@
 ﻿@model PageSeedViewModel
 @{
-	ViewData["Title"] = "Portal RH • Liotécnica • Vagas";
+	ViewData["Title"] = "Portal RH • Devcraft Studio • Vagas";
 	ViewData["SidebarSubtitle"] = "Vagas • Requisitos • Match";
 }
 
@@ -42,10 +42,6 @@
 		<div>
 			<h4>Vagas</h4>
 			<div class="subtitle">Crie vagas, defina requisitos com peso e marque itens obrigatórios para o matching.</div>
-		</div>
-		<div class="d-flex align-items-center gap-2">
-			<span class="badge-soft"><i class="bi bi-clock me-1"></i><span id="nowLabel">â€”</span></span>
-			<span class="badge-soft"><i class="bi bi-lightning-charge me-1"></i>MVP localStorage</span>
 		</div>
 	</div>
 
@@ -319,7 +315,7 @@
 				</div>
 
 				<div class="small text-muted mt-2">
-					Regras (MVP): score = soma(pesos encontrados) / soma(pesos totais) * 100.
+					Regras: score = soma(pesos encontrados) / soma(pesos totais) * 100.
 					Itens <strong>obrigatorios</strong> podem aplicar penalidade se ausentes.
 				</div>
 			</div>
@@ -376,7 +372,7 @@
 
 				<hr class="my-3">
 
-				<div class="fw-semibold mb-1">Simulador rapido (MVP)</div>
+				<div class="fw-semibold mb-1">Simulador rapido</div>
 				<div class="text-muted small mb-2">Cole um texto (curriculo em texto) e veja o match estimado por palavras-chave.</div>
 				<textarea class="form-control mb-2" id="simText" rows="5" placeholder="Cole aqui o texto do CV (extraido do PDF/DOCX)..."></textarea>
 				<div class="d-flex gap-2">
@@ -439,11 +435,11 @@
 	<div class="card-soft p-3" style="box-shadow:none;">
 		<div class="d-flex align-items-center justify-content-between">
 			<div>
-				<div class="fw-bold">Resultado da simulacao</div>
-				<div class="text-muted small">Score por palavras-chave (MVP)</div>
+				<div class="fw-bold">Resultado da simulação</div>
+				<div class="text-muted small">Score por palavras-chave</div>
 			</div>
 			<span class="badge rounded-pill" data-role="sim-badge">
-				<span data-role="sim-badge-text"></span> do match minimo
+				<span data-role="sim-badge-text"></span> do match mínimo
 			</span>
 		</div>
 

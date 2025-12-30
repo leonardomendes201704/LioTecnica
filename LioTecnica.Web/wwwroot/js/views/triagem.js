@@ -134,7 +134,7 @@ function enumFirstCode(key, fallback){
       return state.candidatos.find(c => c.id === id) || null;
     }
 
-    // ========= Matching (MVP keyword) â€” mesmo padrão da tela de Candidatos
+    // ========= Matching (por keyword) • mesmo padrão da tela de Candidatos
     function calcMatchForCand(cand){
       const v = findVaga(cand.vagaId);
       if(!v) return { score: 0, pass: false, hits: [], missMandatory: [], totalPeso: 1, hitPeso: 0, threshold: 0 };
@@ -187,7 +187,7 @@ function enumFirstCode(key, fallback){
       return buildTag("bi-stars", `${s}% ${BULLET} ${text}`, cls);
     }
 
-    // ========= SLA (MVP)
+    // ========= SLA
     // Regra simples:
     // - status "triagem": SLA 48h
     // - status "pendente": SLA 72h
@@ -656,7 +656,7 @@ function enumFirstCode(key, fallback){
       toast("Match recalculado.");
     }
 
-    // ========= Auto-triage (MVP)
+    // ========= Auto-triage
     function autoTriage(){
       const list = getFilteredCands();
 

@@ -484,6 +484,350 @@ public static class MockDataService
             }
         };
 
+        var departamentos = new List<DepartamentoSeed>
+        {
+            new()
+            {
+                Id = "dept-001",
+                Codigo = "DEP-PRD",
+                Nome = "Producao",
+                Area = "Producao",
+                Gestor = "Marcos Silva",
+                Email = "producao@@liotecnica.com.br",
+                Telefone = "(11) 90000-1001",
+                CentroCusto = "CC-1001",
+                Local = "Embu das Artes - SP",
+                Headcount = 120,
+                Status = "ativo",
+                Descricao = "Operacao de linhas, turnos e metas diarias.",
+                CreatedAt = Iso(now.AddDays(-120)),
+                UpdatedAt = Iso(now.AddDays(-10))
+            },
+            new()
+            {
+                Id = "dept-002",
+                Codigo = "DEP-QLD",
+                Nome = "Qualidade",
+                Area = "Qualidade",
+                Gestor = "Patricia Menezes",
+                Email = "qualidade@@liotecnica.com.br",
+                Telefone = "(11) 90000-1002",
+                CentroCusto = "CC-1002",
+                Local = "Embu das Artes - SP",
+                Headcount = 38,
+                Status = "ativo",
+                Descricao = "Controles, auditorias e sistema de qualidade.",
+                CreatedAt = Iso(now.AddDays(-140)),
+                UpdatedAt = Iso(now.AddDays(-12))
+            },
+            new()
+            {
+                Id = "dept-003",
+                Codigo = "DEP-PD",
+                Nome = "Pesquisa e Desenvolvimento",
+                Area = "Pesquisa e Desenvolvimento",
+                Gestor = "Luciana Prado",
+                Email = "pesquisa@@liotecnica.com.br",
+                Telefone = "(11) 90000-1003",
+                CentroCusto = "CC-1003",
+                Local = "Sao Paulo - SP",
+                Headcount = 22,
+                Status = "ativo",
+                Descricao = "Novos produtos, testes e melhorias de processo.",
+                CreatedAt = Iso(now.AddDays(-110)),
+                UpdatedAt = Iso(now.AddDays(-9))
+            },
+            new()
+            {
+                Id = "dept-004",
+                Codigo = "DEP-OPE",
+                Nome = "Operacoes",
+                Area = "Operacoes",
+                Gestor = "Renato Dias",
+                Email = "operacoes@@liotecnica.com.br",
+                Telefone = "(11) 90000-1004",
+                CentroCusto = "CC-1004",
+                Local = "Embu das Artes - SP",
+                Headcount = 64,
+                Status = "ativo",
+                Descricao = "PCP, melhoria continua e suporte a producao.",
+                CreatedAt = Iso(now.AddDays(-98)),
+                UpdatedAt = Iso(now.AddDays(-14))
+            },
+            new()
+            {
+                Id = "dept-005",
+                Codigo = "DEP-CMP",
+                Nome = "Compras",
+                Area = "Compras",
+                Gestor = "Bianca Souza",
+                Email = "compras@@liotecnica.com.br",
+                Telefone = "(11) 90000-1005",
+                CentroCusto = "CC-1005",
+                Local = "Sao Paulo - SP",
+                Headcount = 18,
+                Status = "ativo",
+                Descricao = "Negociacoes e abastecimento de insumos.",
+                CreatedAt = Iso(now.AddDays(-90)),
+                UpdatedAt = Iso(now.AddDays(-8))
+            },
+            new()
+            {
+                Id = "dept-006",
+                Codigo = "DEP-LOG",
+                Nome = "Logistica",
+                Area = "Logistica",
+                Gestor = "Carlos Nunes",
+                Email = "logistica@@liotecnica.com.br",
+                Telefone = "(11) 90000-1006",
+                CentroCusto = "CC-1006",
+                Local = "Taboao da Serra - SP",
+                Headcount = 52,
+                Status = "ativo",
+                Descricao = "Estoque, expedicao e roteirizacao.",
+                CreatedAt = Iso(now.AddDays(-102)),
+                UpdatedAt = Iso(now.AddDays(-6))
+            },
+            new()
+            {
+                Id = "dept-007",
+                Codigo = "DEP-MNT",
+                Nome = "Manutencao",
+                Area = "Manutencao",
+                Gestor = "Andre Lima",
+                Email = "manutencao@@liotecnica.com.br",
+                Telefone = "(11) 90000-1007",
+                CentroCusto = "CC-1007",
+                Local = "Embu das Artes - SP",
+                Headcount = 28,
+                Status = "ativo",
+                Descricao = "Manutencao preventiva e corretiva.",
+                CreatedAt = Iso(now.AddDays(-105)),
+                UpdatedAt = Iso(now.AddDays(-11))
+            },
+            new()
+            {
+                Id = "dept-008",
+                Codigo = "DEP-FIN",
+                Nome = "Financeiro",
+                Area = "Financeiro",
+                Gestor = "Fernanda Moreira",
+                Email = "financeiro@@liotecnica.com.br",
+                Telefone = "(11) 90000-1008",
+                CentroCusto = "CC-1008",
+                Local = "Sao Paulo - SP",
+                Headcount = 16,
+                Status = "ativo",
+                Descricao = "Fluxo de caixa, contas e relatorios.",
+                CreatedAt = Iso(now.AddDays(-130)),
+                UpdatedAt = Iso(now.AddDays(-20))
+            },
+            new()
+            {
+                Id = "dept-009",
+                Codigo = "DEP-RH",
+                Nome = "RH",
+                Area = "RH",
+                Gestor = "Juliana Costa",
+                Email = "rh@@liotecnica.com.br",
+                Telefone = "(11) 90000-1009",
+                CentroCusto = "CC-1009",
+                Local = "Sao Paulo - SP",
+                Headcount = 12,
+                Status = "ativo",
+                Descricao = "Recrutamento, treinamento e clima.",
+                CreatedAt = Iso(now.AddDays(-150)),
+                UpdatedAt = Iso(now.AddDays(-4))
+            },
+            new()
+            {
+                Id = "dept-010",
+                Codigo = "DEP-COM",
+                Nome = "Comercial",
+                Area = "Comercial",
+                Gestor = "Rodrigo Alves",
+                Email = "comercial@@liotecnica.com.br",
+                Telefone = "(11) 90000-1010",
+                CentroCusto = "CC-1010",
+                Local = "Sao Paulo - SP",
+                Headcount = 26,
+                Status = "ativo",
+                Descricao = "Prospeccao, carteira e relacionamento.",
+                CreatedAt = Iso(now.AddDays(-135)),
+                UpdatedAt = Iso(now.AddDays(-15))
+            },
+            new()
+            {
+                Id = "dept-011",
+                Codigo = "DEP-MKT",
+                Nome = "Marketing",
+                Area = "Marketing",
+                Gestor = "Camila Rocha",
+                Email = "marketing@@liotecnica.com.br",
+                Telefone = "(11) 90000-1011",
+                CentroCusto = "CC-1011",
+                Local = "Sao Paulo - SP",
+                Headcount = 14,
+                Status = "ativo",
+                Descricao = "Marca, campanhas e comunicacao.",
+                CreatedAt = Iso(now.AddDays(-125)),
+                UpdatedAt = Iso(now.AddDays(-7))
+            },
+            new()
+            {
+                Id = "dept-012",
+                Codigo = "DEP-TI",
+                Nome = "TI",
+                Area = "TI",
+                Gestor = "Eduardo Reis",
+                Email = "ti@@liotecnica.com.br",
+                Telefone = "(11) 90000-1012",
+                CentroCusto = "CC-1012",
+                Local = "Sao Paulo - SP",
+                Headcount = 19,
+                Status = "ativo",
+                Descricao = "Infra, suporte e projetos digitais.",
+                CreatedAt = Iso(now.AddDays(-115)),
+                UpdatedAt = Iso(now.AddDays(-5))
+            },
+            new()
+            {
+                Id = "dept-013",
+                Codigo = "DEP-SST",
+                Nome = "Seguranca do Trabalho",
+                Area = "Seguranca do Trabalho",
+                Gestor = "Tatiana Gomes",
+                Email = "seguranca@@liotecnica.com.br",
+                Telefone = "(11) 90000-1013",
+                CentroCusto = "CC-1013",
+                Local = "Embu das Artes - SP",
+                Headcount = 9,
+                Status = "ativo",
+                Descricao = "Treinamentos, NR e prevencao.",
+                CreatedAt = Iso(now.AddDays(-95)),
+                UpdatedAt = Iso(now.AddDays(-22))
+            },
+            new()
+            {
+                Id = "dept-014",
+                Codigo = "DEP-ENG",
+                Nome = "Engenharia de Processos",
+                Area = "Engenharia de Processos",
+                Gestor = "Diego Carvalho",
+                Email = "engenharia@@liotecnica.com.br",
+                Telefone = "(11) 90000-1014",
+                CentroCusto = "CC-1014",
+                Local = "Embu das Artes - SP",
+                Headcount = 11,
+                Status = "ativo",
+                Descricao = "Melhorias, layout e eficiencia.",
+                CreatedAt = Iso(now.AddDays(-108)),
+                UpdatedAt = Iso(now.AddDays(-18))
+            },
+            new()
+            {
+                Id = "dept-015",
+                Codigo = "DEP-PCI",
+                Nome = "Planejamento Industrial",
+                Area = "Planejamento Industrial",
+                Gestor = "Bruno Martins",
+                Email = "planejamento@@liotecnica.com.br",
+                Telefone = "(11) 90000-1015",
+                CentroCusto = "CC-1015",
+                Local = "Cotia - SP",
+                Headcount = 10,
+                Status = "inativo",
+                Descricao = "Revisao de capacidade e sequenciamento.",
+                CreatedAt = Iso(now.AddDays(-160)),
+                UpdatedAt = Iso(now.AddDays(-60))
+            },
+            new()
+            {
+                Id = "dept-016",
+                Codigo = "DEP-SUP",
+                Nome = "Supply Chain",
+                Area = "Supply Chain",
+                Gestor = "Carla Mendes",
+                Email = "supplychain@@liotecnica.com.br",
+                Telefone = "(11) 90000-1016",
+                CentroCusto = "CC-1016",
+                Local = "Sao Paulo - SP",
+                Headcount = 17,
+                Status = "ativo",
+                Descricao = "Integracao compras, estoque e distribuicao.",
+                CreatedAt = Iso(now.AddDays(-145)),
+                UpdatedAt = Iso(now.AddDays(-19))
+            },
+            new()
+            {
+                Id = "dept-017",
+                Codigo = "DEP-GQ",
+                Nome = "Garantia da Qualidade",
+                Area = "Garantia da Qualidade",
+                Gestor = "Silvia Araujo",
+                Email = "garantia@@liotecnica.com.br",
+                Telefone = "(11) 90000-1017",
+                CentroCusto = "CC-1017",
+                Local = "Embu das Artes - SP",
+                Headcount = 8,
+                Status = "ativo",
+                Descricao = "Sistema de qualidade e conformidade.",
+                CreatedAt = Iso(now.AddDays(-132)),
+                UpdatedAt = Iso(now.AddDays(-17))
+            },
+            new()
+            {
+                Id = "dept-018",
+                Codigo = "DEP-FAC",
+                Nome = "Facilities",
+                Area = "Facilities",
+                Gestor = "Roberto Dias",
+                Email = "facilities@@liotecnica.com.br",
+                Telefone = "(11) 90000-1018",
+                CentroCusto = "CC-1018",
+                Local = "Embu das Artes - SP",
+                Headcount = 6,
+                Status = "inativo",
+                Descricao = "Servicos gerais e manutencao predial.",
+                CreatedAt = Iso(now.AddDays(-170)),
+                UpdatedAt = Iso(now.AddDays(-80))
+            },
+            new()
+            {
+                Id = "dept-019",
+                Codigo = "DEP-CAC",
+                Nome = "Atendimento ao Cliente",
+                Area = "Atendimento ao Cliente",
+                Gestor = "Mariana Lopes",
+                Email = "atendimento@@liotecnica.com.br",
+                Telefone = "(11) 90000-1019",
+                CentroCusto = "CC-1019",
+                Local = "Sao Paulo - SP",
+                Headcount = 15,
+                Status = "inativo",
+                Descricao = "Suporte e relacionamento com clientes.",
+                CreatedAt = Iso(now.AddDays(-155)),
+                UpdatedAt = Iso(now.AddDays(-70))
+            },
+            new()
+            {
+                Id = "dept-020",
+                Codigo = "DEP-SUS",
+                Nome = "Sustentabilidade",
+                Area = "Sustentabilidade",
+                Gestor = "Paulo Henrique",
+                Email = "sustentabilidade@@liotecnica.com.br",
+                Telefone = "(11) 90000-1020",
+                CentroCusto = "CC-1020",
+                Local = "Sao Paulo - SP",
+                Headcount = 5,
+                Status = "inativo",
+                Descricao = "ESG, residuos e eficiencia energetica.",
+                CreatedAt = Iso(now.AddDays(-175)),
+                UpdatedAt = Iso(now.AddDays(-90))
+            }
+        };
+
         var candidatos = new List<CandidatoSeed>
         {
             new()
@@ -779,7 +1123,8 @@ public static class MockDataService
             Users = users,
             DashboardRows = dashboardRows,
             DashboardSeries = dashboardSeries,
-            Reports = reports
+            Reports = reports,
+            Departamentos = departamentos
         };
     }
 

@@ -25,7 +25,7 @@
     <aside class="sidebar d-none d-lg-block">
       <div class="sidebar-inner">
         <div class="brand">
-          <img id="logoDesktop" alt="Liotécnica" src="https://ugc.production.linktr.ee/cR5FRLAQhMjM5iY6KkQV_N7guc4j7zk8o2yfc?io=true&size=avatar-v3_0">
+          <img id="logoDesktop" alt="Devcraft Studio" src="https://ugc.production.linktr.ee/cR5FRLAQhMjM5iY6KkQV_N7guc4j7zk8o2yfc?io=true&size=avatar-v3_0">
           <div class="title">
             <strong>Portal RH</strong>
             <span>@ViewHelpers.SidebarSubtitle(ViewData)</span>
@@ -51,6 +51,7 @@
         <div class="nav-section mt-2">Gestão</div>
         <nav class="nav flex-column">
           <a class="nav-link @ViewHelpers.NavActive(ViewContext, "Relatorios")" asp-controller="Relatorios" asp-action="Index"><i class="bi bi-graph-up"></i>Relatórios</a>
+          <a class="nav-link @ViewHelpers.NavActive(ViewContext, "Departamentos")" asp-controller="Departamentos" asp-action="Index"><i class="bi bi-diagram-2"></i>Departamentos</a>
           <a class="nav-link @ViewHelpers.NavActive(ViewContext, "UsuariosPerfis")" asp-controller="UsuariosPerfis" asp-action="Index"><i class="bi bi-person-gear"></i>Usuários & Perfis</a>
           <a class="nav-link" href="#"><i class="bi bi-gear"></i>Configurações</a>
         </nav>

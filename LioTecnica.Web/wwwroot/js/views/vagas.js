@@ -1628,9 +1628,11 @@ function simulateMatch(vagaId, fromMobile=false){
 
     // ========= Init + bindings
     function wireClock(){
+      const label = $("#nowLabel");
+      if(!label) return;
       const tick = () => {
         const d = new Date();
-        $("#nowLabel").textContent = d.toLocaleString("pt-BR", {
+        label.textContent = d.toLocaleString("pt-BR", {
           weekday:"short", day:"2-digit", month:"2-digit",
           hour:"2-digit", minute:"2-digit"
         });
