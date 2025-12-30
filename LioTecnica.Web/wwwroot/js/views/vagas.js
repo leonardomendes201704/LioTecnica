@@ -558,7 +558,7 @@ function fmtStatus(s){
     }
 
     function buildModalReqRow(item){
-      const row = cloneTemplate("tpl-vaga-req-row");
+      const row = cloneTemplate("tpl-vaga-modal-req-row");
       if(!row) return null;
       const nameEl = row.querySelector('[data-role="req-name"]');
       const weightEl = row.querySelector('[data-role="req-weight"]');
