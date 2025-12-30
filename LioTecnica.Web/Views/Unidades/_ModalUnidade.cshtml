@@ -1,0 +1,91 @@
+<div class="modal fade" id="modalUnidade" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius: 18px; border: 1px solid var(--lt-border);">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold" id="modalUnidadeTitle">Nova unidade</h5>
+          <div class="text-muted small">Cadastre dados principais da unidade.</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="unId">
+
+        <div class="row g-2">
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Codigo *</label>
+            <input class="form-control" id="unCodigo" placeholder="UNI-XXX">
+          </div>
+          <div class="col-12 col-md-8">
+            <label class="form-label small text-muted">Unidade *</label>
+            <input class="form-control" id="unNome" placeholder="Ex.: Sao Paulo - SP">
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Status</label>
+            <select class="form-select" id="unStatus">
+              <option value="ativo">Ativo</option>
+              <option value="inativo">Inativo</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Cidade</label>
+            <input class="form-control" id="unCidade" placeholder="Ex.: Embu das Artes">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">UF</label>
+            <input class="form-control" id="unUf" placeholder="SP">
+          </div>
+
+          <div class="col-12 col-md-8">
+            <label class="form-label small text-muted">Endereco</label>
+            <input class="form-control" id="unEndereco" placeholder="Rua, numero, complemento">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Bairro</label>
+            <input class="form-control" id="unBairro" placeholder="Ex.: Industrial">
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">CEP</label>
+            <input class="form-control" id="unCep" placeholder="00000-000">
+          </div>
+          <div class="col-12 col-md-5">
+            <label class="form-label small text-muted">Email</label>
+            <input class="form-control" id="unEmail" placeholder="unidade@@liotecnica.com.br">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Telefone</label>
+            <input class="form-control" id="unTelefone" placeholder="(11) 4000-0000">
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Responsavel</label>
+            <input class="form-control" id="unResponsavel" placeholder="Nome do responsavel">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Tipo</label>
+            <input class="form-control" id="unTipo" placeholder="Industria / CD / Escritorio">
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Headcount</label>
+            <input class="form-control" id="unHeadcount" placeholder="0">
+          </div>
+          <div class="col-12 col-md-8">
+            <label class="form-label small text-muted">Observacao</label>
+            <input class="form-control" id="unObs" placeholder="Resumo operacional da unidade">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" type="button" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i>Cancelar
+        </button>
+        <button class="btn btn-brand" type="button" id="btnSaveUnidade">
+          <i class="bi bi-check2 me-1"></i>Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

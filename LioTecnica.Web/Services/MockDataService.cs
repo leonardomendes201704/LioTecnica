@@ -1134,6 +1134,250 @@ public static class MockDataService
             }
         };
 
+        var unidades = new List<UnidadeSeed>
+        {
+            new()
+            {
+                Id = "uni-001",
+                Codigo = "UNI-EMB",
+                Nome = "Embu das Artes - SP",
+                Status = "ativo",
+                Cidade = "Embu das Artes",
+                Uf = "SP",
+                Endereco = "Rod. BR-116, Km 275",
+                Bairro = "Jardim Vista Alegre",
+                Cep = "06803-000",
+                Telefone = "(11) 4001-1001",
+                Email = "embu@@liotecnica.com.br",
+                Responsavel = "Carla Tavares",
+                Tipo = "Industria / Matriz",
+                Headcount = 420,
+                Observacao = "Linha principal de producao e P&D.",
+                CreatedAt = Iso(now.AddDays(-520)),
+                UpdatedAt = Iso(now.AddDays(-12))
+            },
+            new()
+            {
+                Id = "uni-002",
+                Codigo = "UNI-SPC",
+                Nome = "Sao Paulo - SP",
+                Status = "ativo",
+                Cidade = "Sao Paulo",
+                Uf = "SP",
+                Endereco = "Av. Paulista, 1200",
+                Bairro = "Bela Vista",
+                Cep = "01310-100",
+                Telefone = "(11) 4001-1002",
+                Email = "sp@@liotecnica.com.br",
+                Responsavel = "Marcos Azevedo",
+                Tipo = "Escritorio / Administrativo",
+                Headcount = 180,
+                Observacao = "RH, financeiro, comercial e diretoria.",
+                CreatedAt = Iso(now.AddDays(-500)),
+                UpdatedAt = Iso(now.AddDays(-20))
+            },
+            new()
+            {
+                Id = "uni-003",
+                Codigo = "UNI-COT",
+                Nome = "Cotia - SP",
+                Status = "ativo",
+                Cidade = "Cotia",
+                Uf = "SP",
+                Endereco = "Rua do Comercio, 210",
+                Bairro = "Jardim da Gloria",
+                Cep = "06704-050",
+                Telefone = "(11) 4001-1003",
+                Email = "cotia@@liotecnica.com.br",
+                Responsavel = "Renata Nunes",
+                Tipo = "Centro de Distribuicao",
+                Headcount = 95,
+                Observacao = "Operacoes logistica e expedicao.",
+                CreatedAt = Iso(now.AddDays(-480)),
+                UpdatedAt = Iso(now.AddDays(-18))
+            },
+            new()
+            {
+                Id = "uni-004",
+                Codigo = "UNI-TAB",
+                Nome = "Taboao da Serra - SP",
+                Status = "ativo",
+                Cidade = "Taboao da Serra",
+                Uf = "SP",
+                Endereco = "Av. Aprigio Bezerra, 4550",
+                Bairro = "Parque Industrial",
+                Cep = "06760-000",
+                Telefone = "(11) 4001-1004",
+                Email = "taboao@@liotecnica.com.br",
+                Responsavel = "Diego Nogueira",
+                Tipo = "Planta de Processamento",
+                Headcount = 260,
+                Observacao = "Foco em processados e embalagens.",
+                CreatedAt = Iso(now.AddDays(-470)),
+                UpdatedAt = Iso(now.AddDays(-15))
+            },
+            new()
+            {
+                Id = "uni-005",
+                Codigo = "UNI-OSA",
+                Nome = "Osasco - SP",
+                Status = "ativo",
+                Cidade = "Osasco",
+                Uf = "SP",
+                Endereco = "Rua Industrial, 88",
+                Bairro = "Rochdale",
+                Cep = "06223-000",
+                Telefone = "(11) 4001-1005",
+                Email = "osasco@@liotecnica.com.br",
+                Responsavel = "Patricia Mendes",
+                Tipo = "Qualidade e Laboratorio",
+                Headcount = 120,
+                Observacao = "Laboratorio de qualidade e auditorias.",
+                CreatedAt = Iso(now.AddDays(-465)),
+                UpdatedAt = Iso(now.AddDays(-14))
+            },
+            new()
+            {
+                Id = "uni-006",
+                Codigo = "UNI-CAM",
+                Nome = "Campinas - SP",
+                Status = "ativo",
+                Cidade = "Campinas",
+                Uf = "SP",
+                Endereco = "Av. Carlos Gomes, 900",
+                Bairro = "Cambui",
+                Cep = "13025-000",
+                Telefone = "(19) 4001-1006",
+                Email = "campinas@@liotecnica.com.br",
+                Responsavel = "Ana Ribeiro",
+                Tipo = "P&D Regional",
+                Headcount = 75,
+                Observacao = "Desenvolvimento de novos sabores.",
+                CreatedAt = Iso(now.AddDays(-450)),
+                UpdatedAt = Iso(now.AddDays(-22))
+            },
+            new()
+            {
+                Id = "uni-007",
+                Codigo = "UNI-JDI",
+                Nome = "Jundiai - SP",
+                Status = "ativo",
+                Cidade = "Jundiai",
+                Uf = "SP",
+                Endereco = "Rod. Anhanguera, Km 64",
+                Bairro = "Distrito Industrial",
+                Cep = "13214-000",
+                Telefone = "(11) 4001-1007",
+                Email = "jundiai@@liotecnica.com.br",
+                Responsavel = "Lucas Freitas",
+                Tipo = "Armazenagem Fria",
+                Headcount = 60,
+                Observacao = "Camera fria e expedição refrigerada.",
+                CreatedAt = Iso(now.AddDays(-440)),
+                UpdatedAt = Iso(now.AddDays(-30))
+            },
+            new()
+            {
+                Id = "uni-008",
+                Codigo = "UNI-SOR",
+                Nome = "Sorocaba - SP",
+                Status = "ativo",
+                Cidade = "Sorocaba",
+                Uf = "SP",
+                Endereco = "Av. Itavuvu, 5100",
+                Bairro = "Industrial",
+                Cep = "18078-000",
+                Telefone = "(15) 4001-1008",
+                Email = "sorocaba@@liotecnica.com.br",
+                Responsavel = "Fernanda Lima",
+                Tipo = "Planta Secos",
+                Headcount = 140,
+                Observacao = "Produtos secos e embalagens flexiveis.",
+                CreatedAt = Iso(now.AddDays(-430)),
+                UpdatedAt = Iso(now.AddDays(-28))
+            },
+            new()
+            {
+                Id = "uni-009",
+                Codigo = "UNI-SNT",
+                Nome = "Santos - SP",
+                Status = "inativo",
+                Cidade = "Santos",
+                Uf = "SP",
+                Endereco = "Rua do Porto, 220",
+                Bairro = "Macuco",
+                Cep = "11015-000",
+                Telefone = "(13) 4001-1009",
+                Email = "santos@@liotecnica.com.br",
+                Responsavel = "Rafael Santos",
+                Tipo = "Operacao Portuaria",
+                Headcount = 40,
+                Observacao = "Unidade desativada para reestruturacao.",
+                CreatedAt = Iso(now.AddDays(-420)),
+                UpdatedAt = Iso(now.AddDays(-120))
+            },
+            new()
+            {
+                Id = "uni-010",
+                Codigo = "UNI-RBP",
+                Nome = "Ribeirao Preto - SP",
+                Status = "ativo",
+                Cidade = "Ribeirao Preto",
+                Uf = "SP",
+                Endereco = "Av. Presidente Vargas, 3200",
+                Bairro = "Jardim Sumare",
+                Cep = "14025-700",
+                Telefone = "(16) 4001-1010",
+                Email = "ribeirao@@liotecnica.com.br",
+                Responsavel = "Camila Rocha",
+                Tipo = "Agro Supply",
+                Headcount = 85,
+                Observacao = "Suprimentos e relacao com fornecedores.",
+                CreatedAt = Iso(now.AddDays(-410)),
+                UpdatedAt = Iso(now.AddDays(-35))
+            },
+            new()
+            {
+                Id = "uni-011",
+                Codigo = "UNI-BAU",
+                Nome = "Bauru - SP",
+                Status = "ativo",
+                Cidade = "Bauru",
+                Uf = "SP",
+                Endereco = "Rua Luiz Boi, 90",
+                Bairro = "Distrito Industrial",
+                Cep = "17034-000",
+                Telefone = "(14) 4001-1011",
+                Email = "bauru@@liotecnica.com.br",
+                Responsavel = "Tiago Almeida",
+                Tipo = "Logistica Regional",
+                Headcount = 55,
+                Observacao = "Distribuicao interior paulista.",
+                CreatedAt = Iso(now.AddDays(-405)),
+                UpdatedAt = Iso(now.AddDays(-40))
+            },
+            new()
+            {
+                Id = "uni-012",
+                Codigo = "UNI-PIR",
+                Nome = "Piracicaba - SP",
+                Status = "ativo",
+                Cidade = "Piracicaba",
+                Uf = "SP",
+                Endereco = "Av. Independencia, 2500",
+                Bairro = "Centro",
+                Cep = "13400-000",
+                Telefone = "(19) 4001-1012",
+                Email = "piracicaba@@liotecnica.com.br",
+                Responsavel = "Bruno Teixeira",
+                Tipo = "Planta Bebidas",
+                Headcount = 110,
+                Observacao = "Linha de bebidas e envase.",
+                CreatedAt = Iso(now.AddDays(-398)),
+                UpdatedAt = Iso(now.AddDays(-42))
+            }
+        };
+
         var areas = new List<AreaSeed>
         {
             new()
@@ -1742,7 +1986,8 @@ public static class MockDataService
             Departamentos = departamentos,
             Gestores = gestores,
             Areas = areas,
-            RequisitoCategorias = requisitoCategorias
+            RequisitoCategorias = requisitoCategorias,
+            Unidades = unidades
         };
     }
 

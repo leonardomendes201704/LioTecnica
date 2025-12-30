@@ -2,6 +2,7 @@ const seed = window.__seedData || {};
 const STORE_KEY = "lt_rh_gestores_v1";
 const VAGAS_STORE_KEY = "lt_rh_vagas_v1";
 const AREAS_STORE_KEY = "lt_rh_areas_v1";
+const UNIDADES_STORE_KEY = "lt_rh_unidades_v1";
 const EMPTY_TEXT = "-";
 
 const state = {
@@ -66,9 +67,27 @@ function loadAreas(){
   }
 }
 
+function loadUnidades(){
+  try{
+    const raw = localStorage.getItem(UNIDADES_STORE_KEY);
+    if(!raw) return Array.isArray(seed.unidades) ? seed.unidades : [];
+    const data = JSON.parse(raw);
+    if(data && Array.isArray(data.unidades)) return data.unidades;
+    return Array.isArray(seed.unidades) ? seed.unidades : [];
+  }catch{
+    return Array.isArray(seed.unidades) ? seed.unidades : [];
+  }
+}
+
 function getAreaOptions(){
   const areas = loadAreas();
   const set = new Set(areas.map(a => a.nome).filter(Boolean));
+  return Array.from(set).sort((a,b)=>a.localeCompare(b, "pt-BR"));
+}
+
+function getUnidadeOptions(){
+  const unidades = loadUnidades();
+  const set = new Set(unidades.map(u => u.nome).filter(Boolean));
   return Array.from(set).sort((a,b)=>a.localeCompare(b, "pt-BR"));
 }
 
@@ -227,6 +246,21 @@ function fillAreaSelect(selected){
   }
 }
 
+function fillUnidadeSelect(selected){
+  const select = $("#gestorUnidade");
+  if(!select) return;
+  select.replaceChildren();
+  select.appendChild(buildOption("", "Selecionar unidade"));
+  const list = getUnidadeOptions();
+  list.forEach(u => select.appendChild(buildOption(u, u, u === selected)));
+  if(selected && !list.includes(selected)){
+    select.appendChild(buildOption(selected, selected, true));
+  }
+  if(selected){
+    select.value = selected;
+  }
+}
+
 function openGestorModal(mode, id){
   const modal = bootstrap.Modal.getOrCreateInstance($("#modalGestor"));
   const isEdit = mode === "edit";
@@ -239,22 +273,22 @@ function openGestorModal(mode, id){
     $("#gestorNome").value = g.nome || "";
     $("#gestorCargo").value = g.cargo || "";
     fillAreaSelect(g.area || "");
+    fillUnidadeSelect(g.unidade || "");
     $("#gestorStatus").value = g.status || "ativo";
     $("#gestorHeadcount").value = g.headcount != null ? String(g.headcount) : "0";
     $("#gestorEmail").value = g.email || "";
     $("#gestorTelefone").value = g.telefone || "";
-    $("#gestorUnidade").value = g.unidade || "";
     $("#gestorObs").value = g.observacao || "";
   }else{
     $("#gestorId").value = "";
     $("#gestorNome").value = "";
     $("#gestorCargo").value = "";
     fillAreaSelect("");
+    fillUnidadeSelect("");
     $("#gestorStatus").value = "ativo";
     $("#gestorHeadcount").value = "0";
     $("#gestorEmail").value = "";
     $("#gestorTelefone").value = "";
-    $("#gestorUnidade").value = "";
     $("#gestorObs").value = "";
   }
 
