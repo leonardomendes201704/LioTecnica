@@ -20,9 +20,9 @@ function enumFirstCode(key, fallback){
       { key:"triagem", label:"Triagem" },
       { key:"matching", label:"Matching" },
       { key:"entrada", label:"Entrada (Email/Pasta)" },
-      { key:"relatorios", label:"RelatÃ³rios" },
-      { key:"config", label:"ConfiguraÃ§Ãµes" },
-      { key:"usuarios", label:"UsuÃ¡rios & Perfis" },
+      { key:"relatorios", label:"Relatórios" },
+      { key:"config", label:"Configurações" },
+      { key:"usuarios", label:"Usuários & Perfis" },
     ];
     const ACTIONS = [
       { key:"view", label:"Visualizar" },
@@ -670,7 +670,7 @@ function loadAll(){
 
       $("#btnNewUser").addEventListener("click", ()=> openUserModal(null));
       $("#btnNewRole").addEventListener("click", ()=> openRoleModal());
-      $("#btnAuditMock").addEventListener("click", ()=> showToast("Auditoria", "Mock: em produÃ§Ã£o, listar aÃ§Ãµes (login, alteraÃ§Ã£o de role, exportaÃ§Ãµes)."));
+      $("#btnAuditMock").addEventListener("click", ()=> showToast("Auditoria", "Mock: em produção, listar ações (login, alteração de role, exportações)."));
     }
 
     function wireUsersFilters(){
@@ -703,7 +703,7 @@ function loadAll(){
       const onTabShown = (ev)=>{
         const id = ev.target?.id;
         if(id==="tab-users"){
-          $("#btnPrimaryAction").innerHTML = `<i class="bi bi-person-plus"></i><span class="d-none d-sm-inline ms-1">Novo usuÃ¡rio</span>`;
+          $("#btnPrimaryAction").innerHTML = `<i class="bi bi-person-plus"></i><span class="d-none d-sm-inline ms-1">Novo usuário</span>`;
         }else{
           $("#btnPrimaryAction").innerHTML = `<i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline ms-1">Novo perfil</span>`;
         }

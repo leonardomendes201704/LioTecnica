@@ -12,6 +12,29 @@ function enumFirstCode(key, fallback){
     const DEFAULT_STATUS = enumFirstCode("vagaStatus", "aberta");
     const DEFAULT_SENIORIDADE = enumFirstCode("vagaSenioridade", "Junior");
     const DEFAULT_CATEGORIA = enumFirstCode("requisitoCategoria", "Competencia");
+    const DEFAULT_DEPARTAMENTO = enumFirstCode("vagaDepartamento", "");
+    const DEFAULT_AREA_TIME = enumFirstCode("vagaAreaTime", "");
+    const DEFAULT_TIPO_CONTRATACAO = enumFirstCode("vagaTipoContratacao", "");
+    const DEFAULT_MOTIVO = enumFirstCode("vagaMotivoAbertura", "");
+    const DEFAULT_ORCAMENTO = enumFirstCode("vagaOrcamentoAprovado", "");
+    const DEFAULT_PRIORIDADE = enumFirstCode("vagaPrioridade", "");
+    const DEFAULT_REGIME = enumFirstCode("vagaRegimeJornada", "");
+    const DEFAULT_ESCALA = enumFirstCode("vagaEscalaTrabalho", "");
+    const DEFAULT_MOEDA = enumFirstCode("vagaMoeda", "BRL");
+    const DEFAULT_REMUN_PERIOD = enumFirstCode("vagaRemuneracaoPeriodicidade", "mensal");
+    const DEFAULT_BONUS = enumFirstCode("vagaBonusTipo", "");
+    const DEFAULT_BENEFICIO_TIPO = enumFirstCode("vagaBeneficioTipo", "");
+    const DEFAULT_BENEFICIO_REC = enumFirstCode("vagaBeneficioRecorrencia", "mensal");
+    const DEFAULT_ESCOLARIDADE = enumFirstCode("vagaEscolaridade", "");
+    const DEFAULT_FORMACAO = enumFirstCode("vagaFormacaoArea", "");
+    const DEFAULT_REQ_NIVEL = enumFirstCode("vagaRequisitoNivel", "");
+    const DEFAULT_REQ_AVALIACAO = enumFirstCode("vagaRequisitoAvaliacao", "");
+    const DEFAULT_ETAPA_RESP = enumFirstCode("vagaEtapaResponsavel", "");
+    const DEFAULT_ETAPA_MODO = enumFirstCode("vagaEtapaModo", "");
+    const DEFAULT_QUESTION_TIPO = enumFirstCode("vagaPerguntaTipo", "");
+    const DEFAULT_PESO = enumFirstCode("vagaPeso", "1");
+    const DEFAULT_PUBLICACAO = enumFirstCode("vagaPublicacaoVisibilidade", "");
+    const DEFAULT_GENERO = enumFirstCode("vagaGeneroPreferencia", "");
     const EMPTY_TEXT = "—";
     const BULLET = "•";
 
@@ -21,16 +44,63 @@ function enumFirstCode(key, fallback){
       if(!el) return;
       el.textContent = (value ?? fallback);
     }
+
+    function setValue(id, value){
+      const el = $("#"+id);
+      if(!el) return;
+      el.value = value ?? "";
+    }
+
+    function setChecked(id, value){
+      const el = $("#"+id);
+      if(!el) return;
+      el.checked = !!value;
+    }
+
+    function getValue(id){
+      const el = $("#"+id);
+      return el ? (el.value || "").trim() : "";
+    }
+
+    function getChecked(id){
+      const el = $("#"+id);
+      return !!(el && el.checked);
+    }
+
+    function splitTags(text){
+      return (text || "")
+        .split(";")
+        .map(x => x.trim())
+        .filter(Boolean);
+    }
+
+    function joinTags(list){
+      return (Array.isArray(list) ? list : []).join("; ");
+    }
 function fmtStatus(s){
-      const map = { aberta:"Aberta", pausada:"Pausada", fechada:"Fechada" };
+      const map = {
+        aberta: "Aberta",
+        pausada: "Pausada",
+        fechada: "Fechada",
+        rascunho: "Rascunho",
+        triagem: "Em triagem",
+        entrevistas: "Em entrevistas",
+        oferta: "Em oferta",
+        congelada: "Congelada"
+      };
       return map[s] || s;
     }
 
     function buildStatusBadge(s){
       const map = {
-        aberta:  "success",
+        aberta: "success",
         pausada: "warning",
-        fechada: "secondary"
+        fechada: "secondary",
+        rascunho: "secondary",
+        triagem: "info",
+        entrevistas: "info",
+        oferta: "success",
+        congelada: "warning"
       };
       const bs = map[s] || "primary";
       const badge = cloneTemplate("tpl-vaga-status-badge");
@@ -390,6 +460,274 @@ function fmtStatus(s){
     }
 
     
+    function newBenefit(){
+      return {
+        tipo: DEFAULT_BENEFICIO_TIPO,
+        valor: "",
+        recorrencia: DEFAULT_BENEFICIO_REC,
+        obrigatorio: true,
+        obs: ""
+      };
+    }
+
+    function newModalReq(){
+      return {
+        nome: "",
+        peso: DEFAULT_PESO,
+        obrigatorio: false,
+        anos: "",
+        nivel: DEFAULT_REQ_NIVEL,
+        avaliacao: DEFAULT_REQ_AVALIACAO,
+        obs: ""
+      };
+    }
+
+    function newStage(){
+      return {
+        nome: "Entrevista RH",
+        responsavel: DEFAULT_ETAPA_RESP,
+        modo: DEFAULT_ETAPA_MODO,
+        slaDias: "3",
+        descricao: ""
+      };
+    }
+
+    function newQuestion(){
+      return {
+        pergunta: "Tem disponibilidade para presencial 2x por semana?",
+        tipo: DEFAULT_QUESTION_TIPO,
+        peso: DEFAULT_PESO,
+        obrigatoria: true,
+        knockout: false,
+        opcoes: []
+      };
+    }
+
+    function bindRemoveRow(row){
+      const btn = row.querySelector('[data-act="remove"]');
+      if(btn) btn.addEventListener("click", () => row.remove());
+    }
+
+    function buildBenefitRow(item){
+      const row = cloneTemplate("tpl-vaga-benefit-row");
+      if(!row) return null;
+      const typeEl = row.querySelector('[data-role="benefit-type"]');
+      const valEl = row.querySelector('[data-role="benefit-value"]');
+      const recEl = row.querySelector('[data-role="benefit-rec"]');
+      const reqEl = row.querySelector('[data-role="benefit-required"]');
+      const obsEl = row.querySelector('[data-role="benefit-obs"]');
+      const titleEl = row.querySelector('[data-role="benefit-title"]');
+
+      if(typeEl) typeEl.value = item.tipo || DEFAULT_BENEFICIO_TIPO;
+      if(recEl) recEl.value = item.recorrencia || DEFAULT_BENEFICIO_REC;
+      if(valEl) valEl.value = item.valor || "";
+      if(reqEl) reqEl.checked = !!item.obrigatorio;
+      if(obsEl) obsEl.value = item.obs || "";
+      if(titleEl && typeEl) titleEl.textContent = typeEl.selectedOptions[0]?.textContent || "Beneficio";
+
+      if(typeEl && titleEl){
+        typeEl.addEventListener("change", () => {
+          titleEl.textContent = typeEl.selectedOptions[0]?.textContent || "Beneficio";
+        });
+      }
+
+      bindRemoveRow(row);
+      return row;
+    }
+
+    function renderBenefitList(items){
+      const host = $("#vagaBenefitsList");
+      if(!host) return;
+      host.replaceChildren();
+      (items || []).forEach(it => {
+        const row = buildBenefitRow(it);
+        if(row) host.appendChild(row);
+      });
+    }
+
+    function collectBenefitList(){
+      const host = $("#vagaBenefitsList");
+      if(!host) return [];
+      return $$(".vaga-benefit-row", host).map(row => ({
+        tipo: row.querySelector('[data-role="benefit-type"]')?.value || "",
+        valor: row.querySelector('[data-role="benefit-value"]')?.value || "",
+        recorrencia: row.querySelector('[data-role="benefit-rec"]')?.value || "",
+        obrigatorio: !!row.querySelector('[data-role="benefit-required"]')?.checked,
+        obs: row.querySelector('[data-role="benefit-obs"]')?.value || ""
+      }));
+    }
+
+    function buildModalReqRow(item){
+      const row = cloneTemplate("tpl-vaga-req-row");
+      if(!row) return null;
+      const nameEl = row.querySelector('[data-role="req-name"]');
+      const weightEl = row.querySelector('[data-role="req-weight"]');
+      const reqEl = row.querySelector('[data-role="req-required"]');
+      const yearsEl = row.querySelector('[data-role="req-years"]');
+      const levelEl = row.querySelector('[data-role="req-level"]');
+      const evalEl = row.querySelector('[data-role="req-eval"]');
+      const obsEl = row.querySelector('[data-role="req-obs"]');
+      const titleEl = row.querySelector('[data-role="req-title"]');
+
+      if(nameEl) nameEl.value = item.nome || "";
+      if(weightEl) weightEl.value = item.peso != null ? String(item.peso) : DEFAULT_PESO;
+      if(reqEl) reqEl.checked = !!item.obrigatorio;
+      if(yearsEl) yearsEl.value = item.anos || "";
+      if(levelEl) levelEl.value = item.nivel || DEFAULT_REQ_NIVEL;
+      if(evalEl) evalEl.value = item.avaliacao || DEFAULT_REQ_AVALIACAO;
+      if(obsEl) obsEl.value = item.obs || "";
+      if(titleEl && nameEl) titleEl.textContent = nameEl.value || "Requisito";
+
+      if(nameEl && titleEl){
+        nameEl.addEventListener("input", () => {
+          titleEl.textContent = nameEl.value || "Requisito";
+        });
+      }
+
+      bindRemoveRow(row);
+      return row;
+    }
+
+    function renderModalReqList(items){
+      const host = $("#vagaReqList");
+      if(!host) return;
+      host.replaceChildren();
+      (items || []).forEach(it => {
+        const row = buildModalReqRow(it);
+        if(row) host.appendChild(row);
+      });
+    }
+
+    function collectModalReqList(){
+      const host = $("#vagaReqList");
+      if(!host) return [];
+      return $$(".vaga-req-row", host).map(row => ({
+        nome: row.querySelector('[data-role="req-name"]')?.value || "",
+        peso: parseInt(row.querySelector('[data-role="req-weight"]')?.value || DEFAULT_PESO, 10),
+        obrigatorio: !!row.querySelector('[data-role="req-required"]')?.checked,
+        anos: row.querySelector('[data-role="req-years"]')?.value || "",
+        nivel: row.querySelector('[data-role="req-level"]')?.value || "",
+        avaliacao: row.querySelector('[data-role="req-eval"]')?.value || "",
+        obs: row.querySelector('[data-role="req-obs"]')?.value || ""
+      }));
+    }
+
+    function buildStageRow(item){
+      const row = cloneTemplate("tpl-vaga-stage-row");
+      if(!row) return null;
+      const nameEl = row.querySelector('[data-role="stage-name"]');
+      const ownerEl = row.querySelector('[data-role="stage-owner"]');
+      const modeEl = row.querySelector('[data-role="stage-mode"]');
+      const slaEl = row.querySelector('[data-role="stage-sla"]');
+      const descEl = row.querySelector('[data-role="stage-desc"]');
+      const titleEl = row.querySelector('[data-role="stage-title"]');
+
+      if(nameEl) nameEl.value = item.nome || "";
+      if(ownerEl) ownerEl.value = item.responsavel || DEFAULT_ETAPA_RESP;
+      if(modeEl) modeEl.value = item.modo || DEFAULT_ETAPA_MODO;
+      if(slaEl) slaEl.value = item.slaDias || "";
+      if(descEl) descEl.value = item.descricao || "";
+      if(titleEl && nameEl) titleEl.textContent = nameEl.value || "Etapa";
+
+      if(nameEl && titleEl){
+        nameEl.addEventListener("input", () => {
+          titleEl.textContent = nameEl.value || "Etapa";
+        });
+      }
+
+      bindRemoveRow(row);
+      return row;
+    }
+
+    function renderStageList(items){
+      const host = $("#vagaEtapasList");
+      if(!host) return;
+      host.replaceChildren();
+      (items || []).forEach(it => {
+        const row = buildStageRow(it);
+        if(row) host.appendChild(row);
+      });
+    }
+
+    function collectStageList(){
+      const host = $("#vagaEtapasList");
+      if(!host) return [];
+      return $$(".vaga-stage-row", host).map(row => ({
+        nome: row.querySelector('[data-role="stage-name"]')?.value || "",
+        responsavel: row.querySelector('[data-role="stage-owner"]')?.value || "",
+        modo: row.querySelector('[data-role="stage-mode"]')?.value || "",
+        slaDias: row.querySelector('[data-role="stage-sla"]')?.value || "",
+        descricao: row.querySelector('[data-role="stage-desc"]')?.value || ""
+      }));
+    }
+
+    function toggleQuestionOptions(row){
+      const typeEl = row.querySelector('[data-role="question-type"]');
+      const wrap = row.querySelector('[data-role="question-options-wrap"]');
+      if(!typeEl || !wrap) return;
+      wrap.classList.toggle("d-none", typeEl.value !== "multipla");
+    }
+
+    function buildQuestionRow(item){
+      const row = cloneTemplate("tpl-vaga-question-row");
+      if(!row) return null;
+      const textEl = row.querySelector('[data-role="question-text"]');
+      const typeEl = row.querySelector('[data-role="question-type"]');
+      const weightEl = row.querySelector('[data-role="question-weight"]');
+      const reqEl = row.querySelector('[data-role="question-required"]');
+      const koEl = row.querySelector('[data-role="question-ko"]');
+      const optEl = row.querySelector('[data-role="question-options"]');
+      const titleEl = row.querySelector('[data-role="question-title"]');
+
+      if(textEl) textEl.value = item.pergunta || "";
+      if(typeEl) typeEl.value = item.tipo || DEFAULT_QUESTION_TIPO;
+      if(weightEl) weightEl.value = item.peso != null ? String(item.peso) : DEFAULT_PESO;
+      if(reqEl) reqEl.checked = !!item.obrigatoria;
+      if(koEl) koEl.checked = !!item.knockout;
+      if(optEl) optEl.value = Array.isArray(item.opcoes) ? item.opcoes.join("; ") : (item.opcoes || "");
+      if(titleEl && textEl) titleEl.textContent = textEl.value || "Pergunta";
+
+      if(textEl && titleEl){
+        textEl.addEventListener("input", () => {
+          titleEl.textContent = textEl.value || "Pergunta";
+        });
+      }
+      if(typeEl){
+        typeEl.addEventListener("change", () => toggleQuestionOptions(row));
+      }
+      toggleQuestionOptions(row);
+
+      bindRemoveRow(row);
+      return row;
+    }
+
+    function renderQuestionList(items){
+      const host = $("#vagaPerguntasList");
+      if(!host) return;
+      host.replaceChildren();
+      (items || []).forEach(it => {
+        const row = buildQuestionRow(it);
+        if(row) host.appendChild(row);
+      });
+    }
+
+    function collectQuestionList(){
+      const host = $("#vagaPerguntasList");
+      if(!host) return [];
+      return $$(".vaga-question-row", host).map(row => {
+        const type = row.querySelector('[data-role="question-type"]')?.value || "";
+        const optText = row.querySelector('[data-role="question-options"]')?.value || "";
+        return {
+          pergunta: row.querySelector('[data-role="question-text"]')?.value || "",
+          tipo: type,
+          peso: parseInt(row.querySelector('[data-role="question-weight"]')?.value || DEFAULT_PESO, 10),
+          obrigatoria: !!row.querySelector('[data-role="question-required"]')?.checked,
+          knockout: !!row.querySelector('[data-role="question-ko"]')?.checked,
+          opcoes: type === "multipla" ? splitTags(optText) : []
+        };
+      });
+    }
+
     // ========= CRUD: Vagas
     function openVagaModal(mode, id){
       const modal = bootstrap.Modal.getOrCreateInstance($("#modalVaga"));
@@ -399,17 +737,109 @@ function fmtStatus(s){
       if(isEdit){
         const v = findVaga(id);
         if(!v) return;
+        const meta = v.meta || {};
+        const jornada = v.jornada || {};
+        const local = jornada.local || {};
+        const remuneracao = v.remuneracao || {};
+        const requisitosExtras = v.requisitosExtras || {};
+        const processo = v.processo || {};
+        const publicacao = v.publicacao || {};
+        const compliance = v.compliance || {};
+        const diversidade = compliance.diversidade || {};
+        const lgpd = compliance.lgpd || {};
+        const docs = compliance.docs || {};
+
         $("#vagaId").value = v.id;
         $("#vagaCodigo").value = v.codigo || "";
         $("#vagaTitulo").value = v.titulo || "";
         $("#vagaArea").value = v.area || "";
         $("#vagaModalidade").value = v.modalidade || DEFAULT_MODALIDADE;
         $("#vagaStatus").value = v.status || DEFAULT_STATUS;
-        $("#vagaCidade").value = v.cidade || "";
-        $("#vagaUF").value = v.uf || "";
+        $("#vagaCidade").value = v.cidade || local.cidade || "";
+        $("#vagaUF").value = v.uf || local.uf || "";
         $("#vagaSenioridade").value = v.senioridade || DEFAULT_SENIORIDADE;
         $("#vagaThreshold").value = clamp(parseInt(v.threshold ?? 70,10)||70, 0, 100);
         $("#vagaDescricao").value = v.descricao || "";
+
+        setValue("vagaDepartamento", meta.departamento || DEFAULT_DEPARTAMENTO);
+        setValue("vagaAreaTime", meta.areaTime || DEFAULT_AREA_TIME);
+        setValue("vagaQuantidade", meta.quantidade ?? 1);
+        setValue("vagaTipoContratacao", meta.tipoContratacao || DEFAULT_TIPO_CONTRATACAO);
+        setValue("vagaCodigoInterno", meta.codigoInterno || "");
+        setValue("vagaCbo", meta.cbo || "");
+        setValue("vagaGestor", meta.gestorRequisitante || "");
+        setValue("vagaRecrutador", meta.recrutador || "");
+        setValue("vagaMotivoAbertura", meta.motivoAbertura || DEFAULT_MOTIVO);
+        setValue("vagaOrcamento", meta.orcamentoAprovado || DEFAULT_ORCAMENTO);
+        setValue("vagaPrioridade", meta.prioridade || DEFAULT_PRIORIDADE);
+        setValue("vagaResumo", meta.resumo || "");
+        setValue("vagaTagsResponsabilidades", joinTags(meta.tagsResponsabilidades));
+        setValue("vagaTagsKeywords", joinTags(meta.tagsKeywords));
+        setChecked("vagaConfidencial", meta.confidencial);
+        setChecked("vagaAceitaPcd", meta.aceitaPcd);
+        setChecked("vagaUrgente", meta.urgente);
+        setValue("vagaProjetoNome", meta.projeto?.nome || "");
+        setValue("vagaProjetoCliente", meta.projeto?.cliente || "");
+        setValue("vagaProjetoPrazo", meta.projeto?.prazo || "");
+        setValue("vagaProjetoDescricao", meta.projeto?.descricao || "");
+
+        setValue("vagaGeneroPreferencia", diversidade.generoPreferencia || DEFAULT_GENERO);
+        setChecked("vagaVagaAfirmativa", diversidade.vagaAfirmativa);
+        setChecked("vagaLinguagemInclusiva", diversidade.linguagemInclusiva);
+        setValue("vagaPublicoAfirmativo", diversidade.publicoAfirmativo || "");
+        setValue("vagaPcdObs", meta.pcdObs || "");
+
+        setValue("vagaRegime", jornada.regime || DEFAULT_REGIME);
+        setValue("vagaCargaSemanal", jornada.cargaSemanal || "");
+        setValue("vagaHoraEntrada", jornada.horaEntrada || "");
+        setValue("vagaHoraSaida", jornada.horaSaida || "");
+        setValue("vagaIntervalo", jornada.intervalo || "");
+        setValue("vagaEscala", jornada.escala || DEFAULT_ESCALA);
+        setValue("vagaCep", local.cep || "");
+        setValue("vagaLogradouro", local.logradouro || "");
+        setValue("vagaNumero", local.numero || "");
+        setValue("vagaBairro", local.bairro || "");
+        setValue("vagaPoliticaTrabalho", local.politicaTrabalho || "");
+        setValue("vagaDeslocamentoObs", local.deslocamentoObs || "");
+
+        setValue("vagaMoeda", remuneracao.moeda || DEFAULT_MOEDA);
+        setValue("vagaSalarioMin", remuneracao.salarioMin || "");
+        setValue("vagaSalarioMax", remuneracao.salarioMax || "");
+        setValue("vagaPeriodicidade", remuneracao.periodicidade || DEFAULT_REMUN_PERIOD);
+        setValue("vagaBonusTipo", remuneracao.bonusTipo || DEFAULT_BONUS);
+        setValue("vagaBonusPercentual", remuneracao.percentual || "");
+        setValue("vagaRemObs", remuneracao.obs || "");
+
+        setValue("vagaEscolaridade", requisitosExtras.escolaridade || DEFAULT_ESCOLARIDADE);
+        setValue("vagaFormacaoArea", requisitosExtras.formacaoArea || DEFAULT_FORMACAO);
+        setValue("vagaExpMinAnos", requisitosExtras.expMinAnos || "");
+        setValue("vagaTagsStack", joinTags(requisitosExtras.tagsStack));
+        setValue("vagaTagsIdiomas", joinTags(requisitosExtras.tagsIdiomas));
+        setValue("vagaDiferenciais", requisitosExtras.diferenciais || "");
+
+        setValue("vagaObsProcesso", processo.obsInternas || "");
+
+        setValue("vagaVisibilidade", publicacao.visibilidade || DEFAULT_PUBLICACAO);
+        setValue("vagaDataInicio", publicacao.dataInicio || "");
+        setValue("vagaDataFim", publicacao.dataFim || "");
+        setChecked("vagaCanalLinkedin", publicacao.canais?.linkedin);
+        setChecked("vagaCanalSite", publicacao.canais?.site);
+        setChecked("vagaCanalIndicacao", publicacao.canais?.indicacao);
+        setChecked("vagaCanalPortal", publicacao.canais?.portalEmprego);
+        setValue("vagaDescricaoPublica", publicacao.descricaoPublica || "");
+
+        setChecked("vagaLgpdConsentimento", lgpd.consentimentoBase);
+        setChecked("vagaLgpdCompartilhamento", lgpd.compartilhamento);
+        setChecked("vagaLgpdRetencao", lgpd.retencao);
+        setValue("vagaLgpdRetencaoMeses", lgpd.retencaoMeses || "");
+        setChecked("vagaDocCnh", docs.cnh);
+        setChecked("vagaDocViagens", docs.disponibilidadeViagens);
+        setChecked("vagaDocAntecedentes", docs.antecedentes);
+
+        renderBenefitList(Array.isArray(remuneracao.beneficios) ? remuneracao.beneficios : []);
+        renderModalReqList(Array.isArray(requisitosExtras.requisitosDetalhados) ? requisitosExtras.requisitosDetalhados : []);
+        renderStageList(Array.isArray(processo.etapas) ? processo.etapas : []);
+        renderQuestionList(Array.isArray(processo.perguntas) ? processo.perguntas : []);
       }else{
         $("#vagaId").value = "";
         $("#vagaCodigo").value = "";
@@ -422,6 +852,86 @@ function fmtStatus(s){
         $("#vagaSenioridade").value = DEFAULT_SENIORIDADE;
         $("#vagaThreshold").value = 70;
         $("#vagaDescricao").value = "";
+
+        setValue("vagaDepartamento", DEFAULT_DEPARTAMENTO);
+        setValue("vagaAreaTime", DEFAULT_AREA_TIME);
+        setValue("vagaQuantidade", 1);
+        setValue("vagaTipoContratacao", DEFAULT_TIPO_CONTRATACAO);
+        setValue("vagaCodigoInterno", "");
+        setValue("vagaCbo", "");
+        setValue("vagaGestor", "");
+        setValue("vagaRecrutador", "");
+        setValue("vagaMotivoAbertura", DEFAULT_MOTIVO);
+        setValue("vagaOrcamento", DEFAULT_ORCAMENTO);
+        setValue("vagaPrioridade", DEFAULT_PRIORIDADE);
+        setValue("vagaResumo", "");
+        setValue("vagaTagsResponsabilidades", "");
+        setValue("vagaTagsKeywords", "");
+        setChecked("vagaConfidencial", false);
+        setChecked("vagaAceitaPcd", false);
+        setChecked("vagaUrgente", false);
+        setValue("vagaProjetoNome", "");
+        setValue("vagaProjetoCliente", "");
+        setValue("vagaProjetoPrazo", "");
+        setValue("vagaProjetoDescricao", "");
+
+        setValue("vagaGeneroPreferencia", DEFAULT_GENERO);
+        setChecked("vagaVagaAfirmativa", false);
+        setChecked("vagaLinguagemInclusiva", false);
+        setValue("vagaPublicoAfirmativo", "");
+        setValue("vagaPcdObs", "");
+
+        setValue("vagaRegime", DEFAULT_REGIME);
+        setValue("vagaCargaSemanal", "");
+        setValue("vagaHoraEntrada", "");
+        setValue("vagaHoraSaida", "");
+        setValue("vagaIntervalo", "");
+        setValue("vagaEscala", DEFAULT_ESCALA);
+        setValue("vagaCep", "");
+        setValue("vagaLogradouro", "");
+        setValue("vagaNumero", "");
+        setValue("vagaBairro", "");
+        setValue("vagaPoliticaTrabalho", "");
+        setValue("vagaDeslocamentoObs", "");
+
+        setValue("vagaMoeda", DEFAULT_MOEDA);
+        setValue("vagaSalarioMin", "");
+        setValue("vagaSalarioMax", "");
+        setValue("vagaPeriodicidade", DEFAULT_REMUN_PERIOD);
+        setValue("vagaBonusTipo", DEFAULT_BONUS);
+        setValue("vagaBonusPercentual", "");
+        setValue("vagaRemObs", "");
+
+        setValue("vagaEscolaridade", DEFAULT_ESCOLARIDADE);
+        setValue("vagaFormacaoArea", DEFAULT_FORMACAO);
+        setValue("vagaExpMinAnos", "");
+        setValue("vagaTagsStack", "");
+        setValue("vagaTagsIdiomas", "");
+        setValue("vagaDiferenciais", "");
+
+        setValue("vagaObsProcesso", "");
+
+        setValue("vagaVisibilidade", DEFAULT_PUBLICACAO);
+        setValue("vagaDataInicio", "");
+        setValue("vagaDataFim", "");
+        setChecked("vagaCanalLinkedin", false);
+        setChecked("vagaCanalSite", false);
+        setChecked("vagaCanalIndicacao", false);
+        setChecked("vagaCanalPortal", false);
+        setValue("vagaDescricaoPublica", "");
+
+        setChecked("vagaLgpdConsentimento", false);
+        setChecked("vagaLgpdCompartilhamento", false);
+        setChecked("vagaLgpdRetencao", false);
+        setValue("vagaLgpdRetencaoMeses", "");
+        setChecked("vagaDocCnh", false);
+        setChecked("vagaDocViagens", false);
+        setChecked("vagaDocAntecedentes", false);
+
+        renderBenefitList([newBenefit()]);
+        renderModalReqList([newModalReq()]);
+        renderStageList([newStage()]);
+        renderQuestionList([newQuestion()]);
       }
 
       modal.show();
@@ -439,6 +949,106 @@ function fmtStatus(s){
       const senioridade = ($("#vagaSenioridade").value || "").trim();
       const threshold = clamp(parseInt($("#vagaThreshold").value,10)||70, 0, 100);
       const descricao = ($("#vagaDescricao").value || "").trim();
+      const meta = {
+        departamento: getValue("vagaDepartamento"),
+        areaTime: getValue("vagaAreaTime"),
+        quantidade: parseInt(getValue("vagaQuantidade") || "1", 10) || 1,
+        tipoContratacao: getValue("vagaTipoContratacao"),
+        codigoInterno: getValue("vagaCodigoInterno"),
+        cbo: getValue("vagaCbo"),
+        gestorRequisitante: getValue("vagaGestor"),
+        recrutador: getValue("vagaRecrutador"),
+        motivoAbertura: getValue("vagaMotivoAbertura"),
+        orcamentoAprovado: getValue("vagaOrcamento"),
+        prioridade: getValue("vagaPrioridade"),
+        resumo: getValue("vagaResumo"),
+        tagsResponsabilidades: splitTags(getValue("vagaTagsResponsabilidades")),
+        tagsKeywords: splitTags(getValue("vagaTagsKeywords")),
+        confidencial: getChecked("vagaConfidencial"),
+        aceitaPcd: getChecked("vagaAceitaPcd"),
+        urgente: getChecked("vagaUrgente"),
+        projeto: {
+          nome: getValue("vagaProjetoNome"),
+          cliente: getValue("vagaProjetoCliente"),
+          prazo: getValue("vagaProjetoPrazo"),
+          descricao: getValue("vagaProjetoDescricao")
+        },
+        pcdObs: getValue("vagaPcdObs")
+      };
+      const diversidade = {
+        generoPreferencia: getValue("vagaGeneroPreferencia"),
+        vagaAfirmativa: getChecked("vagaVagaAfirmativa"),
+        linguagemInclusiva: getChecked("vagaLinguagemInclusiva"),
+        publicoAfirmativo: getValue("vagaPublicoAfirmativo")
+      };
+      const jornada = {
+        regime: getValue("vagaRegime"),
+        cargaSemanal: getValue("vagaCargaSemanal"),
+        horaEntrada: getValue("vagaHoraEntrada"),
+        horaSaida: getValue("vagaHoraSaida"),
+        intervalo: getValue("vagaIntervalo"),
+        escala: getValue("vagaEscala"),
+        local: {
+          cep: getValue("vagaCep"),
+          logradouro: getValue("vagaLogradouro"),
+          numero: getValue("vagaNumero"),
+          bairro: getValue("vagaBairro"),
+          cidade,
+          uf,
+          politicaTrabalho: getValue("vagaPoliticaTrabalho"),
+          deslocamentoObs: getValue("vagaDeslocamentoObs")
+        }
+      };
+      const remuneracao = {
+        moeda: getValue("vagaMoeda"),
+        salarioMin: getValue("vagaSalarioMin"),
+        salarioMax: getValue("vagaSalarioMax"),
+        periodicidade: getValue("vagaPeriodicidade"),
+        bonusTipo: getValue("vagaBonusTipo"),
+        percentual: getValue("vagaBonusPercentual"),
+        obs: getValue("vagaRemObs"),
+        beneficios: collectBenefitList()
+      };
+      const requisitosExtras = {
+        escolaridade: getValue("vagaEscolaridade"),
+        formacaoArea: getValue("vagaFormacaoArea"),
+        expMinAnos: getValue("vagaExpMinAnos"),
+        tagsStack: splitTags(getValue("vagaTagsStack")),
+        tagsIdiomas: splitTags(getValue("vagaTagsIdiomas")),
+        diferenciais: getValue("vagaDiferenciais"),
+        requisitosDetalhados: collectModalReqList().filter(r => (r.nome || "").trim())
+      };
+      const processo = {
+        etapas: collectStageList().filter(e => (e.nome || "").trim()),
+        perguntas: collectQuestionList().filter(p => (p.pergunta || "").trim()),
+        obsInternas: getValue("vagaObsProcesso")
+      };
+      const publicacao = {
+        visibilidade: getValue("vagaVisibilidade"),
+        dataInicio: getValue("vagaDataInicio"),
+        dataFim: getValue("vagaDataFim"),
+        canais: {
+          linkedin: getChecked("vagaCanalLinkedin"),
+          site: getChecked("vagaCanalSite"),
+          indicacao: getChecked("vagaCanalIndicacao"),
+          portalEmprego: getChecked("vagaCanalPortal")
+        },
+        descricaoPublica: getValue("vagaDescricaoPublica")
+      };
+      const compliance = {
+        diversidade,
+        lgpd: {
+          consentimentoBase: getChecked("vagaLgpdConsentimento"),
+          compartilhamento: getChecked("vagaLgpdCompartilhamento"),
+          retencao: getChecked("vagaLgpdRetencao"),
+          retencaoMeses: getValue("vagaLgpdRetencaoMeses")
+        },
+        docs: {
+          cnh: getChecked("vagaDocCnh"),
+          disponibilidadeViagens: getChecked("vagaDocViagens"),
+          antecedentes: getChecked("vagaDocAntecedentes")
+        }
+      };
 
       // validaÃ§Ã£o mÃ­nima
       if(!titulo){
@@ -470,6 +1080,13 @@ function fmtStatus(s){
         v.senioridade = senioridade;
         v.threshold = threshold;
         v.descricao = descricao;
+        v.meta = meta;
+        v.jornada = jornada;
+        v.remuneracao = remuneracao;
+        v.requisitosExtras = requisitosExtras;
+        v.processo = processo;
+        v.publicacao = publicacao;
+        v.compliance = compliance;
         v.updatedAt = now;
 
         toast("Vaga atualizada.");
@@ -490,7 +1107,14 @@ function fmtStatus(s){
           createdAt: now,
           updatedAt: now,
           weights: { competencia:40, experiencia:30, formacao:15, localidade:15 },
-          requisitos: []
+          requisitos: [],
+          meta,
+          jornada,
+          remuneracao,
+          requisitosExtras,
+          processo,
+          publicacao,
+          compliance
         };
         state.vagas.unshift(v);
         state.selectedId = v.id;
@@ -817,31 +1441,173 @@ function simulateMatch(vagaId, fromMobile=false){
             const data = JSON.parse(reader.result);
             if(!data || !Array.isArray(data.vagas)) throw new Error("Formato invÃ¡lido.");
             // validaÃ§Ã£o simples
-            state.vagas = data.vagas.map(v => ({
-              id: v.id || uid(),
-              codigo: v.codigo || "",
-              titulo: v.titulo || "",
-              area: v.area || "",
-              modalidade: v.modalidade || DEFAULT_MODALIDADE,
-              status: v.status || DEFAULT_STATUS,
-              cidade: v.cidade || "",
-              uf: v.uf || "",
-              senioridade: v.senioridade || DEFAULT_SENIORIDADE,
-              threshold: clamp(parseInt(v.threshold ?? 70,10)||70,0,100),
-              descricao: v.descricao || "",
-              createdAt: v.createdAt || new Date().toISOString(),
-              updatedAt: v.updatedAt || new Date().toISOString(),
-              weights: v.weights || { competencia:40, experiencia:30, formacao:15, localidade:15 },
-              requisitos: Array.isArray(v.requisitos) ? v.requisitos.map(r => ({
-                id: r.id || uid(),
-                categoria: r.categoria || DEFAULT_CATEGORIA,
-                termo: r.termo || "",
-                peso: clamp(parseInt(r.peso ?? 0,10)||0,0,10),
-                obrigatorio: !!r.obrigatorio,
-                sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
-                obs: r.obs || ""
-              })) : []
-            }));
+            state.vagas = data.vagas.map(v => {
+              const meta = v.meta || {};
+              const jornada = v.jornada || {};
+              const local = jornada.local || {};
+              const remuneracao = v.remuneracao || {};
+              const requisitosExtras = v.requisitosExtras || {};
+              const processo = v.processo || {};
+              const publicacao = v.publicacao || {};
+              const compliance = v.compliance || {};
+              const diversidade = compliance.diversidade || {};
+              const lgpd = compliance.lgpd || {};
+              const docs = compliance.docs || {};
+              const cidade = (v.cidade || local.cidade || "").trim();
+              const uf = (v.uf || local.uf || "").trim().toUpperCase().slice(0,2);
+
+              return {
+                id: v.id || uid(),
+                codigo: v.codigo || "",
+                titulo: v.titulo || "",
+                area: v.area || "",
+                modalidade: v.modalidade || DEFAULT_MODALIDADE,
+                status: v.status || DEFAULT_STATUS,
+                cidade,
+                uf,
+                senioridade: v.senioridade || DEFAULT_SENIORIDADE,
+                threshold: clamp(parseInt(v.threshold ?? 70,10)||70,0,100),
+                descricao: v.descricao || "",
+                createdAt: v.createdAt || new Date().toISOString(),
+                updatedAt: v.updatedAt || new Date().toISOString(),
+                weights: v.weights || { competencia:40, experiencia:30, formacao:15, localidade:15 },
+                requisitos: Array.isArray(v.requisitos) ? v.requisitos.map(r => ({
+                  id: r.id || uid(),
+                  categoria: r.categoria || DEFAULT_CATEGORIA,
+                  termo: r.termo || "",
+                  peso: clamp(parseInt(r.peso ?? 0,10)||0,0,10),
+                  obrigatorio: !!r.obrigatorio,
+                  sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
+                  obs: r.obs || ""
+                })) : [],
+                meta: {
+                  departamento: meta.departamento || DEFAULT_DEPARTAMENTO,
+                  areaTime: meta.areaTime || DEFAULT_AREA_TIME,
+                  quantidade: parseInt(meta.quantidade ?? 1, 10) || 1,
+                  tipoContratacao: meta.tipoContratacao || DEFAULT_TIPO_CONTRATACAO,
+                  codigoInterno: meta.codigoInterno || "",
+                  cbo: meta.cbo || "",
+                  gestorRequisitante: meta.gestorRequisitante || "",
+                  recrutador: meta.recrutador || "",
+                  motivoAbertura: meta.motivoAbertura || DEFAULT_MOTIVO,
+                  orcamentoAprovado: meta.orcamentoAprovado || DEFAULT_ORCAMENTO,
+                  prioridade: meta.prioridade || DEFAULT_PRIORIDADE,
+                  resumo: meta.resumo || "",
+                  tagsResponsabilidades: Array.isArray(meta.tagsResponsabilidades) ? meta.tagsResponsabilidades : [],
+                  tagsKeywords: Array.isArray(meta.tagsKeywords) ? meta.tagsKeywords : [],
+                  confidencial: !!meta.confidencial,
+                  aceitaPcd: !!meta.aceitaPcd,
+                  urgente: !!meta.urgente,
+                  projeto: {
+                    nome: meta.projeto?.nome || "",
+                    cliente: meta.projeto?.cliente || "",
+                    prazo: meta.projeto?.prazo || "",
+                    descricao: meta.projeto?.descricao || ""
+                  },
+                  pcdObs: meta.pcdObs || ""
+                },
+                jornada: {
+                  regime: jornada.regime || DEFAULT_REGIME,
+                  cargaSemanal: jornada.cargaSemanal || "",
+                  horaEntrada: jornada.horaEntrada || "",
+                  horaSaida: jornada.horaSaida || "",
+                  intervalo: jornada.intervalo || "",
+                  escala: jornada.escala || DEFAULT_ESCALA,
+                  local: {
+                    cep: local.cep || "",
+                    logradouro: local.logradouro || "",
+                    numero: local.numero || "",
+                    bairro: local.bairro || "",
+                    cidade,
+                    uf,
+                    politicaTrabalho: local.politicaTrabalho || "",
+                    deslocamentoObs: local.deslocamentoObs || ""
+                  }
+                },
+                remuneracao: {
+                  moeda: remuneracao.moeda || DEFAULT_MOEDA,
+                  salarioMin: remuneracao.salarioMin || "",
+                  salarioMax: remuneracao.salarioMax || "",
+                  periodicidade: remuneracao.periodicidade || DEFAULT_REMUN_PERIOD,
+                  bonusTipo: remuneracao.bonusTipo || DEFAULT_BONUS,
+                  percentual: remuneracao.percentual || "",
+                  obs: remuneracao.obs || "",
+                  beneficios: Array.isArray(remuneracao.beneficios) ? remuneracao.beneficios.map(b => ({
+                    tipo: b.tipo || DEFAULT_BENEFICIO_TIPO,
+                    valor: b.valor || "",
+                    recorrencia: b.recorrencia || DEFAULT_BENEFICIO_REC,
+                    obrigatorio: !!b.obrigatorio,
+                    obs: b.obs || ""
+                  })) : []
+                },
+                requisitosExtras: {
+                  escolaridade: requisitosExtras.escolaridade || DEFAULT_ESCOLARIDADE,
+                  formacaoArea: requisitosExtras.formacaoArea || DEFAULT_FORMACAO,
+                  expMinAnos: requisitosExtras.expMinAnos || "",
+                  tagsStack: Array.isArray(requisitosExtras.tagsStack) ? requisitosExtras.tagsStack : [],
+                  tagsIdiomas: Array.isArray(requisitosExtras.tagsIdiomas) ? requisitosExtras.tagsIdiomas : [],
+                  diferenciais: requisitosExtras.diferenciais || "",
+                  requisitosDetalhados: Array.isArray(requisitosExtras.requisitosDetalhados) ? requisitosExtras.requisitosDetalhados.map(r => ({
+                    nome: r.nome || "",
+                    peso: parseInt(r.peso ?? DEFAULT_PESO, 10) || parseInt(DEFAULT_PESO, 10),
+                    obrigatorio: !!r.obrigatorio,
+                    anos: r.anos || "",
+                    nivel: r.nivel || DEFAULT_REQ_NIVEL,
+                    avaliacao: r.avaliacao || DEFAULT_REQ_AVALIACAO,
+                    obs: r.obs || ""
+                  })) : []
+                },
+                processo: {
+                  etapas: Array.isArray(processo.etapas) ? processo.etapas.map(e => ({
+                    nome: e.nome || "",
+                    responsavel: e.responsavel || DEFAULT_ETAPA_RESP,
+                    modo: e.modo || DEFAULT_ETAPA_MODO,
+                    slaDias: e.slaDias || "",
+                    descricao: e.descricao || ""
+                  })) : [],
+                  perguntas: Array.isArray(processo.perguntas) ? processo.perguntas.map(p => ({
+                    pergunta: p.pergunta || "",
+                    tipo: p.tipo || DEFAULT_QUESTION_TIPO,
+                    peso: parseInt(p.peso ?? DEFAULT_PESO, 10) || parseInt(DEFAULT_PESO, 10),
+                    obrigatoria: !!p.obrigatoria,
+                    knockout: !!p.knockout,
+                    opcoes: Array.isArray(p.opcoes) ? p.opcoes : []
+                  })) : [],
+                  obsInternas: processo.obsInternas || ""
+                },
+                publicacao: {
+                  visibilidade: publicacao.visibilidade || DEFAULT_PUBLICACAO,
+                  dataInicio: publicacao.dataInicio || "",
+                  dataFim: publicacao.dataFim || "",
+                  canais: {
+                    linkedin: !!publicacao.canais?.linkedin,
+                    site: !!publicacao.canais?.site,
+                    indicacao: !!publicacao.canais?.indicacao,
+                    portalEmprego: !!publicacao.canais?.portalEmprego
+                  },
+                  descricaoPublica: publicacao.descricaoPublica || ""
+                },
+                compliance: {
+                  diversidade: {
+                    generoPreferencia: diversidade.generoPreferencia || DEFAULT_GENERO,
+                    vagaAfirmativa: !!diversidade.vagaAfirmativa,
+                    linguagemInclusiva: !!diversidade.linguagemInclusiva,
+                    publicoAfirmativo: diversidade.publicoAfirmativo || ""
+                  },
+                  lgpd: {
+                    consentimentoBase: !!lgpd.consentimentoBase,
+                    compartilhamento: !!lgpd.compartilhamento,
+                    retencao: !!lgpd.retencao,
+                    retencaoMeses: lgpd.retencaoMeses || ""
+                  },
+                  docs: {
+                    cnh: !!docs.cnh,
+                    disponibilidadeViagens: !!docs.disponibilidadeViagens,
+                    antecedentes: !!docs.antecedentes
+                  }
+                }
+              };
+            });
 
             state.selectedId = state.vagas[0]?.id || null;
             saveState();
@@ -895,6 +1661,26 @@ function simulateMatch(vagaId, fromMobile=false){
       $("#btnNewVaga").addEventListener("click", () => openVagaModal("new"));
       $("#btnSaveVaga").addEventListener("click", upsertVagaFromModal);
       $("#btnSaveReq").addEventListener("click", saveReqFromModal);
+      $("#btnAddBenefit").addEventListener("click", () => {
+        const host = $("#vagaBenefitsList");
+        const row = buildBenefitRow(newBenefit());
+        if(host && row) host.appendChild(row);
+      });
+      $("#btnAddVagaReq").addEventListener("click", () => {
+        const host = $("#vagaReqList");
+        const row = buildModalReqRow(newModalReq());
+        if(host && row) host.appendChild(row);
+      });
+      $("#btnAddVagaEtapa").addEventListener("click", () => {
+        const host = $("#vagaEtapasList");
+        const row = buildStageRow(newStage());
+        if(host && row) host.appendChild(row);
+      });
+      $("#btnAddVagaPergunta").addEventListener("click", () => {
+        const host = $("#vagaPerguntasList");
+        const row = buildQuestionRow(newQuestion());
+        if(host && row) host.appendChild(row);
+      });
 
       $("#btnExportJson").addEventListener("click", exportJson);
       $("#btnImportJson").addEventListener("click", importJson);

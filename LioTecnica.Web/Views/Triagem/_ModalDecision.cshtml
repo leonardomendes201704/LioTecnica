@@ -3,8 +3,8 @@
       <div class="modal-content" style="border-radius: 18px; border: 1px solid var(--lt-border);">
         <div class="modal-header">
           <div>
-            <h5 class="modal-title fw-bold" id="decisionTitle">DecisÃ£o de Triagem</h5>
-            <div class="text-muted small">Aplique uma decisÃ£o e registre observaÃ§Ãµes.</div>
+            <h5 class="modal-title fw-bold" id="decisionTitle">Decisão de Triagem</h5>
+            <div class="text-muted small">Aplique uma decisÃ£o e registre observações.</div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
@@ -18,7 +18,7 @@
 
           <div class="row g-2">
             <div class="col-12 col-md-6">
-              <label class="form-label small text-muted">DecisÃ£o</label>
+              <label class="form-label small text-muted">Decisão</label>
               <select class="form-select" id="decAction">
                 @foreach (var opt in actionOptions)
                 {
@@ -27,7 +27,7 @@
               </select>
             </div>
             <div class="col-12 col-md-6">
-              <label class="form-label small text-muted">Motivo (tag rÃ¡pida)</label>
+              <label class="form-label small text-muted">Motivo (tag rápida)</label>
               <select class="form-select" id="decReason">
                 @foreach (var opt in reasonOptions)
                 {

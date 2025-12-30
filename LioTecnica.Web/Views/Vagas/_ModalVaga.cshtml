@@ -1,129 +1,896 @@
-﻿<div class="modal fade" id="modalVaga" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content" style="border-radius: 18px; border: 1px solid var(--lt-border);">
-        <div class="modal-header">
-          <div>
-            <h5 class="modal-title fw-bold" id="modalVagaTitle">Nova vaga</h5>
-            <div class="text-muted small">Dados principais da vaga. Requisitos e pesos ficam nos detalhes.</div>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="modalVaga" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius: 18px; border: 1px solid var(--lt-border);">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold" id="modalVagaTitle">Nova vaga</h5>
+          <div class="text-muted small">Dados principais da vaga. Requisitos e pesos ficam nos detalhes.</div>
         </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
 
-        <div class="modal-body">
-          @{
-            var selectPlaceholder = EnumOptionsHelper.GetOptions<SelectPlaceholder>();
-            var areaOptions = EnumOptionsHelper.GetOptions<VagaArea>();
-            var modalidadeOptions = EnumOptionsHelper.GetOptions<VagaModalidade>();
-            var statusOptions = EnumOptionsHelper.GetOptions<VagaStatus>();
-            var senioridadeOptions = EnumOptionsHelper.GetOptions<VagaSenioridade>();
-          }
-          <input type="hidden" id="vagaId">
+      <div class="modal-body">
+        @{
+          var selectPlaceholder = EnumOptionsHelper.GetOptions<SelectPlaceholder>();
+          var areaOptions = EnumOptionsHelper.GetOptions<VagaArea>();
+          var modalidadeOptions = EnumOptionsHelper.GetOptions<VagaModalidade>();
+          var statusOptions = EnumOptionsHelper.GetOptions<VagaStatus>();
+          var senioridadeOptions = EnumOptionsHelper.GetOptions<VagaSenioridade>();
+          var departamentoOptions = EnumOptionsHelper.GetOptions<VagaDepartamento>();
+          var areaTimeOptions = EnumOptionsHelper.GetOptions<VagaAreaTime>();
+          var tipoContratacaoOptions = EnumOptionsHelper.GetOptions<VagaTipoContratacao>();
+          var motivoAberturaOptions = EnumOptionsHelper.GetOptions<VagaMotivoAbertura>();
+          var orcamentoOptions = EnumOptionsHelper.GetOptions<VagaOrcamentoAprovado>();
+          var prioridadeOptions = EnumOptionsHelper.GetOptions<VagaPrioridade>();
+          var regimeOptions = EnumOptionsHelper.GetOptions<VagaRegimeJornada>();
+          var escalaOptions = EnumOptionsHelper.GetOptions<VagaEscalaTrabalho>();
+          var moedaOptions = EnumOptionsHelper.GetOptions<VagaMoeda>();
+          var remuneracaoPeriodOptions = EnumOptionsHelper.GetOptions<VagaRemuneracaoPeriodicidade>();
+          var bonusOptions = EnumOptionsHelper.GetOptions<VagaBonusTipo>();
+          var beneficioTipoOptions = EnumOptionsHelper.GetOptions<VagaBeneficioTipo>();
+          var beneficioRecorrenciaOptions = EnumOptionsHelper.GetOptions<VagaBeneficioRecorrencia>();
+          var escolaridadeOptions = EnumOptionsHelper.GetOptions<VagaEscolaridade>();
+          var formacaoOptions = EnumOptionsHelper.GetOptions<VagaFormacaoArea>();
+          var reqNivelOptions = EnumOptionsHelper.GetOptions<VagaRequisitoNivel>();
+          var reqAvaliacaoOptions = EnumOptionsHelper.GetOptions<VagaRequisitoAvaliacao>();
+          var etapaResponsavelOptions = EnumOptionsHelper.GetOptions<VagaEtapaResponsavel>();
+          var etapaModoOptions = EnumOptionsHelper.GetOptions<VagaEtapaModo>();
+          var perguntaTipoOptions = EnumOptionsHelper.GetOptions<VagaPerguntaTipo>();
+          var pesoOptions = EnumOptionsHelper.GetOptions<VagaPeso>();
+          var publicacaoVisibilidadeOptions = EnumOptionsHelper.GetOptions<VagaPublicacaoVisibilidade>();
+          var generoPreferenciaOptions = EnumOptionsHelper.GetOptions<VagaGeneroPreferencia>();
+        }
+        <input type="hidden" id="vagaId">
 
-          <div class="row g-2">
-            <div class="col-12 col-md-4">
-              <label class="form-label small text-muted">CÃ³digo</label>
-              <input class="form-control" id="vagaCodigo" placeholder="Ex.: MKT-JR-001">
-            </div>
-            <div class="col-12 col-md-8">
-              <label class="form-label small text-muted">TÃ­tulo *</label>
-              <input class="form-control" id="vagaTitulo" placeholder="Ex.: Analista de Marketing Jr">
-            </div>
+        <div class="row g-2">
+          <div class="col-12">
+            <div class="fw-semibold">Identificacao e contexto</div>
+            <div class="text-muted small">Dados principais e internos da vaga.</div>
+          </div>
 
-            <div class="col-12 col-md-4">
-              <label class="form-label small text-muted">Ãrea *</label>
-              <select class="form-select" id="vagaArea">
-                @foreach (var opt in selectPlaceholder)
-                {
-                  <option value="@opt.Code">@opt.Text</option>
-                }
-                @foreach (var opt in areaOptions)
-                {
-                  <option value="@opt.Code">@opt.Text</option>
-                }
-              </select>
-            </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Codigo</label>
+            <input class="form-control" id="vagaCodigo" placeholder="Ex.: MKT-JR-001">
+          </div>
+          <div class="col-12 col-md-8">
+            <label class="form-label small text-muted">Titulo *</label>
+            <input class="form-control" id="vagaTitulo" placeholder="Ex.: Analista de Marketing Jr">
+          </div>
 
-            <div class="col-12 col-md-4">
-              <label class="form-label small text-muted">Modalidade</label>
-              <select class="form-select" id="vagaModalidade">
-                @foreach (var opt in modalidadeOptions)
-                {
-                  <option value="@opt.Code">@opt.Text</option>
-                }
-              </select>
-            </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Departamento *</label>
+            <select class="form-select" id="vagaDepartamento">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in departamentoOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
 
-            <div class="col-12 col-md-4">
-              <label class="form-label small text-muted">Status *</label>
-              <select class="form-select" id="vagaStatus">
-                @foreach (var opt in selectPlaceholder)
-                {
-                  <option value="@opt.Code">@opt.Text</option>
-                }
-                @foreach (var opt in statusOptions)
-                {
-                  <option value="@opt.Code">@opt.Text</option>
-                }
-              </select>
-            </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Area/Time</label>
+            <select class="form-select" id="vagaAreaTime">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in areaTimeOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
 
-            <div class="col-12 col-md-4">
-              <label class="form-label small text-muted">Cidade</label>
-              <input class="form-control" id="vagaCidade" placeholder="Ex.: Embu das Artes">
-            </div>
-            <div class="col-12 col-md-2">
-              <label class="form-label small text-muted">UF</label>
-              <input class="form-control" id="vagaUF" placeholder="SP" maxlength="2">
-            </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Area *</label>
+            <select class="form-select" id="vagaArea">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in areaOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
 
-            <div class="col-12 col-md-3">
-              <label class="form-label small text-muted">Senioridade</label>
-              <select class="form-select" id="vagaSenioridade">
-                @foreach (var opt in senioridadeOptions)
-                {
-                  <option value="@opt.Code">@opt.Text</option>
-                }
-              </select>
-            </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Modalidade</label>
+            <select class="form-select" id="vagaModalidade">
+              @foreach (var opt in modalidadeOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
 
-            <div class="col-12 col-md-3">
-              <label class="form-label small text-muted">Match mÃ­nimo</label>
-              <div class="input-group">
-                <input type="number" class="form-control" id="vagaThreshold" min="0" max="100" value="70">
-                <span class="input-group-text">%</span>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Status *</label>
+            <select class="form-select" id="vagaStatus">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in statusOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Senioridade</label>
+            <select class="form-select" id="vagaSenioridade">
+              @foreach (var opt in senioridadeOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Quantidade de vagas</label>
+            <input type="number" class="form-control" id="vagaQuantidade" min="1" value="1">
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Tipo de contratacao</label>
+            <select class="form-select" id="vagaTipoContratacao">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in tipoContratacaoOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Match minimo</label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="vagaThreshold" min="0" max="100" value="70">
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label small text-muted">Descricao interna</label>
+            <textarea class="form-control" id="vagaDescricao" rows="3" placeholder="Resumo interno da vaga, responsabilidades, etc."></textarea>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Codigo interno</label>
+            <input class="form-control" id="vagaCodigoInterno" placeholder="EX.: VAG-2025-0012" maxlength="40">
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Codigo CBO (opcional)</label>
+            <input class="form-control" id="vagaCbo" placeholder="0000-00">
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Motivo da abertura</label>
+            <select class="form-select" id="vagaMotivoAbertura">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in motivoAberturaOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Orcamento aprovado</label>
+            <select class="form-select" id="vagaOrcamento">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in orcamentoOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Gestor requisitante</label>
+            <input class="form-control" id="vagaGestor" placeholder="Nome do gestor" maxlength="120">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Recrutador responsavel</label>
+            <input class="form-control" id="vagaRecrutador" placeholder="Nome do recrutador" maxlength="120">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Prioridade</label>
+            <select class="form-select" id="vagaPrioridade">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in prioridadeOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label small text-muted">Resumo / pitch da vaga</label>
+            <textarea class="form-control" id="vagaResumo" rows="2" placeholder="Explique rapidamente o proposito da vaga e o diferencial."></textarea>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Responsabilidades (separe por ;)</label>
+            <textarea class="form-control" id="vagaTagsResponsabilidades" rows="2" placeholder="Ex.: triagem de curriculos; entrevistas; alinhamento com gestores"></textarea>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Palavras-chave (separe por ;)</label>
+            <textarea class="form-control" id="vagaTagsKeywords" rows="2" placeholder="Ex.: recrutamento; ATS; entrevistas por competencia"></textarea>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Confidencial?</label>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="vagaConfidencial">
+              <label class="form-check-label" for="vagaConfidencial">Ocultar empresa/gestor em canais publicos</label>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Aceita PCD?</label>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="vagaAceitaPcd">
+              <label class="form-check-label" for="vagaAceitaPcd">Vaga inclusiva</label>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Vaga urgente?</label>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="vagaUrgente">
+              <label class="form-check-label" for="vagaUrgente">SLA curto</label>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <hr class="my-3 divider">
+            <div class="fw-semibold">Inclusao e diversidade</div>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Preferencia de genero</label>
+            <select class="form-select" id="vagaGeneroPreferencia">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in generoPreferenciaOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Vaga afirmativa?</label>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="vagaVagaAfirmativa">
+              <label class="form-check-label" for="vagaVagaAfirmativa">Sim</label>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Linguagem inclusiva</label>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="vagaLinguagemInclusiva">
+              <label class="form-check-label" for="vagaLinguagemInclusiva">Revisar descricao</label>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Publico afirmativo (opcional)</label>
+            <input class="form-control" id="vagaPublicoAfirmativo" placeholder="Ex.: PCD; Mulheres; Pessoas Negras" maxlength="120">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Observacoes PCD</label>
+            <input class="form-control" id="vagaPcdObs" placeholder="Ex.: acomodacoes ou ajustes necessarios">
+          </div>
+
+          <div class="col-12">
+            <hr class="my-3 divider">
+            <div class="fw-semibold">Projeto</div>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Nome do projeto</label>
+            <input class="form-control" id="vagaProjetoNome" placeholder="Ex.: Migracao RH">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Cliente/Area impactada</label>
+            <input class="form-control" id="vagaProjetoCliente" placeholder="Ex.: Operacoes">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Prazo previsto</label>
+            <input class="form-control" id="vagaProjetoPrazo" placeholder="Ex.: Q3/2025">
+          </div>
+          <div class="col-12">
+            <label class="form-label small text-muted">Descricao do projeto</label>
+            <textarea class="form-control" id="vagaProjetoDescricao" rows="2" placeholder="Escopo e objetivos do projeto."></textarea>
+          </div>
+
+          <div class="col-12">
+            <hr class="my-3 divider">
+            <div class="fw-semibold">Local e jornada</div>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Regime</label>
+            <select class="form-select" id="vagaRegime">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in regimeOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Carga semanal (h)</label>
+            <input class="form-control" id="vagaCargaSemanal" placeholder="40">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Escala</label>
+            <select class="form-select" id="vagaEscala">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in escalaOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Entrada</label>
+            <input class="form-control" id="vagaHoraEntrada" placeholder="08:00">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Saida</label>
+            <input class="form-control" id="vagaHoraSaida" placeholder="17:00">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Intervalo</label>
+            <input class="form-control" id="vagaIntervalo" placeholder="01:00">
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">CEP</label>
+            <input class="form-control" id="vagaCep" placeholder="00000-000">
+          </div>
+          <div class="col-12 col-md-5">
+            <label class="form-label small text-muted">Logradouro</label>
+            <input class="form-control" id="vagaLogradouro" placeholder="Rua / Av.">
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label small text-muted">Numero</label>
+            <input class="form-control" id="vagaNumero" placeholder="123">
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label small text-muted">Bairro</label>
+            <input class="form-control" id="vagaBairro" placeholder="Centro">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Cidade</label>
+            <input class="form-control" id="vagaCidade" placeholder="Ex.: Embu das Artes">
+          </div>
+          <div class="col-12 col-md-2">
+            <label class="form-label small text-muted">UF</label>
+            <input class="form-control" id="vagaUF" placeholder="SP" maxlength="2">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Politica de trabalho</label>
+            <input class="form-control" id="vagaPoliticaTrabalho" placeholder="Ex.: 2 dias presencial, 3 remoto">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Observacoes de deslocamento</label>
+            <input class="form-control" id="vagaDeslocamentoObs" placeholder="Ex.: viagens 1x/mes">
+          </div>
+
+          <div class="col-12">
+            <hr class="my-3 divider">
+            <div class="fw-semibold">Remuneracao e beneficios</div>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Moeda</label>
+            <select class="form-select" id="vagaMoeda">
+              @foreach (var opt in moedaOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Salario minimo</label>
+            <input class="form-control" id="vagaSalarioMin" placeholder="0,00">
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Salario maximo</label>
+            <input class="form-control" id="vagaSalarioMax" placeholder="0,00">
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label small text-muted">Periodicidade</label>
+            <select class="form-select" id="vagaPeriodicidade">
+              @foreach (var opt in remuneracaoPeriodOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Bonus/Comissao</label>
+            <select class="form-select" id="vagaBonusTipo">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in bonusOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Percentual bonus/comissao</label>
+            <input class="form-control" id="vagaBonusPercentual" placeholder="0,00%">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Observacoes de remuneracao</label>
+            <input class="form-control" id="vagaRemObs" placeholder="Ex.: faixa depende de senioridade">
+          </div>
+
+          <div class="col-12 d-flex align-items-center justify-content-between gap-2 flex-wrap mt-1">
+            <div>
+              <div class="fw-semibold">Beneficios</div>
+              <div class="text-muted small">Adicione beneficios com tipo, valor e detalhes.</div>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnAddBenefit">
+              <i class="bi bi-plus-lg me-1"></i>Adicionar beneficio
+            </button>
+          </div>
+          <div class="col-12">
+            <div id="vagaBenefitsList" class="d-grid gap-2"></div>
+          </div>
+
+          <div class="col-12">
+            <hr class="my-3 divider">
+            <div class="fw-semibold">Requisitos e qualificacoes</div>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Escolaridade</label>
+            <select class="form-select" id="vagaEscolaridade">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in escolaridadeOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Area de formacao</label>
+            <select class="form-select" id="vagaFormacaoArea">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in formacaoOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Experiencia minima (anos)</label>
+            <input class="form-control" id="vagaExpMinAnos" placeholder="0">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Stack / Ferramentas (separe por ;)</label>
+            <textarea class="form-control" id="vagaTagsStack" rows="2" placeholder="Ex.: Excel; Power BI; ATS"></textarea>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small text-muted">Idiomas (separe por ;)</label>
+            <textarea class="form-control" id="vagaTagsIdiomas" rows="2" placeholder="Ex.: Ingles (B2); Espanhol (A2)"></textarea>
+          </div>
+          <div class="col-12 d-flex align-items-center justify-content-between gap-2 flex-wrap mt-1">
+            <div>
+              <div class="fw-semibold">Requisitos detalhados</div>
+              <div class="text-muted small">Peso, obrigatorio, nivel e avaliacao.</div>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnAddVagaReq">
+              <i class="bi bi-plus-lg me-1"></i>Adicionar requisito
+            </button>
+          </div>
+          <div class="col-12">
+            <div id="vagaReqList" class="d-grid gap-2"></div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small text-muted">Diferenciais</label>
+            <textarea class="form-control" id="vagaDiferenciais" rows="2" placeholder="Ex.: certificacoes, vivencia em alto volume"></textarea>
+          </div>
+
+          <div class="col-12">
+            <hr class="my-3 divider">
+            <div class="fw-semibold">Processo seletivo</div>
+          </div>
+
+          <div class="col-12 d-flex align-items-center justify-content-between gap-2 flex-wrap">
+            <div>
+              <div class="fw-semibold">Etapas do processo</div>
+              <div class="text-muted small">Defina responsaveis, modo e SLA.</div>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnAddVagaEtapa">
+              <i class="bi bi-plus-lg me-1"></i>Adicionar etapa
+            </button>
+          </div>
+          <div class="col-12">
+            <div id="vagaEtapasList" class="d-grid gap-2"></div>
+          </div>
+
+          <div class="col-12 d-flex align-items-center justify-content-between gap-2 flex-wrap mt-1">
+            <div>
+              <div class="fw-semibold">Perguntas de triagem</div>
+              <div class="text-muted small">Knockout, peso e opcoes.</div>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnAddVagaPergunta">
+              <i class="bi bi-plus-lg me-1"></i>Adicionar pergunta
+            </button>
+          </div>
+          <div class="col-12">
+            <div id="vagaPerguntasList" class="d-grid gap-2"></div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small text-muted">Observacoes internas do processo</label>
+            <textarea class="form-control" id="vagaObsProcesso" rows="2" placeholder="Ex.: aprovacoes necessarias, criterios de corte"></textarea>
+          </div>
+
+          <div class="col-12">
+            <hr class="my-3 divider">
+            <div class="fw-semibold">Publicacao, LGPD e compliance</div>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Visibilidade</label>
+            <select class="form-select" id="vagaVisibilidade">
+              @foreach (var opt in selectPlaceholder)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+              @foreach (var opt in publicacaoVisibilidadeOptions)
+              {
+                <option value="@opt.Code">@opt.Text</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Data de inicio</label>
+            <input class="form-control" id="vagaDataInicio" placeholder="dd/mm/aaaa">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small text-muted">Data de encerramento</label>
+            <input class="form-control" id="vagaDataFim" placeholder="dd/mm/aaaa">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label small text-muted">Canais</label>
+            <div class="row g-2">
+              <div class="col-12 col-md-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="vagaCanalLinkedin">
+                  <label class="form-check-label" for="vagaCanalLinkedin">LinkedIn</label>
+                </div>
+              </div>
+              <div class="col-12 col-md-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="vagaCanalSite">
+                  <label class="form-check-label" for="vagaCanalSite">Site/Carreiras</label>
+                </div>
+              </div>
+              <div class="col-12 col-md-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="vagaCanalIndicacao">
+                  <label class="form-check-label" for="vagaCanalIndicacao">Indicacao</label>
+                </div>
+              </div>
+              <div class="col-12 col-md-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="vagaCanalPortal">
+                  <label class="form-check-label" for="vagaCanalPortal">Portais de emprego</label>
+                </div>
               </div>
             </div>
+          </div>
 
-            <div class="col-12">
-              <label class="form-label small text-muted">DescriÃ§Ã£o</label>
-              <textarea class="form-control" id="vagaDescricao" rows="4" placeholder="Resumo da vaga, responsabilidades, etc."></textarea>
+          <div class="col-12">
+            <label class="form-label small text-muted">Descricao publica</label>
+            <textarea class="form-control" id="vagaDescricaoPublica" rows="4" placeholder="Inclua responsabilidades, requisitos e beneficios."></textarea>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="card-soft p-2">
+              <div class="fw-semibold mb-2">LGPD / Consentimentos</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="vagaLgpdConsentimento">
+                <label class="form-check-label" for="vagaLgpdConsentimento">Solicitar consentimento explicito</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="vagaLgpdCompartilhamento">
+                <label class="form-check-label" for="vagaLgpdCompartilhamento">Compartilhar curriculo internamente</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="vagaLgpdRetencao">
+                <label class="form-check-label" for="vagaLgpdRetencao">Retencao por X meses</label>
+              </div>
+              <div class="mt-2">
+                <label class="form-label small text-muted mb-1">Prazo de retencao (meses)</label>
+                <input class="form-control" id="vagaLgpdRetencaoMeses" placeholder="12">
+              </div>
             </div>
+          </div>
 
-            <div class="col-12">
-              <div class="alert alert-primary mb-0" style="border-radius: 14px; border-color: rgba(16,82,144,.25); background: rgba(173,200,220,.22); color: var(--lt-primary);">
-                <div class="d-flex align-items-start gap-2">
-                  <i class="bi bi-lightbulb mt-1"></i>
-                  <div>
-                    <div class="fw-semibold">Dica (MVP)</div>
-                    <div class="small">
-                      Salve a vaga e, em seguida, use <strong>Detalhes</strong> para cadastrar <strong>Requisitos</strong> com <strong>peso</strong> e marcar itens <strong>obrigatÃ³rios</strong>.
-                    </div>
+          <div class="col-12 col-md-6">
+            <div class="card-soft p-2">
+              <div class="fw-semibold mb-2">Documentos / Exigencias</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="vagaDocCnh">
+                <label class="form-check-label" for="vagaDocCnh">Exige CNH</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="vagaDocViagens">
+                <label class="form-check-label" for="vagaDocViagens">Disponibilidade para viagens</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="vagaDocAntecedentes">
+                <label class="form-check-label" for="vagaDocAntecedentes">Checagem de antecedentes</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="alert alert-primary mb-0" style="border-radius: 14px; border-color: rgba(16,82,144,.25); background: rgba(173,200,220,.22); color: var(--lt-primary);">
+              <div class="d-flex align-items-start gap-2">
+                <i class="bi bi-lightbulb mt-1"></i>
+                <div>
+                  <div class="fw-semibold">Dica (MVP)</div>
+                  <div class="small">
+                    Salve a vaga e, em seguida, use <strong>Detalhes</strong> para cadastrar <strong>Requisitos</strong> com <strong>peso</strong> e marcar itens <strong>obrigatorios</strong>.
                   </div>
                 </div>
               </div>
             </div>
-          </div><!-- row -->
+          </div>
         </div>
 
-        <div class="modal-footer">
-          <button class="btn btn-ghost" type="button" data-bs-dismiss="modal">
-            <i class="bi bi-x-lg me-1"></i>Cancelar
-          </button>
-          <button class="btn btn-brand" type="button" id="btnSaveVaga">
-            <i class="bi bi-check2 me-1"></i>Salvar vaga
-          </button>
-        </div>
+        <template id="tpl-vaga-benefit-row">
+          <div class="card-soft p-2 vaga-benefit-row">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div class="fw-semibold" data-role="benefit-title">Beneficio</div>
+              <button type="button" class="btn btn-ghost btn-sm" data-act="remove">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </div>
+            <div class="row g-2 mt-2">
+              <div class="col-12 col-md-4">
+                <label class="form-label small text-muted">Tipo</label>
+                <select class="form-select form-select-sm" data-role="benefit-type">
+                  @foreach (var opt in beneficioTipoOptions)
+                  {
+                    <option value="@opt.Code">@opt.Text</option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small text-muted">Valor (opcional)</label>
+                <input class="form-control form-control-sm" data-role="benefit-value" placeholder="R$ 0,00">
+              </div>
+              <div class="col-12 col-md-2">
+                <label class="form-label small text-muted">Recorrencia</label>
+                <select class="form-select form-select-sm" data-role="benefit-rec">
+                  @foreach (var opt in beneficioRecorrenciaOptions)
+                  {
+                    <option value="@opt.Code">@opt.Text</option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-2">
+                <label class="form-label small text-muted">Obrigatorio?</label>
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" data-role="benefit-required">
+                  <label class="form-check-label">Sim</label>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="form-label small text-muted">Observacoes</label>
+                <input class="form-control form-control-sm" data-role="benefit-obs" placeholder="Ex.: coparticipacao, carencia, faixa">
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template id="tpl-vaga-req-row">
+          <div class="card-soft p-2 vaga-req-row">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div class="fw-semibold" data-role="req-title">Requisito</div>
+              <button type="button" class="btn btn-ghost btn-sm" data-act="remove">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </div>
+            <div class="row g-2 mt-2">
+              <div class="col-12 col-md-6">
+                <label class="form-label small text-muted">Requisito</label>
+                <input class="form-control form-control-sm" data-role="req-name" placeholder="Ex.: Excel avancado, SQL, etc.">
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small text-muted">Peso (1-5)</label>
+                <select class="form-select form-select-sm" data-role="req-weight">
+                  @foreach (var opt in pesoOptions)
+                  {
+                    <option value="@opt.Code">@opt.Text</option>
+                  }
+                </select>
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small text-muted">Obrigatorio</label>
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" data-role="req-required">
+                  <label class="form-check-label">Sim</label>
+                </div>
+              </div>
+              <div class="col-12 col-md-2">
+                <label class="form-label small text-muted">Anos min.</label>
+                <input class="form-control form-control-sm" data-role="req-years" placeholder="0">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small text-muted">Nivel</label>
+                <select class="form-select form-select-sm" data-role="req-level">
+                  @foreach (var opt in reqNivelOptions)
+                  {
+                    <option value="@opt.Code">@opt.Text</option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small text-muted">Avaliacao</label>
+                <select class="form-select form-select-sm" data-role="req-eval">
+                  @foreach (var opt in reqAvaliacaoOptions)
+                  {
+                    <option value="@opt.Code">@opt.Text</option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small text-muted">Obs.</label>
+                <input class="form-control form-control-sm" data-role="req-obs" placeholder="Ex.: precisa ter aplicado em alto volume">
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template id="tpl-vaga-stage-row">
+          <div class="card-soft p-2 vaga-stage-row">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div class="fw-semibold" data-role="stage-title">Etapa</div>
+              <button type="button" class="btn btn-ghost btn-sm" data-act="remove">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </div>
+            <div class="row g-2 mt-2">
+              <div class="col-12 col-md-4">
+                <label class="form-label small text-muted">Nome da etapa</label>
+                <input class="form-control form-control-sm" data-role="stage-name" placeholder="Ex.: Entrevista RH">
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label small text-muted">Responsavel</label>
+                <select class="form-select form-select-sm" data-role="stage-owner">
+                  @foreach (var opt in etapaResponsavelOptions)
+                  {
+                    <option value="@opt.Code">@opt.Text</option>
+                  }
+                </select>
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small text-muted">Modo</label>
+                <select class="form-select form-select-sm" data-role="stage-mode">
+                  @foreach (var opt in etapaModoOptions)
+                  {
+                    <option value="@opt.Code">@opt.Text</option>
+                  }
+                </select>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label small text-muted">SLA (dias)</label>
+                <input class="form-control form-control-sm" data-role="stage-sla" placeholder="3">
+              </div>
+              <div class="col-12">
+                <label class="form-label small text-muted">Descricao / instrucoes</label>
+                <input class="form-control form-control-sm" data-role="stage-desc" placeholder="Ex.: entrevista por competencias, 45min">
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template id="tpl-vaga-question-row">
+          <div class="card-soft p-2 vaga-question-row">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div class="fw-semibold" data-role="question-title">Pergunta</div>
+              <button type="button" class="btn btn-ghost btn-sm" data-act="remove">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </div>
+            <div class="row g-2 mt-2">
+              <div class="col-12">
+                <label class="form-label small text-muted">Pergunta</label>
+                <input class="form-control form-control-sm" data-role="question-text" placeholder="Ex.: Tem disponibilidade para presencial 2x por semana?">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small text-muted">Tipo</label>
+                <select class="form-select form-select-sm" data-role="question-type">
+                  @foreach (var opt in perguntaTipoOptions)
+                  {
+                    <option value="@opt.Code">@opt.Text</option>
+                  }
+                </select>
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small text-muted">Peso</label>
+                <select class="form-select form-select-sm" data-role="question-weight">
+                  @foreach (var opt in pesoOptions)
+                  {
+                    <option value="@opt.Code">@opt.Text</option>
+                  }
+                </select>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label small text-muted">Obrigatoria?</label>
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" data-role="question-required">
+                  <label class="form-check-label">Sim</label>
+                </div>
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label small text-muted">Knockout?</label>
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" data-role="question-ko">
+                  <label class="form-check-label">Sim</label>
+                </div>
+              </div>
+              <div class="col-12" data-role="question-options-wrap">
+                <label class="form-label small text-muted">Opcoes (separe por ;)</label>
+                <input class="form-control form-control-sm" data-role="question-options" placeholder="Ex.: Sim;Nao;Talvez">
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" type="button" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i>Cancelar
+        </button>
+        <button class="btn btn-brand" type="button" id="btnSaveVaga">
+          <i class="bi bi-check2 me-1"></i>Salvar vaga
+        </button>
       </div>
     </div>
   </div>
-
+</div>

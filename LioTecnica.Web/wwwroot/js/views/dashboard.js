@@ -122,16 +122,16 @@
 
     // ========= Menu behavior (mock navigation)
     const menuMeta = {
-      dashboard: { title: "Dashboard", sub: "VisÃ£o geral do dia: vagas, recebimentos e triagem." },
-      vagas: { title: "Vagas", sub: "CriaÃ§Ã£o, requisitos, pesos e controle total do funil." },
-      candidatos: { title: "Candidatos", sub: "Base de currÃ­culos e histÃ³rico por candidato." },
+      dashboard: { title: "Dashboard", sub: "Visão geral do dia: vagas, recebimentos e triagem." },
+      vagas: { title: "Vagas", sub: "Criação, requisitos, pesos e controle total do funil." },
+      candidatos: { title: "Candidatos", sub: "Base de currí­culos e histórico por candidato." },
       triagem: { title: "Triagem", sub: "Aprovar/reprovar e mover etapas com auditoria." },
-      matching: { title: "Matching", sub: "Ajustes de palavras-chave, pesos e critÃ©rios obrigatÃ³rios." },
-      entrada: { title: "Entrada (Email/Pasta)", sub: "Monitoramento de anexos e ingestÃ£o automÃ¡tica." },
-      rm: { title: "RM Labore", sub: "IntegraÃ§Ã£o (fase 2): sincronizar vagas e requisitos." },
-      relatorios: { title: "RelatÃ³rios", sub: "KPIs, produtividade do RH e exportaÃ§Ãµes." },
-      usuarios: { title: "UsuÃ¡rios & Perfis", sub: "Perfis (Admin/RH/Gestor) e permissÃµes." },
-      config: { title: "ConfiguraÃ§Ãµes", sub: "ParÃ¢metros do sistema, retention LGPD e integraÃ§Ãµes." }
+      matching: { title: "Matching", sub: "Ajustes de palavras-chave, pesos e critÃ©rios obrigatórios." },
+      entrada: { title: "Entrada (Email/Pasta)", sub: "Monitoramento de anexos e ingestÃ£o automática." },
+      rm: { title: "RM Labore", sub: "Integração (fase 2): sincronizar vagas e requisitos." },
+      relatorios: { title: "Relatórios", sub: "KPIs, produtividade do RH e exportações." },
+      usuarios: { title: "Usuários & Perfis", sub: "Perfis (Admin/RH/Gestor) e permissões." },
+      config: { title: "ConfiguraÃ§Ãµes", sub: "Parâmetros do sistema, retention LGPD e integrações." }
     };
 
     function setActiveMenu(key){
