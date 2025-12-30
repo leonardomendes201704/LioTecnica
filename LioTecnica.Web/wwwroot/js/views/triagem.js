@@ -7,12 +7,30 @@ function enumFirstCode(key, fallback){
     }
 
     const VAGA_ALL = enumFirstCode("vagaFilter", "all");
+    const EMPTY_TEXT = "—";
+    const BULLET = "•";
 
-    function formatDecisionReason(code){
-      if(!code) return "";
-      return getEnumText("triagemDecisionReason", code, code);
+    function setText(root, role, value, fallback = EMPTY_TEXT){
+      if(!root) return;
+      const el = root.querySelector(`[data-role="${role}"]`);
+      if(!el) return;
+      el.textContent = (value ?? fallback);
     }
-function statusTag(s){
+
+    function buildTag(iconClass, text, cls){
+      const tag = cloneTemplate("tpl-tri-tag");
+      if(!tag) return document.createElement("span");
+      tag.classList.toggle("ok", cls === "ok");
+      tag.classList.toggle("warn", cls === "warn");
+      tag.classList.toggle("bad", cls === "bad");
+      const icon = tag.querySelector('[data-role="icon"]');
+      if(icon) icon.className = "bi " + iconClass;
+      const label = tag.querySelector('[data-role="text"]');
+      if(label) label.textContent = text || "";
+      return tag;
+    }
+
+    function buildStatusTag(s){
       const map = {
         novo:      { label:"Novo", cls:"" },
         triagem:   { label:"Em triagem", cls:"warn" },
@@ -21,8 +39,14 @@ function statusTag(s){
         pendente:  { label:"Pendente", cls:"warn" }
       };
       const it = map[s] || { label: s, cls:"" };
-      return `<span class="status-tag ${it.cls}"><i class="bi bi-dot"></i>${escapeHtml(it.label)}</span>`;
+      return buildTag("bi-dot", it.label, it.cls);
     }
+
+    function formatDecisionReason(code){
+      if(!code) return "";
+      return getEnumText("triagemDecisionReason", code, code);
+    }
+
 
     // ========= Storage keys (compatÃ­veis com a tela de Candidatos/Vagas)
     const VAGAS_KEY = "lt_rh_vagas_v1";
@@ -154,13 +178,13 @@ function statusTag(s){
       return { score, pass, hits, missMandatory, totalPeso, hitPeso, threshold: thr };
     }
 
-    function matchTag(score, thr){
+    function buildMatchTag(score, thr){
       const s = clamp(parseInt(score||0,10)||0,0,100);
       const t = clamp(parseInt(thr||0,10)||0,0,100);
       const ok = s >= t;
       const cls = ok ? "ok" : (s >= (t*0.8) ? "warn" : "bad");
       const text = ok ? "Dentro" : "Abaixo";
-      return `<span class="status-tag ${cls}"><i class="bi bi-stars"></i>${s}% â€¢ ${text}</span>`;
+      return buildTag("bi-stars", `${s}% ${BULLET} ${text}`, cls);
     }
 
     // ========= SLA (MVP)
@@ -184,7 +208,11 @@ function statusTag(s){
     // ========= Board data + filters
     function distinctVagas(){
       return state.vagas
-        .map(v => ({ id: v.id, label: `${v.titulo || "â€”"} (${v.codigo || "â€”"})` }))
+        .map(v => {
+          const title = v.titulo || EMPTY_TEXT;
+          const code = v.codigo || EMPTY_TEXT;
+          return { id: v.id, label: `${title} (${code})` };
+        })
         .sort((a,b)=>a.label.localeCompare(b.label, "pt-BR"));
     }
 
@@ -192,8 +220,13 @@ function statusTag(s){
       const sel = $("#fVaga");
       if(!sel) return;
       const cur = sel.value || VAGA_ALL;
-      const opts = distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
-      sel.innerHTML = renderEnumOptions("vagaFilter", VAGA_ALL) + opts;
+      sel.replaceChildren();
+      getEnumOptions("vagaFilter").forEach(opt => {
+        sel.appendChild(buildOption(opt.code, opt.text, opt.code === cur));
+      });
+      distinctVagas().forEach(v => {
+        sel.appendChild(buildOption(v.id, v.label, v.id === cur));
+      });
       sel.value = (cur === VAGA_ALL || state.vagas.some(v => v.id === cur)) ? cur : VAGA_ALL;
     }
 
@@ -233,94 +266,113 @@ function statusTag(s){
       const list = getFilteredCands();
       const g = groupByStage(list);
 
-      $("#listTriagem").innerHTML = g.triagem.map(renderTriItem).join("") || `<div class="text-muted small">â€”</div>`;
-      $("#listPendente").innerHTML = g.pendente.map(renderTriItem).join("") || `<div class="text-muted small">â€”</div>`;
-      $("#listAprovado").innerHTML = g.aprovado.map(renderTriItem).join("") || `<div class="text-muted small">â€”</div>`;
-      $("#listReprovado").innerHTML = g.reprovado.map(renderTriItem).join("") || `<div class="text-muted small">â€”</div>`;
+      renderStageList("#listTriagem", g.triagem);
+      renderStageList("#listPendente", g.pendente);
+      renderStageList("#listAprovado", g.aprovado);
+      renderStageList("#listReprovado", g.reprovado);
 
       $("#countTriagem").textContent = g.triagem.length;
       $("#countPendente").textContent = g.pendente.length;
       $("#countAprovado").textContent = g.aprovado.length;
       $("#countReprovado").textContent = g.reprovado.length;
+    }
 
-      // bind draggable
-      $$(".tri-item").forEach(el => {
-        el.addEventListener("dragstart", onDragStart);
-      });
+    function renderStageList(selector, items){
+      const host = $(selector);
+      if(!host) return;
+      host.replaceChildren();
 
-      // highlight selected
-      $$(".tri-item").forEach(el => {
-        if(el.dataset.id === state.selectedId) el.classList.add("active");
+      if(!items.length){
+        const empty = cloneTemplate("tpl-tri-empty");
+        if(empty) host.appendChild(empty);
+        return;
+      }
+
+      items.forEach(c => {
+        const card = buildTriItem(c);
+        if(card) host.appendChild(card);
       });
     }
 
-    function renderTriItem(c){
+    function buildTriItem(c){
       const v = findVaga(c.vagaId);
       const m = calcMatchForCand(c);
       const thr = m.threshold ?? (v ? v.threshold : 0);
       const si = slaInfo(c);
 
-      const slaBadge = si.has
-        ? (si.late
-          ? `<span class="status-tag bad"><i class="bi bi-alarm"></i>SLA atrasado</span>`
-          : `<span class="status-tag warn"><i class="bi bi-alarm"></i>${Math.ceil(si.leftH)}h</span>`)
-        : `<span class="status-tag"><i class="bi bi-dash-circle"></i>Sem SLA</span>`;
+      const card = cloneTemplate("tpl-tri-card");
+      if(!card) return null;
 
-      const missCount = (m.missMandatory || []).length;
-      const missBadge = missCount
-        ? `<span class="status-tag bad"><i class="bi bi-exclamation-triangle"></i>${missCount} obrig.</span>`
-        : `<span class="status-tag ok"><i class="bi bi-check2"></i>Obrig. OK</span>`;
+      card.dataset.id = c.id;
+      card.draggable = true;
+      if(c.id === state.selectedId) card.classList.add("active");
 
-      return `
-        <div class="tri-item cand-card ${c.id===state.selectedId ? "active" : ""}"
-             draggable="true"
-             data-id="${c.id}"
-             >
-          <div class="tri-item-head">
-            <div class="d-flex align-items-center gap-2">
-              <div class="avatar">${escapeHtml(initials(c.nome))}</div>
-              <div>
-                <div class="name d-flex align-items-center gap-2 flex-wrap">
-                  <span>${escapeHtml(c.nome || "â€”")}</span>
-                  <button class="btn btn-ghost btn-sm" type="button" title="Detalhes" aria-label="Detalhes" onclick="event.stopPropagation(); window.__openDetails('${c.id}')">
-                    <i class="bi bi-eye"></i>
-                  </button>
-                </div>
-                <div class="smalltxt">${escapeHtml(c.email || "â€”")}</div>
-              </div>
-            </div>
+      setText(card, "cand-initials", initials(c.nome));
+      setText(card, "cand-name", c.nome);
+      setText(card, "cand-email", c.email);
 
-            <div class="tri-meta text-end">
-              ${v ? `<div class="pill mono">${escapeHtml(v.codigo || "â€”")}</div>` : `<div class="pill">Sem vaga</div>`}
-              <div class="smalltxt mt-1">${v ? escapeHtml(v.titulo || "â€”") : "â€”"}</div>
-            </div>
-          </div>
+      const vagaCode = card.querySelector('[data-role="vaga-code"]');
+      if(vagaCode){
+        vagaCode.textContent = v ? (v.codigo || EMPTY_TEXT) : "Sem vaga";
+        vagaCode.classList.toggle("mono", !!v);
+      }
+      setText(card, "vaga-title", v ? v.titulo : EMPTY_TEXT);
 
-          <div class="matchline">
-            <div class="flex-grow-1">
-              <div class="d-flex align-items-center gap-2">
-                <div class="progress flex-grow-1">
-                  <div class="progress-bar" style="width:${clamp(m.score,0,100)}%"></div>
-                </div>
-                <div class="fw-bold" style="min-width:44px;text-align:right;">${clamp(m.score,0,100)}%</div>
-              </div>
-              <div class="smalltxt mt-1">
-                mÃ­nimo: <span class="mono">${clamp(parseInt(thr||0,10)||0,0,100)}%</span>
-                ${m.pass ? `â€¢ <span style="color: rgba(25,135,84,.95); font-weight:700;">dentro</span>` : `â€¢ <span style="color: rgba(153,19,34,.95); font-weight:700;">abaixo</span>`}
-              </div>
-            </div>
-          </div>
+      const score = clamp(parseInt(m.score||0,10)||0,0,100);
+      const thrVal = clamp(parseInt(thr||0,10)||0,0,100);
+      const progress = card.querySelector('[data-role="match-progress"]');
+      if(progress) progress.style.width = `${score}%`;
+      setText(card, "match-score", `${score}%`);
+      setText(card, "match-thr", `${thrVal}%`);
 
-          <div class="d-flex flex-wrap gap-2 mt-2">
-            ${slaBadge}
-            ${missBadge}
-            <button class="btn btn-ghost btn-sm ms-auto" type="button"
-                    onclick="event.stopPropagation(); window.__openDecision('${c.id}')">
-              <i class="bi bi-clipboard-check me-1"></i>DecisÃ£o
-            </button>
-          </div>
-        </div>
-      `;
+      const matchStatus = card.querySelector('[data-role="match-status"]');
+      if(matchStatus){
+        matchStatus.textContent = m.pass ? "dentro" : "abaixo";
+        matchStatus.classList.toggle("text-success", !!m.pass);
+        matchStatus.classList.toggle("text-danger", !m.pass);
+      }
+
+      const tags = card.querySelector('[data-role="tri-tags"]');
+      if(tags){
+        tags.replaceChildren();
+        if(si.has){
+          if(si.late){
+            tags.appendChild(buildTag("bi-alarm", "SLA atrasado", "bad"));
+          }else{
+            tags.appendChild(buildTag("bi-alarm", `${Math.ceil(si.leftH)}h`, "warn"));
+          }
+        }else{
+          tags.appendChild(buildTag("bi-dash-circle", "Sem SLA", ""));
+        }
+
+        const missCount = (m.missMandatory || []).length;
+        tags.appendChild(buildTag(
+          missCount ? "bi-exclamation-triangle" : "bi-check2",
+          missCount ? `${missCount} obrig.` : "Obrig. OK",
+          missCount ? "bad" : "ok"
+        ));
+      }
+
+      const btnDetails = card.querySelector('[data-act="details"]');
+      if(btnDetails){
+        btnDetails.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          openDetails(c.id);
+        });
+      }
+
+      const btnDecision = card.querySelector('[data-act="decision"]');
+      if(btnDecision){
+        btnDecision.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          openDecision(c.id);
+        });
+      }
+
+      card.addEventListener("dragstart", onDragStart);
+      return card;
     }
 
     // ========= Drag & Drop
@@ -397,19 +449,16 @@ function statusTag(s){
     }
 
     // ========= Detail panel
-    function buildDetailHtml(c){
+    function renderDetail(){
+      const host = $("#triagemDetailBody");
+      if(!host) return;
+      host.replaceChildren();
+
+      const c = findCand(state.selectedId);
       if(!c){
-        return `
-          <div class="detail-empty">
-            <div class="d-flex align-items-start gap-2">
-              <i class="bi bi-info-circle mt-1"></i>
-              <div>
-                <div class="fw-bold">Selecione um candidato</div>
-                <div class="small mt-1">Clique em um card para ver detalhes, match e histÃ³rico de triagem.</div>
-              </div>
-            </div>
-          </div>
-        `;
+        const empty = cloneTemplate("tpl-tri-detail-empty");
+        if(empty) host.appendChild(empty);
+        return;
       }
 
       const v = findVaga(c.vagaId);
@@ -418,116 +467,81 @@ function statusTag(s){
       const si = slaInfo(c);
 
       const updated = c.updatedAt ? new Date(c.updatedAt) : null;
-      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "â€”";
+      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : EMPTY_TEXT;
 
       const miss = (m.missMandatory||[]).map(r=>r.termo).slice(0,12);
       const hit = (m.hits||[]).map(r=>r.termo).slice(0,12);
 
       const log = state.triageLog.filter(x => x.candId === c.id).slice(0, 10);
 
-      const slaTxt = si.has
-        ? (si.late ? "Atrasado" : `Faltam ~${Math.ceil(si.leftH)}h`)
-        : "Sem SLA";
+      const slaTxt = si.has ? (si.late ? "Atrasado" : `Faltam ~${Math.ceil(si.leftH)}h`) : "Sem SLA";
 
-      return `
-        <div class="card-soft p-3">
-          <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
-            <div class="d-flex align-items-center gap-2">
-              <div class="avatar" style="width:52px;height:52px;border-radius:16px;">${escapeHtml(initials(c.nome))}</div>
-              <div>
-                <div class="fw-bold" style="font-size:1.05rem;">${escapeHtml(c.nome || "â€”")}</div>
-                <div class="text-muted small">${escapeHtml(c.email || "â€”")}</div>
-                <div class="text-muted small">
-                  <i class="bi bi-clock-history me-1"></i>Atualizado: ${escapeHtml(updatedTxt)}
-                </div>
-              </div>
-            </div>
+      const root = cloneTemplate("tpl-tri-detail");
+      if(!root) return;
 
-            <div class="text-end">
-              ${statusTag(c.status)}
-              <div class="text-muted small mt-1"><i class="bi bi-alarm me-1"></i>SLA: <span class="fw-semibold">${escapeHtml(slaTxt)}</span></div>
-            </div>
-          </div>
+      setText(root, "detail-initials", initials(c.nome));
+      setText(root, "detail-name", c.nome);
+      setText(root, "detail-email", c.email);
+      setText(root, "detail-updated", updatedTxt);
 
-          <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="pill"><i class="bi bi-briefcase"></i>${escapeHtml(v ? (v.titulo || "â€”") : "Vaga nÃ£o vinculada")}</span>
-            ${v ? `<span class="pill mono">${escapeHtml(v.codigo || "â€”")}</span>` : ""}
-            ${v ? `<span class="pill"><i class="bi bi-stars"></i>MÃ­n.: <strong class="ms-1">${clamp(parseInt(thr||0,10)||0,0,100)}%</strong></span>` : ""}
-          </div>
+      const statusHost = root.querySelector('[data-role="detail-status-host"]');
+      if(statusHost) statusHost.replaceChildren(buildStatusTag(c.status));
+      setText(root, "detail-sla", slaTxt);
 
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <div class="fw-bold">Match atual</div>
-              <div class="text-muted small">MVP por palavras-chave</div>
-            </div>
-            ${v ? matchTag(m.score, thr) : `<span class="status-tag"><i class="bi bi-dash-circle"></i>â€”</span>`}
-          </div>
+      const vagaTitle = v ? (v.titulo || EMPTY_TEXT) : "Vaga nao vinculada";
+      setText(root, "detail-vaga-title", vagaTitle);
+      setText(root, "detail-vaga-code", v?.codigo);
+      const thrVal = clamp(parseInt(thr||0,10)||0,0,100);
+      setText(root, "detail-vaga-thr", v ? `${thrVal}%` : EMPTY_TEXT);
+      toggleRole(root, "detail-vaga-code-wrap", !!v);
+      toggleRole(root, "detail-vaga-thr-wrap", !!v);
 
-          <div class="mt-2">
-            <div class="progress">
-              <div class="progress-bar" style="width:${clamp(m.score,0,100)}%"></div>
-            </div>
-            <div class="text-muted small mt-1">
-              Encontrados: <strong>${(m.hits||[]).length}</strong> â€¢ ObrigatÃ³rios faltando: <strong>${(m.missMandatory||[]).length}</strong>
-            </div>
-          </div>
+      const matchHost = root.querySelector('[data-role="detail-match-host"]');
+      if(matchHost){
+        matchHost.replaceChildren();
+        if(v){
+          matchHost.appendChild(buildMatchTag(m.score, thr));
+        }else{
+          matchHost.appendChild(buildTag("bi-dash-circle", EMPTY_TEXT, ""));
+        }
+      }
 
-          ${(m.missMandatory||[]).length ? `
-            <div class="alert alert-danger mt-3 mb-0" style="border-radius:14px;">
-              <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>ObrigatÃ³rios faltando</div>
-              <div class="small">${escapeHtml(miss.join(", "))}</div>
-            </div>
-          ` : `
-            <div class="alert alert-success mt-3 mb-0" style="border-radius:14px;">
-              <div class="fw-semibold mb-1"><i class="bi bi-check2 me-1"></i>ObrigatÃ³rios OK</div>
-              <div class="small">${hit.length ? escapeHtml(hit.join(", ")) : "â€”"}</div>
-            </div>
-          `}
+      const score = clamp(parseInt(m.score||0,10)||0,0,100);
+      const progress = root.querySelector('[data-role="detail-match-progress"]');
+      if(progress) progress.style.width = `${score}%`;
+      setText(root, "detail-match-score", `${score}%`);
+      setText(root, "detail-match-hits", (m.hits||[]).length);
+      setText(root, "detail-match-miss", (m.missMandatory||[]).length);
 
-          <div class="d-flex flex-wrap gap-2 mt-3">
-            <button class="btn btn-brand btn-sm" type="button" data-dact="decision">
-              <i class="bi bi-clipboard-check me-1"></i>DecisÃ£o
-            </button>
-            <button class="btn btn-ghost btn-sm" type="button" data-dact="recalc">
-              <i class="bi bi-arrow-repeat me-1"></i>Recalcular match
-            </button>
-          </div>
+      const missAlert = root.querySelector('[data-role="detail-miss-alert"]');
+      const hitAlert = root.querySelector('[data-role="detail-hit-alert"]');
+      if(missAlert) missAlert.classList.toggle("d-none", !miss.length);
+      if(hitAlert) hitAlert.classList.toggle("d-none", !!miss.length);
+      setText(root, "detail-miss-list", miss.join(", "));
+      setText(root, "detail-hit-list", hit.length ? hit.join(", ") : EMPTY_TEXT);
 
-          <hr class="my-3" style="border-color: rgba(16,82,144,.14);">
+      const logHost = root.querySelector('[data-role="tri-log-list"]');
+      if(logHost){
+        logHost.replaceChildren();
+        if(log.length){
+          log.forEach(x => {
+            const item = cloneTemplate("tpl-tri-log-item");
+            if(!item) return;
+            const title = `${labelStage(x.from)} -> ${labelStage(x.to)}`;
+            const reasonTxt = formatDecisionReason(x.reason) || "-";
+            const noteTxt = x.note ? `${BULLET} ${x.note}` : "";
+            setText(item, "log-title", title);
+            setText(item, "log-note", `${reasonTxt} ${noteTxt}`.trim());
+            setText(item, "log-time", new Date(x.at).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }));
+            logHost.appendChild(item);
+          });
+        }else{
+          const empty = cloneTemplate("tpl-tri-log-empty");
+          if(empty) logHost.appendChild(empty);
+        }
+      }
 
-          <div class="fw-bold mb-1">HistÃ³rico de triagem</div>
-          <div class="text-muted small mb-2">Ãšltimas movimentaÃ§Ãµes (MVP localStorage).</div>
-
-          ${log.length ? `
-            <div class="list-group" style="border-radius: 14px; overflow:hidden;">
-              ${log.map(x => `
-                <div class="list-group-item">
-                  <div class="d-flex align-items-start justify-content-between gap-2">
-                    <div>
-                      <div class="fw-semibold">
-                        ${escapeHtml(labelStage(x.from))} â†’ ${escapeHtml(labelStage(x.to))}
-                      </div>
-                      <div class="text-muted small">${escapeHtml(formatDecisionReason(x.reason) || "-")} ${x.note ? `â€¢ ${escapeHtml(x.note)}` : ""}</div>
-                    </div>
-                    <div class="text-muted small nowrap">${new Date(x.at).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })}</div>
-                  </div>
-                </div>
-              `).join("")}
-            </div>
-          ` : `
-            <div class="detail-empty">
-              <div class="small">Sem histÃ³rico ainda. Use â€œDecisÃ£oâ€ ou arraste para registrar uma movimentaÃ§Ã£o.</div>
-            </div>
-          `}
-        </div>
-      `;
-    }
-
-    function renderDetail(){
-      const host = $("#triagemDetailBody");
-      if(!host) return;
-      const c = findCand(state.selectedId);
-      host.innerHTML = buildDetailHtml(c);
+      host.appendChild(root);
       bindDetailActions(host, c);
     }
 

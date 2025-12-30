@@ -1,7 +1,7 @@
 ﻿// ========= Logo (data URI real do arquivo recebido)
     // Obs: apesar do nome do arquivo ser .png, o conteÃºdo Ã© WebP (ok).
     const seed = window.__seedData || {};
-    const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAKCWdu4XVRGx3dfRl/z/9LIqSxD6o3/BCxQeXQe+KQ8t8JvF8fHhG6w6d2P9/3vC3o3b9n+uWZbQ+oYk7hYp7tqW9j7p1gq5v2yqG0U4jQ4wB3lK2uZ1c9bQ8d2d8u5m2Cw2hKk9wQfV7mQ6s1Gx8hB4yKqHf1eW3bRj+4gQyC7d5o0cQqv0mH0tY0HqGmJt1g3d3BqzR7m6cQ3yGq1mJrJf0d1nUuQ7k1hPq2mQ8s2vZzC0a4k5dQ2w9hYQf4g1jHhM5oZz8rY8p2m+QJ3nJm6GgA=";
+    const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
 function enumFirstCode(key, fallback){
       const list = getEnumOptions(key);
       return list.length ? list[0].code : fallback;
@@ -110,13 +110,22 @@ function loadAll(){
     function renderRoleFilterOptions(){
       const sel = $("#uRole");
       const current = sel.value || ROLE_ALL;
-      const opts = state.roles
+      const selected = state.filters.role || current || ROLE_ALL;
+      sel.replaceChildren();
+
+      const enumOptions = getEnumOptions("roleFilter");
+      enumOptions.forEach(opt => {
+        sel.appendChild(buildOption(opt.code, opt.text, opt.code === selected));
+      });
+
+      state.roles
         .slice()
         .sort((a,b)=>(a.name||"").localeCompare(b.name||""))
-        .map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`)
-        .join("");
-      sel.innerHTML = renderEnumOptions("roleFilter", ROLE_ALL) + opts;
-      sel.value = state.filters.role || current || ROLE_ALL;
+        .forEach(r => {
+          sel.appendChild(buildOption(r.id, r.name, r.id === selected));
+        });
+
+      sel.value = selected;
     }
 
     function applyUserFilters(users){
@@ -627,7 +636,8 @@ function loadAll(){
       $("#logoMobile").src = LOGO_DATA_URI;
     }
     function wireClock(){
-$("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) + "-" + String(now.getMonth()+1).padStart(2,"0");
+      const now = new Date();
+      $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) + "-" + String(now.getMonth()+1).padStart(2,"0");
 
       const tick = () => {
         const d = new Date();

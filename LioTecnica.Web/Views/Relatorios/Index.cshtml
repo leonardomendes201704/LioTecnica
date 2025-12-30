@@ -54,13 +54,13 @@
         @await Html.PartialAsync("_KpiMiniRow", kpis)
 
         <div class="grid2">
-          <!-- LEFT: catÃ¡logo de relatÃ³rios + filtros -->
+          <!-- LEFT: catálogo de relatórios + filtros -->
           <div>
             <div class="card-soft p-3 mb-3">
               <div class="d-flex align-items-start justify-content-between gap-2">
                 <div>
-                  <div class="fw-bold">CatÃ¡logo de relatÃ³rios</div>
-                  <div class="text-muted small">Selecione um relatÃ³rio e configure filtros.</div>
+                  <div class="fw-bold">Catálogo de relatórios</div>
+                  <div class="text-muted small">Selecione um relatório e configure filtros.</div>
                 </div>
                 <span class="pill"><i class="bi bi-lightning-charge"></i>mocado</span>
               </div>
@@ -235,6 +235,22 @@
 
         <div style="height:14px;"></div>
       </section>
+
+      <!-- Templates -->
+      <template id="tpl-report-tile">
+        <div class="tile">
+          <div class="d-flex align-items-start justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <div class="iconbox"><i class="bi" data-role="tile-icon"></i></div>
+              <div>
+                <div class="fw-bold" data-role="tile-title"></div>
+                <div class="text-muted small" data-role="tile-desc"></div>
+              </div>
+            </div>
+            <span class="pill"><i class="bi bi-tag"></i><span data-role="tile-scope"></span></span>
+          </div>
+        </div>
+      </template>
 
             @section Footer {
         @{

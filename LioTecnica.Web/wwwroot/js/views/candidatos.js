@@ -10,7 +10,17 @@
     const SELECT_PLACEHOLDER = enumFirstCode("selectPlaceholder", "");
     const DEFAULT_CAND_FONTE = enumFirstCode("candidatoFonte", "Email");
     const DEFAULT_CAND_STATUS = enumFirstCode("candidatoStatus", "novo");
-function statusTag(s){
+    const EMPTY_TEXT = "\u2014";
+    const BULLET = "\u2022";
+
+    function setText(root, role, value, fallback = EMPTY_TEXT){
+      if(!root) return;
+      const el = root.querySelector(`[data-role="${role}"]`);
+      if(!el) return;
+      el.textContent = (value ?? fallback);
+    }
+
+    function buildStatusTag(s){
       const map = {
         novo:      { label:"Novo", cls:"" },
         triagem:   { label:"Em triagem", cls:"warn" },
@@ -19,7 +29,16 @@ function statusTag(s){
         pendente:  { label:"Pendente", cls:"warn" }
       };
       const it = map[s] || { label: s, cls:"" };
-      return `<span class="status-tag ${it.cls}"><i class="bi bi-dot"></i>${escapeHtml(it.label)}</span>`;
+      const tag = cloneTemplate("tpl-cand-status-tag");
+      if(!tag) return document.createElement("span");
+      tag.classList.toggle("ok", it.cls === "ok");
+      tag.classList.toggle("warn", it.cls === "warn");
+      tag.classList.toggle("bad", it.cls === "bad");
+      const icon = tag.querySelector('[data-role="icon"]');
+      if(icon) icon.className = "bi bi-dot";
+      const text = tag.querySelector('[data-role="text"]');
+      if(text) text.textContent = it.label || "";
+      return tag;
     }
 
     // ========= Storage keys
@@ -135,13 +154,22 @@ function statusTag(s){
       return { score, pass, hits, missMandatory, totalPeso, hitPeso, threshold: thr };
     }
 
-    function matchLabel(score, thr){
+    function buildMatchTag(score, thr){
       const s = clamp(parseInt(score||0,10)||0,0,100);
       const t = clamp(parseInt(thr||0,10)||0,0,100);
       const ok = s >= t;
       const cls = ok ? "ok" : (s >= (t*0.8) ? "warn" : "bad");
       const text = ok ? "Dentro" : "Abaixo";
-      return `<span class="status-tag ${cls}"><i class="bi bi-stars"></i>${s}% • ${text}</span>`;
+      const tag = cloneTemplate("tpl-cand-status-tag");
+      if(!tag) return document.createElement("span");
+      tag.classList.toggle("ok", cls === "ok");
+      tag.classList.toggle("warn", cls === "warn");
+      tag.classList.toggle("bad", cls === "bad");
+      const icon = tag.querySelector('[data-role="icon"]');
+      if(icon) icon.className = "bi bi-stars";
+      const label = tag.querySelector('[data-role="text"]');
+      if(label) label.textContent = `${s}% ${BULLET} ${text}`;
+      return tag;
     }
 
     // ========= KPIs
@@ -160,22 +188,34 @@ function statusTag(s){
     // ========= Filters
     function distinctVagas(){
       return state.vagas
-        .map(v => ({ id: v.id, label: `${v.titulo || "—"} (${v.codigo || "—"})` }))
+        .map(v => {
+          const title = v.titulo || EMPTY_TEXT;
+          const code = v.codigo || EMPTY_TEXT;
+          return { id: v.id, label: `${title} (${code})` };
+        })
         .sort((a,b)=>a.label.localeCompare(b.label, "pt-BR"));
     }
 
     function renderVagaFilters(){
-      // filtro do grid
       const sel = $("#fVaga");
       const cur = sel.value || VAGA_ALL;
-      const opts = distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
-      sel.innerHTML = renderEnumOptions("vagaFilter", VAGA_ALL) + opts;
+      sel.replaceChildren();
+      getEnumOptions("vagaFilter").forEach(opt => {
+        sel.appendChild(buildOption(opt.code, opt.text, opt.code === cur));
+      });
+      distinctVagas().forEach(v => {
+        sel.appendChild(buildOption(v.id, v.label, v.id === cur));
+      });
       sel.value = (cur === VAGA_ALL || state.vagas.some(v => v.id === cur)) ? cur : VAGA_ALL;
 
-      // dropdown do modal
       const sel2 = $("#candVaga");
-      sel2.innerHTML = renderEnumOptions("selectPlaceholder", SELECT_PLACEHOLDER)
-        + distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
+      sel2.replaceChildren();
+      getEnumOptions("selectPlaceholder").forEach(opt => {
+        sel2.appendChild(buildOption(opt.code, opt.text, opt.code === SELECT_PLACEHOLDER));
+      });
+      distinctVagas().forEach(v => {
+        sel2.appendChild(buildOption(v.id, v.label, v.id === (sel2.value || "")));
+      });
     }
 
     function getFilteredCands(){
@@ -203,61 +243,60 @@ function statusTag(s){
     // ========= Rendering list
     function renderList(){
       const tbody = $("#tblCands");
-      tbody.innerHTML = "";
+      tbody.replaceChildren();
 
       const rows = getFilteredCands();
       if(!rows.length){
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Nenhum candidato encontrado com os filtros atuais.</td></tr>`;
+        const emptyRow = cloneTemplate("tpl-cand-empty-row");
+        if(emptyRow) tbody.appendChild(emptyRow);
         return;
       }
 
       rows.forEach(c => {
         const v = findVaga(c.vagaId);
-        const vagaTxt = v ? `${v.titulo || "—"} (${v.codigo || "—"})` : "—";
         const isSel = c.id === state.selectedId;
 
         const m = calcMatchForCand(c);
         const thr = m.threshold ?? (v ? v.threshold : 0);
 
-        const tr = document.createElement("tr");
+        const tr = cloneTemplate("tpl-cand-row");
+        if(!tr) return;
         tr.style.cursor = "default";
-        tr.className = isSel ? "table-active" : "";
-        tr.innerHTML = `
-          <td>
-            <div class="d-flex align-items-center gap-2">
-              <div class="avatar">${escapeHtml(initials(c.nome))}</div>
-              <div>
-                <div class="fw-bold">${escapeHtml(c.nome || "—")}</div>
-                <div class="text-muted small">
-                  <span>${escapeHtml(c.email || "—")}</span>
-                  ${c.fone ? `<span class="mx-2">•</span><span>${escapeHtml(c.fone)}</span>` : ""}
-                </div>
-              </div>
-            </div>
-          </td>
-          <td class="nowrap">
-            <div class="fw-semibold">${escapeHtml(v?.titulo || "—")}</div>
-            <div class="text-muted small mono">${escapeHtml(v?.codigo || "—")}</div>
-          </td>
-          <td class="nowrap">${statusTag(c.status)}</td>
-          <td class="nowrap">
-            ${v ? matchLabel(m.score, thr) : `<span class="text-muted">—</span>`}
-          </td>
-          <td class="text-end nowrap">
-            <button class="btn btn-ghost btn-sm me-1" data-act="detail" data-id="${c.id}">
-              <i class="bi bi-layout-text-window me-1"></i>Detalhes
-            </button>
-            <button class="btn btn-ghost btn-sm me-1" data-act="edit" data-id="${c.id}">
-              <i class="bi bi-pencil me-1"></i>Editar
-            </button>
-            <button class="btn btn-ghost btn-sm me-1" data-act="recalc" data-id="${c.id}" title="Recalcular match">
-              <i class="bi bi-arrow-repeat"></i>
-            </button>
-            <button class="btn btn-ghost btn-sm text-danger" data-act="del" data-id="${c.id}" title="Excluir">
-              <i class="bi bi-trash3"></i>
-            </button>
-          </td>
-        `;
+        if(isSel) tr.classList.add("table-active");
+
+        setText(tr, "cand-initials", initials(c.nome));
+        setText(tr, "cand-name", c.nome);
+        setText(tr, "cand-email", c.email);
+        setText(tr, "cand-phone", c.fone);
+
+        const hasPhone = !!c.fone;
+        toggleRole(tr, "cand-phone", hasPhone);
+        toggleRole(tr, "cand-phone-sep", hasPhone);
+
+        setText(tr, "vaga-title", v?.titulo);
+        setText(tr, "vaga-code", v?.codigo);
+
+        const statusHost = tr.querySelector('[data-role="status-host"]');
+        if(statusHost){
+          statusHost.replaceChildren(buildStatusTag(c.status));
+        }
+
+        const matchHost = tr.querySelector('[data-role="match-host"]');
+        if(matchHost){
+          matchHost.replaceChildren();
+          if(v){
+            matchHost.appendChild(buildMatchTag(m.score, thr));
+          }else{
+            const span = document.createElement("span");
+            span.className = "text-muted";
+            span.textContent = EMPTY_TEXT;
+            matchHost.appendChild(span);
+          }
+        }
+
+        tr.querySelectorAll("button[data-act]").forEach(btn => {
+          btn.dataset.id = c.id;
+        });
 
         tr.addEventListener("click", (ev) => {
           const btn = ev.target.closest("button[data-act]");
@@ -292,203 +331,118 @@ function openDetailModal(id){
     }
 
     // ========= Detail UI
-    function buildDetailHtml(c){
+    function fillVagaSelect(select, selectedId, includePlaceholder){
+      if(!select) return;
+      select.replaceChildren();
+      if(includePlaceholder){
+        getEnumOptions("selectPlaceholder").forEach(opt => {
+          const isSelected = selectedId ? opt.code === selectedId : opt.code === SELECT_PLACEHOLDER;
+          select.appendChild(buildOption(opt.code, opt.text, isSelected));
+        });
+      }
+      distinctVagas().forEach(v => {
+        select.appendChild(buildOption(v.id, v.label, v.id === selectedId));
+      });
+    }
+
+    function renderDetail(){
+      const host = $("#detailHost");
+      host.replaceChildren();
+
+      const c = findCand(state.selectedId);
       if(!c){
-        return `
-          <div class="detail-empty">
-            <div class="d-flex align-items-start gap-2">
-              <i class="bi bi-info-circle mt-1"></i>
-              <div>
-                <div class="fw-bold">Selecione um candidato</div>
-                <div class="small mt-1">Use o botao Detalhes na lista para ver match, editar status e texto do CV.</div>
-              </div>
-            </div>
-          </div>
-        `;
+        const empty = cloneTemplate("tpl-cand-detail-empty");
+        if(empty) host.appendChild(empty);
+        return;
       }
 
       const v = findVaga(c.vagaId);
       const updated = c.updatedAt ? new Date(c.updatedAt) : null;
-      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
+      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : EMPTY_TEXT;
+
+      const root = cloneTemplate("tpl-cand-detail");
+      if(!root) return;
+
+      setText(root, "detail-initials", initials(c.nome));
+      setText(root, "detail-name", c.nome);
+      setText(root, "detail-email", c.email);
+      setText(root, "detail-phone", c.fone);
+      const hasPhone = !!c.fone;
+      toggleRole(root, "detail-phone", hasPhone);
+      toggleRole(root, "detail-phone-sep", hasPhone);
+
+      const locParts = [c.cidade, c.uf].filter(Boolean);
+      const hasLoc = locParts.length > 0;
+      setText(root, "detail-location", hasLoc ? locParts.join(" - ") : EMPTY_TEXT);
+      toggleRole(root, "detail-location-icon", hasLoc);
+      toggleRole(root, "detail-location-sep", hasLoc);
+      setText(root, "detail-source", c.fonte);
+
+      const statusHost = root.querySelector('[data-role="detail-status-host"]');
+      if(statusHost) statusHost.replaceChildren(buildStatusTag(c.status));
+
+      setText(root, "detail-updated", updatedTxt);
+
+      const vagaTitle = v ? (v.titulo || EMPTY_TEXT) : "Vaga nao vinculada";
+      setText(root, "detail-vaga-title", vagaTitle);
+      setText(root, "detail-vaga-code", v?.codigo);
+      const thrVal = clamp(parseInt(v?.threshold ?? 0,10)||0,0,100);
+      setText(root, "detail-vaga-thr", v ? `${thrVal}%` : EMPTY_TEXT);
+      toggleRole(root, "detail-vaga-code-wrap", !!v);
+      toggleRole(root, "detail-vaga-thr-wrap", !!v);
+
+      setText(root, "detail-obs", c.obs);
+
+      const statusSel = root.querySelector("#detailStatus");
+      fillSelectFromEnum(statusSel, "candidatoStatus", c.status);
+
+      const vagaSel = root.querySelector("#detailVaga");
+      fillVagaSelect(vagaSel, c.vagaId, true);
+
+      const cvText = root.querySelector("#detailCvText");
+      if(cvText) cvText.value = c.cvText || "";
 
       const m = calcMatchForCand(c);
       const thr = m.threshold ?? (v ? v.threshold : 0);
       const pass = !!m.pass;
 
-      const hits = (m.hits || []).map(r => r.termo).slice(0, 12);
-      const misses = (m.missMandatory || []).map(r => r.termo).slice(0, 12);
+      toggleRole(root, "match-has-vaga", !!v);
+      toggleRole(root, "match-no-vaga", !v);
 
-      return `
-        <div class="card-soft p-3">
-          <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
-            <div class="d-flex align-items-center gap-2">
-              <div class="avatar" style="width:52px;height:52px;border-radius:16px;">${escapeHtml(initials(c.nome))}</div>
-              <div>
-                <div class="fw-bold" style="font-size:1.05rem;">${escapeHtml(c.nome || "—")}</div>
-                <div class="text-muted small">
-                  <span>${escapeHtml(c.email || "—")}</span>
-                  ${c.fone ? `<span class="mx-2">•</span><span>${escapeHtml(c.fone)}</span>` : ""}
-                </div>
-                <div class="text-muted small">
-                  ${[c.cidade, c.uf].filter(Boolean).length ? `<i class="bi bi-geo-alt me-1"></i>${escapeHtml([c.cidade, c.uf].filter(Boolean).join(" - "))}` : `<span>—</span>`}
-                  <span class="mx-2">•</span>
-                  <i class="bi bi-send me-1"></i>${escapeHtml(c.fonte || "—")}
-                </div>
-              </div>
-            </div>
+      if(v){
+        const matchStatusHost = root.querySelector('[data-role="match-status-host"]');
+        if(matchStatusHost){
+          const tag = cloneTemplate("tpl-cand-status-tag");
+          if(tag){
+            tag.classList.toggle("ok", pass);
+            tag.classList.toggle("bad", !pass);
+            const icon = tag.querySelector('[data-role="icon"]');
+            if(icon) icon.className = pass ? "bi bi-check2-circle" : "bi bi-x-circle";
+            const label = tag.querySelector('[data-role="text"]');
+            if(label) label.textContent = pass ? "Dentro do minimo" : "Abaixo do minimo";
+            matchStatusHost.replaceChildren(tag);
+          }
+        }
 
-            <div class="text-end">
-              <div class="mb-1">${statusTag(c.status)}</div>
-              <div class="text-muted small">Atualizado: ${escapeHtml(updatedTxt)}</div>
-            </div>
-          </div>
+        const score = clamp(parseInt(m.score||0,10)||0,0,100);
+        const thrValue = clamp(parseInt(thr||0,10)||0,0,100);
+        const progress = root.querySelector('[data-role="match-progress"]');
+        if(progress) progress.style.width = `${score}%`;
+        setText(root, "match-score", `${score}%`);
+        setText(root, "match-thr", `${thrValue}%`);
+        setText(root, "match-hits-count", (m.hits||[]).length);
+        setText(root, "match-miss-count", (m.missMandatory||[]).length);
 
-          <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="pill"><i class="bi bi-briefcase"></i>${escapeHtml(v ? (v.titulo || "—") : "Vaga não vinculada")}</span>
-            ${v ? `<span class="pill mono">${escapeHtml(v.codigo || "—")}</span>` : ""}
-            ${v ? `<span class="pill"><i class="bi bi-stars"></i>Match mín.: <strong class="ms-1">${clamp(parseInt(thr||0,10)||0,0,100)}%</strong></span>` : ""}
-          </div>
+        const hits = (m.hits || []).map(r => r.termo).slice(0, 12);
+        const misses = (m.missMandatory || []).map(r => r.termo).slice(0, 12);
 
-          <ul class="nav nav-pills gap-2 mb-3" style="background: rgba(173,200,220,.16); padding: .35rem; border-radius: 999px; border: 1px solid rgba(16,82,144,.14);">
-            <li class="nav-item">
-              <button class="nav-link active rounded-pill" data-bs-toggle="pill" data-bs-target="#tabResumo" type="button">
-                <i class="bi bi-card-text me-1"></i>Resumo
-              </button>
-            </li>
-            <li class="nav-item">
-              <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#tabCV" type="button">
-                <i class="bi bi-file-earmark-text me-1"></i>Texto do CV
-              </button>
-            </li>
-            <li class="nav-item">
-              <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#tabMatch" type="button">
-                <i class="bi bi-stars me-1"></i>Match
-              </button>
-            </li>
-          </ul>
+        const missBlock = root.querySelector('[data-role="match-miss-block"]');
+        if(missBlock) missBlock.classList.toggle("d-none", !misses.length);
+        setText(root, "match-miss-list", misses.join(", "));
+        setText(root, "match-hit-list", hits.length ? hits.join(", ") : EMPTY_TEXT);
+      }
 
-          <div class="tab-content">
-            <div class="tab-pane fade show active" id="tabResumo">
-              <div class="fw-semibold mb-1">Observações</div>
-              <div class="text-muted small mb-3">${escapeHtml(c.obs || "—")}</div>
-
-              <div class="row g-2">
-                <div class="col-12 col-md-6">
-                  <div class="card-soft p-2" style="box-shadow:none;">
-                    <div class="small text-muted">Status</div>
-                    <select class="form-select form-select-sm mt-1" id="detailStatus">
-                      ${renderEnumOptions("candidatoStatus", c.status)}
-                    </select>
-                  </div>
-                </div>
-                <div class="col-12 col-md-6">
-                  <div class="card-soft p-2" style="box-shadow:none;">
-                    <div class="small text-muted">Vaga</div>
-                    <select class="form-select form-select-sm mt-1" id="detailVaga">
-                      ${renderVagaOptionsHtml(c.vagaId)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div class="d-flex flex-wrap gap-2 mt-3">
-                <button class="btn btn-ghost btn-sm" type="button" data-dact="edit">
-                  <i class="bi bi-pencil me-1"></i>Editar
-                </button>
-                <button class="btn btn-ghost btn-sm" type="button" data-dact="saveMeta">
-                  <i class="bi bi-check2 me-1"></i>Salvar status/vaga
-                </button>
-                <button class="btn btn-ghost btn-sm text-danger" type="button" data-dact="delete">
-                  <i class="bi bi-trash3 me-1"></i>Excluir
-                </button>
-              </div>
-            </div>
-
-            <div class="tab-pane fade" id="tabCV">
-              <div class="fw-semibold mb-1">Texto do CV (para simulação no MVP)</div>
-              <div class="text-muted small mb-2">
-                No produto final, isso virá de OCR/parse do PDF/DOCX + dados do email/pasta.
-              </div>
-              <textarea class="form-control" rows="8" id="detailCvText" placeholder="Cole aqui o texto do currículo...">${escapeHtml(c.cvText || "")}</textarea>
-              <div class="d-flex flex-wrap gap-2 mt-2">
-                <button class="btn btn-ghost btn-sm" type="button" data-dact="saveCv">
-                  <i class="bi bi-save me-1"></i>Salvar texto
-                </button>
-                <button class="btn btn-ghost btn-sm" type="button" data-dact="recalc">
-                  <i class="bi bi-arrow-repeat me-1"></i>Recalcular match
-                </button>
-              </div>
-            </div>
-
-            <div class="tab-pane fade" id="tabMatch">
-              ${v ? `
-                <div class="d-flex align-items-center justify-content-between">
-                  <div>
-                    <div class="fw-bold">Resultado atual</div>
-                    <div class="text-muted small">Score por palavras-chave (MVP)</div>
-                  </div>
-                  <span class="status-tag ${pass ? "ok" : "bad"}">
-                    <i class="bi bi-${pass ? "check2-circle" : "x-circle"}"></i>
-                    ${pass ? "Dentro" : "Abaixo"} do mínimo
-                  </span>
-                </div>
-
-                <div class="mt-2">
-                  <div class="d-flex align-items-center gap-2">
-                    <div class="progress flex-grow-1">
-                      <div class="progress-bar" style="width:${clamp(m.score,0,100)}%"></div>
-                    </div>
-                    <div class="fw-bold" style="min-width:54px;text-align:right;">${clamp(m.score,0,100)}%</div>
-                  </div>
-                  <div class="text-muted small mt-1">
-                    Match mínimo da vaga: <strong>${clamp(parseInt(thr||0,10)||0,0,100)}%</strong>
-                    • Encontrados: <strong>${(m.hits||[]).length}</strong>
-                    • Obrigatórios faltando: <strong>${(m.missMandatory||[]).length}</strong>
-                  </div>
-                </div>
-
-                ${(m.missMandatory||[]).length ? `
-                  <div class="alert alert-danger mt-3 mb-0" style="border-radius:14px;">
-                    <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Obrigatórios não encontrados</div>
-                    <div class="small">${escapeHtml(misses.join(", "))}</div>
-                  </div>
-                ` : ""}
-
-                <div class="mt-3">
-                  <div class="fw-semibold mb-1">Encontrados</div>
-                  <div class="small text-muted">${hits.length ? escapeHtml(hits.join(", ")) : "—"}</div>
-                </div>
-
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                  <button class="btn btn-ghost btn-sm" type="button" data-dact="recalc">
-                    <i class="bi bi-arrow-repeat me-1"></i>Recalcular
-                  </button>
-                  <button class="btn btn-ghost btn-sm" type="button" data-dact="openVaga">
-                    <i class="bi bi-briefcase me-1"></i>Abrir vaga (placeholder)
-                  </button>
-                </div>
-              ` : `
-                <div class="alert alert-warning" style="border-radius:14px;">
-                  Vincule uma vaga ao candidato para calcular o match.
-                </div>
-              `}
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderVagaOptionsHtml(selectedId){
-      const opts = distinctVagas()
-        .map(v => `<option value="${v.id}" ${v.id===selectedId?"selected":""}>${escapeHtml(v.label)}</option>`)
-        .join("");
-      const placeholder = renderEnumOptions("selectPlaceholder", selectedId ? null : SELECT_PLACEHOLDER);
-      return placeholder + opts;
-    }
-
-    function renderDetail(){
-      const c = findCand(state.selectedId);
-      $("#detailHost").innerHTML = buildDetailHtml(c);
+      host.appendChild(root);
       bindDetailActions(c);
     }
 

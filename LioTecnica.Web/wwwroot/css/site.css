@@ -135,6 +135,9 @@
       gap: 1rem;
       padding: .85rem 1rem;
     }
+    .topbar .btn{
+      white-space: nowrap;
+    }
     .searchbox{
       max-width: 620px;
       width: 100%;

@@ -27,12 +27,18 @@
       if(!sel) return;
       const vagas = Array.isArray(seed.vagas) ? seed.vagas : [];
       const current = sel.value || VAGA_ALL;
-      const opts = vagas
+
+      sel.replaceChildren();
+      getEnumOptions("vagaFilterSimple").forEach(opt => {
+        sel.appendChild(buildOption(opt.code, opt.text, opt.code === current));
+      });
+      vagas
         .slice()
         .sort((a,b)=> (a.titulo||"").localeCompare(b.titulo||""))
-        .map(v => `<option value="${v.id}">${escapeHtml(v.titulo||"-")} (${escapeHtml(v.codigo||"-")})</option>`)
-        .join("");
-      sel.innerHTML = renderEnumOptions("vagaFilterSimple", VAGA_ALL) + opts;
+        .forEach(v => {
+          sel.appendChild(buildOption(v.id, `${v.titulo || "-"} (${v.codigo || "-"})`, v.id === current));
+        });
+
       sel.value = (current === VAGA_ALL || vagas.some(v => v.id === current)) ? current : VAGA_ALL;
     }
 

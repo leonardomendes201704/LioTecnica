@@ -12,19 +12,33 @@ function enumFirstCode(key, fallback){
     const DEFAULT_STATUS = enumFirstCode("vagaStatus", "aberta");
     const DEFAULT_SENIORIDADE = enumFirstCode("vagaSenioridade", "Junior");
     const DEFAULT_CATEGORIA = enumFirstCode("requisitoCategoria", "Competencia");
+    const EMPTY_TEXT = "—";
+    const BULLET = "•";
+
+    function setText(root, role, value, fallback = EMPTY_TEXT){
+      if(!root) return;
+      const el = root.querySelector(`[data-role="${role}"]`);
+      if(!el) return;
+      el.textContent = (value ?? fallback);
+    }
 function fmtStatus(s){
       const map = { aberta:"Aberta", pausada:"Pausada", fechada:"Fechada" };
       return map[s] || s;
     }
 
-    function badgeStatus(s){
+    function buildStatusBadge(s){
       const map = {
         aberta:  "success",
         pausada: "warning",
         fechada: "secondary"
       };
       const bs = map[s] || "primary";
-      return `<span class="badge text-bg-${bs} rounded-pill">${fmtStatus(s)}</span>`;
+      const badge = cloneTemplate("tpl-vaga-status-badge");
+      if(!badge) return document.createElement("span");
+      badge.classList.add("text-bg-" + bs);
+      const text = badge.querySelector('[data-role="text"]');
+      if(text) text.textContent = fmtStatus(s);
+      return badge;
     }
 // ========= Storage
     const STORE_KEY = "lt_rh_vagas_v1";
@@ -89,7 +103,13 @@ function fmtStatus(s){
       const areas = distinctAreas();
       const sel = $("#fArea");
       const cur = sel.value || AREA_ALL;
-      sel.innerHTML = renderEnumOptions("vagaAreaFilter", AREA_ALL) + areas.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
+      sel.replaceChildren();
+      getEnumOptions("vagaAreaFilter").forEach(opt => {
+        sel.appendChild(buildOption(opt.code, opt.text, opt.code === cur));
+      });
+      areas.forEach(a => {
+        sel.appendChild(buildOption(a, a, a === cur));
+      });
       sel.value = areas.includes(cur) ? cur : AREA_ALL;
     }
 
@@ -114,11 +134,12 @@ function fmtStatus(s){
 
     function renderList(){
       const tbody = $("#tblVagas");
-      tbody.innerHTML = "";
+      tbody.replaceChildren();
 
       const rows = getFilteredVagas();
       if(!rows.length){
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Nenhuma vaga encontrada com os filtros atuais.</td></tr>`;
+        const emptyRow = cloneTemplate("tpl-vaga-empty-row");
+        if(emptyRow) tbody.appendChild(emptyRow);
         return;
       }
 
@@ -127,43 +148,33 @@ function fmtStatus(s){
         const reqObrig = (v.requisitos || []).filter(r => !!r.obrigatorio).length;
         const isSel = v.id === state.selectedId;
 
-        const tr = document.createElement("tr");
+        const tr = cloneTemplate("tpl-vaga-row");
+        if(!tr) return;
         tr.style.cursor = "default";
-        tr.className = isSel ? "table-active" : "";
-        tr.innerHTML = `
-          <td>
-            <div class="fw-bold">${escapeHtml(v.titulo || "â€”")}</div>
-            <div class="text-muted small">
-              <span class="mono">${escapeHtml(v.codigo || "â€”")}</span>
-              <span class="mx-2">â€¢</span>
-              <span>${escapeHtml(v.modalidade || "â€”")}</span>
-              ${v.cidade || v.uf ? `<span class="mx-2">â€¢</span><span>${escapeHtml([v.cidade, v.uf].filter(Boolean).join(" - "))}</span>` : ""}
-            </div>
-          </td>
-          <td class="nowrap">${badgeStatus(v.status)}</td>
-          <td class="nowrap">${escapeHtml(v.area || "â€”")}</td>
-          <td class="nowrap">
-            <span class="req-chip">${reqTotal} total</span>
-            <span class="req-chip mandatory ms-1">${reqObrig} obrig.</span>
-          </td>
-          <td class="nowrap">
-            <span class="badge-soft"><i class="bi bi-stars me-1"></i>${clamp(parseInt(v.threshold ?? 0,10)||0,0,100)}%</span>
-          </td>
-          <td class="text-end nowrap">
-            <button class="btn btn-ghost btn-sm me-1" data-act="detail" data-id="${v.id}">
-              <i class="bi bi-layout-text-window me-1"></i>Detalhes
-            </button>
-            <button class="btn btn-ghost btn-sm me-1" data-act="edit" data-id="${v.id}">
-              <i class="bi bi-pencil me-1"></i>Editar
-            </button>
-            <button class="btn btn-ghost btn-sm me-1" data-act="dup" data-id="${v.id}" title="Duplicar">
-              <i class="bi bi-copy"></i>
-            </button>
-            <button class="btn btn-ghost btn-sm text-danger" data-act="del" data-id="${v.id}" title="Excluir">
-              <i class="bi bi-trash3"></i>
-            </button>
-          </td>
-        `;
+        if(isSel) tr.classList.add("table-active");
+
+        setText(tr, "vaga-title", v.titulo);
+        setText(tr, "vaga-code", v.codigo);
+        setText(tr, "vaga-modalidade", v.modalidade);
+        setText(tr, "vaga-area", v.area);
+        setText(tr, "req-total", `${reqTotal} total`);
+        setText(tr, "req-obrig", `${reqObrig} obrig.`);
+
+        const thrVal = clamp(parseInt(v.threshold ?? 0,10)||0,0,100);
+        setText(tr, "vaga-thr", `${thrVal}%`);
+
+        const locParts = [v.cidade, v.uf].filter(Boolean);
+        const hasLoc = locParts.length > 0;
+        setText(tr, "vaga-location", hasLoc ? locParts.join(" - ") : EMPTY_TEXT);
+        toggleRole(tr, "vaga-location", hasLoc);
+        toggleRole(tr, "vaga-location-sep", hasLoc);
+
+        const statusHost = tr.querySelector('[data-role="status-host"]');
+        if(statusHost) statusHost.replaceChildren(buildStatusBadge(v.status));
+
+        tr.querySelectorAll("button[data-act]").forEach(btn => {
+          btn.dataset.id = v.id;
+        });
 
         tr.addEventListener("click", (ev) => {
           const btn = ev.target.closest("button[data-act]");
@@ -202,215 +213,67 @@ function fmtStatus(s){
     }
 
     // ========= Detail UI
-    function buildDetailHtml(v){
+    function renderDetail(){
+      const host = $("#detailHost");
+      host.replaceChildren();
+
+      const v = findVaga(state.selectedId);
       if(!v){
-        return `
-          <div class="detail-empty">
-            <div class="d-flex align-items-start gap-2">
-              <i class="bi bi-info-circle mt-1"></i>
-              <div>
-                <div class="fw-bold">Selecione uma vaga</div>
-                <div class="small mt-1">
-                  Use o botao Detalhes na lista para editar requisitos (pesos/obrigatorios), definir o match minimo e simular aderencia.
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
+        const empty = cloneTemplate("tpl-vaga-detail-empty");
+        if(empty) host.appendChild(empty);
+        return;
       }
 
       const reqTotal = (v.requisitos || []).length;
       const reqObrig = (v.requisitos || []).filter(r => !!r.obrigatorio).length;
 
       const updated = v.updatedAt ? new Date(v.updatedAt) : null;
-      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "â€”";
+      const updatedTxt = updated ? updated.toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : EMPTY_TEXT;
 
       const weights = v.weights || { competencia:40, experiencia:30, formacao:15, localidade:15 };
       const sumW = (weights.competencia||0) + (weights.experiencia||0) + (weights.formacao||0) + (weights.localidade||0);
 
-      return `
-        <div class="card-soft p-3">
-          <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
-            <div>
-              <p class="mini-title mb-1">Detalhes</p>
-              <div class="fw-bold" style="font-size: 1.05rem;">${escapeHtml(v.titulo || "â€”")}</div>
-              <div class="text-muted small">
-                <span class="mono">${escapeHtml(v.codigo || "â€”")}</span>
-                <span class="mx-2">â€¢</span>
-                <span>${escapeHtml(v.area || "â€”")}</span>
-                <span class="mx-2">â€¢</span>
-                <span>${escapeHtml(v.modalidade || "â€”")}</span>
-              </div>
-            </div>
+      const thrVal = clamp(parseInt(v.threshold ?? 0,10)||0,0,100);
 
-            <div class="text-end">
-              <div class="mb-1">${badgeStatus(v.status)}</div>
-              <div class="text-muted small">Atualizado: ${escapeHtml(updatedTxt)}</div>
-            </div>
-          </div>
+      const root = cloneTemplate("tpl-vaga-detail");
+      if(!root) return;
 
-          <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="req-chip"><i class="bi bi-list-check me-1"></i>${reqTotal} requisitos</span>
-            <span class="req-chip mandatory"><i class="bi bi-exclamation-triangle me-1"></i>${reqObrig} obrigatÃ³rios</span>
-            <span class="badge-soft"><i class="bi bi-stars me-1"></i>Match mÃ­n.: ${clamp(parseInt(v.threshold ?? 0,10)||0,0,100)}%</span>
-          </div>
+      setText(root, "detail-title", v.titulo);
+      setText(root, "detail-code", v.codigo);
+      setText(root, "detail-area", v.area);
+      setText(root, "detail-modalidade", v.modalidade);
 
-          <ul class="nav nav-pills gap-2 mb-3" id="detailTabs" role="tablist" style="background: rgba(173,200,220,.16); padding: .35rem; border-radius: 999px; border: 1px solid rgba(16,82,144,.14);">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active rounded-pill" data-bs-toggle="pill" data-bs-target="#tabResumo" type="button" role="tab">
-                <i class="bi bi-card-text me-1"></i>Resumo
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#tabReq" type="button" role="tab">
-                <i class="bi bi-list-check me-1"></i>Requisitos
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#tabMatch" type="button" role="tab">
-                <i class="bi bi-sliders me-1"></i>Pesos & Match
-              </button>
-            </li>
-          </ul>
+      const statusHost = root.querySelector('[data-role="detail-status-host"]');
+      if(statusHost) statusHost.replaceChildren(buildStatusBadge(v.status));
 
-          <div class="tab-content">
-            <!-- RESUMO -->
-            <div class="tab-pane fade show active" id="tabResumo" role="tabpanel">
-              <div class="mb-2">
-                <div class="fw-semibold">DescriÃ§Ã£o</div>
-                <div class="text-muted small">${escapeHtml(v.descricao || "â€”")}</div>
-              </div>
+      setText(root, "detail-updated", updatedTxt);
+      setText(root, "detail-req-total", `${reqTotal} requisitos`);
+      setText(root, "detail-req-obrig", `${reqObrig} obrigatorios`);
+      setText(root, "detail-thr", `${thrVal}%`);
 
-              <div class="row g-2">
-                <div class="col-12 col-md-6">
-                  <div class="card-soft p-2" style="box-shadow:none;">
-                    <div class="small text-muted">Local</div>
-                    <div class="fw-semibold">${escapeHtml([v.cidade, v.uf].filter(Boolean).join(" - ") || "â€”")}</div>
-                  </div>
-                </div>
-                <div class="col-12 col-md-6">
-                  <div class="card-soft p-2" style="box-shadow:none;">
-                    <div class="small text-muted">Senioridade</div>
-                    <div class="fw-semibold">${escapeHtml(v.senioridade || "â€”")}</div>
-                  </div>
-                </div>
-              </div>
+      setText(root, "detail-descricao", v.descricao);
+      const locParts = [v.cidade, v.uf].filter(Boolean);
+      setText(root, "detail-local", locParts.join(" - ") || EMPTY_TEXT);
+      setText(root, "detail-senioridade", v.senioridade);
 
-              <div class="d-flex flex-wrap gap-2 mt-3">
-                <button class="btn btn-ghost btn-sm" type="button" data-dact="editvaga">
-                  <i class="bi bi-pencil me-1"></i>Editar vaga
-                </button>
-                <button class="btn btn-ghost btn-sm" type="button" data-dact="duplicate">
-                  <i class="bi bi-copy me-1"></i>Duplicar
-                </button>
-                <button class="btn btn-ghost btn-sm text-danger" type="button" data-dact="delete">
-                  <i class="bi bi-trash3 me-1"></i>Excluir
-                </button>
-              </div>
-            </div>
+      const thresholdRange = root.querySelector("#thresholdRange");
+      const thresholdLabel = root.querySelector("#thresholdLabel");
+      if(thresholdRange) thresholdRange.value = thrVal;
+      if(thresholdLabel) thresholdLabel.textContent = `${thrVal}%`;
 
-            <!-- REQUISITOS -->
-            <div class="tab-pane fade" id="tabReq" role="tabpanel">
-              <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                <div>
-                  <div class="fw-semibold">Requisitos</div>
-                  <div class="text-muted small">Peso (0â€“10) + flag de obrigatÃ³rio.</div>
-                </div>
-                <button class="btn btn-brand btn-sm" type="button" data-dact="addreq">
-                  <i class="bi bi-plus-lg me-1"></i>Novo requisito
-                </button>
-              </div>
+      const weightsSum = root.querySelector("#weightsSum");
+      if(weightsSum) weightsSum.textContent = sumW;
 
-              <div class="input-group mb-2">
-                <span class="input-group-text" style="border-color:var(--lt-border); background: rgba(255,255,255,.65);">
-                  <i class="bi bi-search"></i>
-                </span>
-                <input class="form-control" id="reqSearch" placeholder="Filtrar requisitos..." style="border-color:var(--lt-border);">
-              </div>
+      const weightKeys = ["competencia","experiencia","formacao","localidade"];
+      weightKeys.forEach(key => {
+        const slider = root.querySelector("#w_" + key);
+        const val = root.querySelector("#w_" + key + "_val");
+        const w = clamp(parseInt(weights[key] ?? 0,10)||0, 0, 100);
+        if(slider) slider.value = w;
+        if(val) val.textContent = w;
+      });
 
-              <div class="table-responsive">
-                <table class="table align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th style="min-width: 110px;">Obrig.</th>
-                      <th style="min-width: 150px;">Categoria</th>
-                      <th style="min-width: 220px;">Termo</th>
-                      <th style="min-width: 110px;">Peso</th>
-                      <th style="min-width: 220px;">SinÃ´nimos</th>
-                      <th class="text-end" style="min-width: 120px;">AÃ§Ãµes</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tblReq"></tbody>
-                </table>
-              </div>
-
-              <div class="small text-muted mt-2">
-                Regras (MVP): score = soma(pesos encontrados) / soma(pesos totais) * 100.
-                Itens <strong>obrigatÃ³rios</strong> podem aplicar penalidade se ausentes.
-              </div>
-            </div>
-
-            <!-- PESOS & MATCH -->
-            <div class="tab-pane fade" id="tabMatch" role="tabpanel">
-              <div class="fw-semibold mb-1">Match mÃ­nimo</div>
-              <div class="d-flex align-items-center gap-2">
-                <input type="range" class="form-range" min="0" max="100" value="${clamp(parseInt(v.threshold ?? 0,10)||0,0,100)}" id="thresholdRange">
-                <span class="badge-soft" style="min-width:74px;text-align:center;" id="thresholdLabel">${clamp(parseInt(v.threshold ?? 0,10)||0,0,100)}%</span>
-              </div>
-              <div class="text-muted small mb-3">Use isso como â€œcorteâ€ para triagem automÃ¡tica.</div>
-
-              <div class="fw-semibold mb-2">Pesos por categoria (soma ideal = 100)</div>
-
-              ${weightRow("Competencia", "competencia", weights.competencia ?? 0)}
-              ${weightRow("ExperiÃªncia", "experiencia", weights.experiencia ?? 0)}
-              ${weightRow("FormaÃ§Ã£o", "formacao", weights.formacao ?? 0)}
-              ${weightRow("Localidade", "localidade", weights.localidade ?? 0)}
-
-              <div class="d-flex align-items-center justify-content-between mt-3">
-                <span class="badge-soft">Soma atual: <span id="weightsSum">${sumW}</span></span>
-                <button class="btn btn-brand btn-sm" type="button" data-dact="saveWeights">
-                  <i class="bi bi-check2 me-1"></i>Salvar
-                </button>
-              </div>
-
-              <hr class="my-3">
-
-              <div class="fw-semibold mb-1">Simulador rÃ¡pido (MVP)</div>
-              <div class="text-muted small mb-2">Cole um texto (currÃ­culo em texto) e veja o match estimado por palavras-chave.</div>
-              <textarea class="form-control mb-2" id="simText" rows="5" placeholder="Cole aqui o texto do CV (extraÃ­do do PDF/DOCX)..."></textarea>
-              <div class="d-flex gap-2">
-                <button class="btn btn-ghost btn-sm" type="button" data-dact="simulate">
-                  <i class="bi bi-play-circle me-1"></i>Simular
-                </button>
-                <button class="btn btn-ghost btn-sm" type="button" data-dact="simClear">
-                  <i class="bi bi-eraser me-1"></i>Limpar
-                </button>
-              </div>
-
-              <div class="mt-2" id="simResult"></div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function weightRow(label, key, value){
-      value = clamp(parseInt(value,10)||0, 0, 100);
-      const id = "w_" + key;
-      return `
-        <div class="mb-2">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="text-muted small">${escapeHtml(label)}</div>
-            <div class="mono small"><span id="${id}_val">${value}</span>%</div>
-          </div>
-          <input type="range" class="form-range" min="0" max="100" value="${value}" id="${id}">
-        </div>
-      `;
-    }
-
-    function renderDetail(){
-      const v = findVaga(state.selectedId);
-      $("#detailHost").innerHTML = buildDetailHtml(v);
+      host.appendChild(root);
 
       // bind detail actions + render req table + bind sliders
       bindDetailActions(v);
@@ -477,7 +340,7 @@ function fmtStatus(s){
       const tbody = $("#detailHost #tblReq");
       if(!tbody) return;
 
-      tbody.innerHTML = "";
+      tbody.replaceChildren();
       const reqs = (v?.requisitos || []);
 
       const q = ($("#detailHost #reqSearch")?.value || "").trim().toLowerCase();
@@ -487,39 +350,30 @@ function fmtStatus(s){
       });
 
       if(!filtered.length){
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nenhum requisito.</td></tr>`;
+        const emptyRow = cloneTemplate("tpl-vaga-req-empty-row");
+        if(emptyRow) tbody.appendChild(emptyRow);
         return;
       }
 
       filtered.forEach(r => {
+        const tr = cloneTemplate("tpl-vaga-req-row");
+        if(!tr) return;
+
+        const toggleInput = tr.querySelector('[data-role="req-toggle"]');
+        if(toggleInput){
+          toggleInput.checked = !!r.obrigatorio;
+          toggleInput.dataset.rid = r.id;
+        }
+
+        setText(tr, "req-categoria", r.categoria);
+        setText(tr, "req-termo", r.termo);
+        setText(tr, "req-obs", r.obs || EMPTY_TEXT);
+        setText(tr, "req-peso", clamp(parseInt(r.peso ?? 0,10)||0,0,10));
         const syn = (r.sinonimos || []).join(", ");
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="nowrap">
-            <div class="form-check form-switch m-0">
-              <input class="form-check-input" type="checkbox" ${r.obrigatorio ? "checked" : ""} data-ract="toggle" data-rid="${r.id}">
-            </div>
-          </td>
-          <td>${escapeHtml(r.categoria || "â€”")}</td>
-          <td>
-            <div class="fw-semibold">${escapeHtml(r.termo || "â€”")}</div>
-            ${r.obs ? `<div class="text-muted small">${escapeHtml(r.obs)}</div>` : `<div class="text-muted small">â€”</div>`}
-          </td>
-          <td class="nowrap">
-            <span class="badge-soft">${clamp(parseInt(r.peso ?? 0,10)||0,0,10)}</span>
-          </td>
-          <td>${escapeHtml(syn || "â€”")}</td>
-          <td class="text-end nowrap">
-            <button class="btn btn-ghost btn-sm me-1" data-ract="edit" data-rid="${r.id}">
-              <i class="bi bi-pencil"></i>
-            </button>
-            <button class="btn btn-ghost btn-sm text-danger" data-ract="del" data-rid="${r.id}">
-              <i class="bi bi-trash3"></i>
-            </button>
-          </td>
-        `;
+        setText(tr, "req-sinonimos", syn || EMPTY_TEXT);
 
         tr.querySelectorAll("[data-ract]").forEach(el => {
+          el.dataset.rid = r.id;
           el.addEventListener("click", (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
@@ -849,15 +703,20 @@ function simulateMatch(vagaId, fromMobile=false){
 
       const root = fromMobile ? $("#mobileDetailBody") : $("#detailHost");
       const area = root.querySelector("#simResult");
+      if(!area) return;
+      area.replaceChildren();
+
       const text = normalizeText(root.querySelector("#simText")?.value || "");
       const reqs = v.requisitos || [];
 
       if(!text){
-        area.innerHTML = `<div class="alert alert-warning" style="border-radius:14px;">Cole um texto para simular.</div>`;
+        const warn = cloneTemplate("tpl-vaga-sim-alert-warning");
+        if(warn) area.appendChild(warn);
         return;
       }
       if(!reqs.length){
-        area.innerHTML = `<div class="alert alert-info" style="border-radius:14px;">Cadastre requisitos antes de simular.</div>`;
+        const info = cloneTemplate("tpl-vaga-sim-alert-info");
+        if(info) area.appendChild(info);
         return;
       }
 
@@ -884,50 +743,35 @@ function simulateMatch(vagaId, fromMobile=false){
       });
 
       let score = Math.round((hitPeso / totalPeso) * 100);
-      // penalidade simples por obrigatÃ³rios faltando (MVP)
       if(missMandatory.length){
         score = Math.max(0, score - Math.min(40, missMandatory.length * 15));
       }
 
-      const pass = score >= clamp(parseInt(v.threshold||0,10)||0,0,100);
+      const thr = clamp(parseInt(v.threshold||0,10)||0,0,100);
+      const pass = score >= thr;
 
-      area.innerHTML = `
-        <div class="card-soft p-3" style="box-shadow:none;">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <div class="fw-bold">Resultado da simulaÃ§Ã£o</div>
-              <div class="text-muted small">Score por palavras-chave (MVP)</div>
-            </div>
-            <span class="badge text-bg-${pass ? "success" : "danger"} rounded-pill">
-              ${pass ? "Dentro" : "Fora"} do match mÃ­nimo
-            </span>
-          </div>
+      const card = cloneTemplate("tpl-vaga-sim-result");
+      if(!card) return;
 
-          <div class="mt-2">
-            <div class="d-flex align-items-center gap-2">
-              <div class="progress flex-grow-1"><div class="progress-bar" style="width:${score}%"></div></div>
-              <div class="fw-bold" style="min-width:54px;text-align:right;">${score}%</div>
-            </div>
-            <div class="text-muted small mt-1">
-              Match mÃ­nimo da vaga: <strong>${clamp(parseInt(v.threshold||0,10)||0,0,100)}%</strong>
-              â€¢ Encontrados: <strong>${hits.length}</strong>
-              â€¢ ObrigatÃ³rios faltando: <strong>${missMandatory.length}</strong>
-            </div>
-          </div>
+      const badge = card.querySelector('[data-role="sim-badge"]');
+      if(badge){
+        badge.classList.add(pass ? "text-bg-success" : "text-bg-danger");
+      }
+      setText(card, "sim-badge-text", pass ? "Dentro" : "Fora");
 
-          ${missMandatory.length ? `
-            <div class="alert alert-danger mt-3 mb-0" style="border-radius:14px;">
-              <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>ObrigatÃ³rios nÃ£o encontrados</div>
-              <div class="small">${missMandatory.map(r => escapeHtml(r.termo)).join(", ")}</div>
-            </div>
-          ` : ""}
+      const progress = card.querySelector('[data-role="sim-progress"]');
+      if(progress) progress.style.width = `${score}%`;
+      setText(card, "sim-score", `${score}%`);
+      setText(card, "sim-thr", `${thr}%`);
+      setText(card, "sim-hits", hits.length);
+      setText(card, "sim-miss", missMandatory.length);
 
-          <div class="mt-3">
-            <div class="fw-semibold mb-1">Encontrados</div>
-            <div class="small text-muted">${hits.length ? hits.map(r => escapeHtml(r.termo)).join(", ") : "â€”"}</div>
-          </div>
-        </div>
-      `;
+      const missBlock = card.querySelector('[data-role="sim-miss-block"]');
+      if(missBlock) missBlock.classList.toggle("d-none", !missMandatory.length);
+      setText(card, "sim-miss-list", missMandatory.map(r => r.termo).join(", "));
+      setText(card, "sim-hit-list", hits.length ? hits.map(r => r.termo).join(", ") : EMPTY_TEXT);
+
+      area.appendChild(card);
     }
 
     function clearSimulation(fromMobile=false){
@@ -935,7 +779,7 @@ function simulateMatch(vagaId, fromMobile=false){
       const ta = root.querySelector("#simText");
       const res = root.querySelector("#simResult");
       if(ta) ta.value = "";
-      if(res) res.innerHTML = "";
+      if(res) res.replaceChildren();
     }
 
     // ========= Import/Export

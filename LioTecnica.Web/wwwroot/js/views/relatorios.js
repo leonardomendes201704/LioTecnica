@@ -7,6 +7,33 @@ function enumFirstCode(key, fallback){
     }
 
     const VAGA_ALL = enumFirstCode("vagaFilterSimple", "all");
+    const EMPTY_TEXT = "—";
+    const BULLET = "•";
+
+    function setText(root, role, value, fallback = EMPTY_TEXT){
+      if(!root) return;
+      const el = root.querySelector(`[data-role="${role}"]`);
+      if(!el) return;
+      el.textContent = (value ?? fallback);
+    }
+
+    function makeCell(text, className, icon){
+      return { text, className, icon };
+    }
+
+    function makeTagCell(text, cls, icon){
+      const className = ["tag", cls].filter(Boolean).join(" ");
+      return { text, className, icon };
+    }
+
+    function setIconText(el, iconClass, text){
+      if(!el) return;
+      el.replaceChildren();
+      const icon = document.createElement("i");
+      icon.className = "bi " + iconClass + " me-1";
+      el.appendChild(icon);
+      el.appendChild(document.createTextNode(text ?? ""));
+    }
 // ========= Storage keys (compatÃ­vel com telas anteriores)
     const VAGAS_KEY = "lt_rh_vagas_v1";
     const CANDS_KEY = "lt_rh_candidatos_v1";
@@ -105,27 +132,29 @@ function loadAll(){
 
     // ========= Render catÃ¡logo de relatÃ³rios
     function renderReportCatalog(){
-      $("#reportList").innerHTML = REPORTS.map(r => `
-        <div class="tile ${r.id===state.reportId ? "active":""}" data-id="${r.id}">
-          <div class="d-flex align-items-start justify-content-between gap-2">
-            <div class="d-flex align-items-center gap-2">
-              <div class="iconbox"><i class="bi bi-${r.icon}"></i></div>
-              <div>
-                <div class="fw-bold">${escapeHtml(r.title)}</div>
-                <div class="text-muted small">${escapeHtml(r.desc)}</div>
-              </div>
-            </div>
-            <span class="pill"><i class="bi bi-tag"></i>${escapeHtml(r.scope)}</span>
-          </div>
-        </div>
-      `).join("");
+      const host = $("#reportList");
+      host.replaceChildren();
 
-      $$(".tile").forEach(el => {
-        el.addEventListener("click", () => {
-          state.reportId = el.dataset.id;
+      REPORTS.forEach(r => {
+        const tile = cloneTemplate("tpl-report-tile");
+        if(!tile) return;
+
+        tile.dataset.id = r.id;
+        if(r.id === state.reportId) tile.classList.add("active");
+
+        const icon = tile.querySelector('[data-role="tile-icon"]');
+        if(icon) icon.className = "bi bi-" + r.icon;
+        setText(tile, "tile-title", r.title);
+        setText(tile, "tile-desc", r.desc);
+        setText(tile, "tile-scope", r.scope);
+
+        tile.addEventListener("click", () => {
+          state.reportId = r.id;
           renderReportCatalog();
           renderReport();
         });
+
+        host.appendChild(tile);
       });
     }
 
@@ -133,12 +162,16 @@ function loadAll(){
     function renderVagaOptions(){
       const sel = $("#fVaga");
       const current = sel.value || VAGA_ALL;
-      const opts = state.vagas
+      sel.replaceChildren();
+      getEnumOptions("vagaFilterSimple").forEach(opt => {
+        sel.appendChild(buildOption(opt.code, opt.text, opt.code === current));
+      });
+      state.vagas
         .slice()
         .sort((a,b)=> (a.titulo||"").localeCompare(b.titulo||""))
-        .map(v => `<option value="${v.id}">${escapeHtml(v.titulo)} (${escapeHtml(v.codigo||"â€”")})</option>`)
-        .join("");
-      sel.innerHTML = renderEnumOptions("vagaFilterSimple", VAGA_ALL) + opts;
+        .forEach(v => {
+          sel.appendChild(buildOption(v.id, `${v.titulo} (${v.codigo||EMPTY_TEXT})`, v.id === current));
+        });
       sel.value = state.filters.vaga || current || VAGA_ALL;
     }
 
@@ -256,25 +289,64 @@ function loadAll(){
     }
 
     // ========= Result table render
-    function setTable(headers, rows){
-      $("#theadRow").innerHTML = headers.map(h => `<th>${escapeHtml(h)}</th>`).join("");
-      $("#tbodyRows").innerHTML = rows.map(r => `
-        <tr>
-          ${r.map(c => `<td>${c}</td>`).join("")}
-        </tr>
-      `).join("");
-      $("#rowCount").textContent = rows.length;
-      $("#resultHint").textContent = rows.length ? "" : "Nenhum resultado com os filtros atuais.";
+    function renderCell(td, cell){
+      if(cell == null){
+        td.textContent = "";
+        return;
+      }
+      if(cell instanceof Node){
+        td.appendChild(cell);
+        return;
+      }
+      if(typeof cell === "object" && !Array.isArray(cell)){
+        const span = document.createElement("span");
+        if(cell.className) span.className = cell.className;
+        if(cell.icon){
+          const icon = document.createElement("i");
+          icon.className = "bi " + cell.icon + " me-1";
+          span.appendChild(icon);
+        }
+        span.appendChild(document.createTextNode(cell.text ?? ""));
+        td.appendChild(span);
+        return;
+      }
+      td.textContent = cell;
     }
 
-    function tag(html, cls="tag"){ return `<span class="${cls}">${html}</span>`; }
+    function setTable(headers, rows){
+      const theadRow = $("#theadRow");
+      const tbody = $("#tbodyRows");
+      if(!theadRow || !tbody) return;
 
-    // ========= Report builders (mocados, baseados nos dados salvos)
+      theadRow.replaceChildren();
+      (headers || []).forEach(h => {
+        const th = document.createElement("th");
+        th.textContent = h ?? "";
+        theadRow.appendChild(th);
+      });
+
+      tbody.replaceChildren();
+      (rows || []).forEach(row => {
+        const tr = document.createElement("tr");
+        (row || []).forEach(cell => {
+          const td = document.createElement("td");
+          renderCell(td, cell);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      const countEl = $("#rowCount");
+      if(countEl) countEl.textContent = String((rows || []).length);
+    }
+
+    
+
     function buildReportData(){
       const r = REPORTS.find(x => x.id === state.reportId);
-      if(!r) return { labels:[], values:[], headers:[], rows:[], title:"â€”", desc:"" };
+      if(!r) return { labels:[], values:[], headers:[], rows:[], title:EMPTY_TEXT, desc:"" };
 
-      if(r.id === "r1"){ // Entrada por origem
+      if(r.id === "r1"){
         const list = applyCommonFiltersToInbox(state.inbox);
         const count = { email:0, pasta:0, upload:0 };
         list.forEach(x => { count[x.origem] = (count[x.origem]||0) + 1; });
@@ -289,28 +361,31 @@ function loadAll(){
           .slice(0, 30)
           .map(x => {
             const v = findVaga(x.vagaId);
+            const vagaLabel = v ? `${v.titulo} (${v.codigo||EMPTY_TEXT})` : EMPTY_TEXT;
+            const statusCell =
+              x.status === "processado" ? makeTagCell("Processado","ok","bi-check2-circle") :
+              x.status === "processando" ? makeTagCell("Processando","warn","bi-arrow-repeat") :
+              x.status === "falha" ? makeTagCell("Falha","bad","bi-exclamation-triangle") :
+              makeTagCell(x.status || EMPTY_TEXT, "", "bi-dot");
             return [
-              escapeHtml(fmtDate(x.recebidoEm)),
-              escapeHtml(x.origem),
-              `<span class="mono">${escapeHtml(x.remetente||"â€”")}</span>`,
-              escapeHtml(x.assunto||"â€”"),
-              escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "â€”"),
-              x.status === "processado" ? tag(`<i class="bi bi-check2-circle"></i>Processado`,"tag ok") :
-              x.status === "processando" ? tag(`<i class="bi bi-arrow-repeat"></i>Processando`,"tag warn") :
-              x.status === "falha" ? tag(`<i class="bi bi-exclamation-triangle"></i>Falha`,"tag bad") :
-              tag(`<i class="bi bi-dot"></i>${escapeHtml(x.status||"â€”")}`,"tag")
+              fmtDate(x.recebidoEm),
+              x.origem,
+              makeCell(x.remetente || EMPTY_TEXT, "mono"),
+              x.assunto || EMPTY_TEXT,
+              vagaLabel,
+              statusCell
             ];
           });
 
         return { labels, values, headers, rows, title:r.title, desc:r.desc, scope:r.scope };
       }
 
-      if(r.id === "r2"){ // Falhas
+      if(r.id === "r2"){
         const list = applyCommonFiltersToInbox(state.inbox).filter(x => x.status === "falha");
         const buckets = {};
         list.forEach(x => {
           const e = (x.processamento && x.processamento.ultimoErro) ? x.processamento.ultimoErro : "Outros";
-          const key = e.length > 22 ? (e.slice(0,22)+"â€¦") : e;
+          const key = e.length > 22 ? (e.slice(0,22)+"...") : e;
           buckets[key] = (buckets[key]||0)+1;
         });
 
@@ -325,22 +400,23 @@ function loadAll(){
           .slice(0, 30)
           .map(x => {
             const v = findVaga(x.vagaId);
+            const vagaLabel = v ? `${v.titulo} (${v.codigo||EMPTY_TEXT})` : EMPTY_TEXT;
             return [
-              escapeHtml(fmtDate(x.recebidoEm)),
-              escapeHtml(x.origem),
-              escapeHtml(x.assunto||"â€”"),
-              escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "â€”"),
-              `<span class="text-danger">${escapeHtml(x.processamento?.ultimoErro || "â€”")}</span>`
+              fmtDate(x.recebidoEm),
+              x.origem,
+              x.assunto || EMPTY_TEXT,
+              vagaLabel,
+              makeCell(x.processamento?.ultimoErro || EMPTY_TEXT, "text-danger")
             ];
           });
 
         return { labels, values, headers, rows, title:r.title, desc:r.desc, scope:r.scope };
       }
 
-      if(r.id === "r3"){ // Pipeline candidatos
+      if(r.id === "r3"){
         const list = state.candidatos.slice();
         const count = {};
-        list.forEach(c => { const s = c.status || "â€”"; count[s] = (count[s]||0)+1; });
+        list.forEach(c => { const s = c.status || EMPTY_TEXT; count[s] = (count[s]||0)+1; });
 
         const pairs = Object.entries(count).sort((a,b)=> b[1]-a[1]).slice(0, 7);
         const labels = pairs.map(p => p[0]);
@@ -355,24 +431,24 @@ function loadAll(){
             const v = findVaga(c.vagaId);
             const st = (c.status||"").toLowerCase();
             const badge =
-              st.includes("aprov") ? tag(`<i class="bi bi-check2-circle"></i>${escapeHtml(c.status)}`,"tag ok") :
-              st.includes("reprov") ? tag(`<i class="bi bi-x-circle"></i>${escapeHtml(c.status)}`,"tag bad") :
-              st.includes("match") ? tag(`<i class="bi bi-stars"></i>${escapeHtml(c.status)}`,"tag warn") :
-              tag(`<i class="bi bi-dot"></i>${escapeHtml(c.status||"â€”")}`,"tag");
+              st.includes("aprov") ? makeTagCell(c.status || EMPTY_TEXT, "ok", "bi-check2-circle") :
+              st.includes("reprov") ? makeTagCell(c.status || EMPTY_TEXT, "bad", "bi-x-circle") :
+              st.includes("match") ? makeTagCell(c.status || EMPTY_TEXT, "warn", "bi-stars") :
+              makeTagCell(c.status || EMPTY_TEXT, "", "bi-dot");
 
             return [
-              escapeHtml(fmtDate(c.createdAt)),
-              escapeHtml(c.nome || "â€”"),
-              c.email ? `<span class="mono">${escapeHtml(c.email)}</span>` : "â€”",
+              fmtDate(c.createdAt),
+              c.nome || EMPTY_TEXT,
+              c.email ? makeCell(c.email, "mono") : EMPTY_TEXT,
               badge,
-              escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "â€”")
+              v ? `${v.titulo} (${v.codigo||EMPTY_TEXT})` : EMPTY_TEXT
             ];
           });
 
         return { labels, values, headers, rows, title:r.title, desc:r.desc, scope:r.scope };
       }
 
-      if(r.id === "r4"){ // Funil por vaga (mocado)
+      if(r.id === "r4"){
         const byVaga = {};
         const inbox = applyCommonFiltersToInbox(state.inbox);
         inbox.forEach(x => {
@@ -383,7 +459,6 @@ function loadAll(){
           if(x.status === "falha") byVaga[vid].falhas++;
         });
 
-        // labels: top 5 vagas
         const pairs = Object.entries(byVaga).map(([k,v]) => [k, v.recebidos]).sort((a,b)=> b[1]-a[1]).slice(0, 5);
         const labels = pairs.map(([vid]) => {
           const v = findVaga(vid);
@@ -397,32 +472,33 @@ function loadAll(){
           const obj = byVaga[vid];
           const ok = obj.processados;
           const rate = obj.recebidos ? Math.round((ok/obj.recebidos)*100) : 0;
+          const badge =
+            rate >= 70 ? makeTagCell(`${rate}%`, "ok", "bi-check2-circle") :
+            rate >= 40 ? makeTagCell(`${rate}%`, "warn", "bi-exclamation-circle") :
+                         makeTagCell(`${rate}%`, "bad", "bi-x-circle");
           return [
-            escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "Sem vaga"),
-            `<span class="fw-semibold">${obj.recebidos}</span>`,
-            `<span class="fw-semibold" style="color:rgba(25,135,84,.95)">${obj.processados}</span>`,
-            `<span class="fw-semibold text-danger">${obj.falhas}</span>`,
-            rate >= 70 ? tag(`<i class="bi bi-check2-circle"></i>${rate}%`,"tag ok") :
-            rate >= 40 ? tag(`<i class="bi bi-exclamation-circle"></i>${rate}%`,"tag warn") :
-                         tag(`<i class="bi bi-x-circle"></i>${rate}%`,"tag bad")
+            v ? `${v.titulo} (${v.codigo||EMPTY_TEXT})` : "Sem vaga",
+            makeCell(obj.recebidos, "fw-semibold"),
+            makeCell(obj.processados, "fw-semibold text-success"),
+            makeCell(obj.falhas, "fw-semibold text-danger"),
+            badge
           ];
         });
 
         return { labels, values, headers, rows, title:r.title, desc:r.desc, scope:r.scope };
       }
 
-      if(r.id === "r5"){ // Ranking matching (demo)
+      if(r.id === "r5"){
         const list = state.candidatos
           .map(c => {
-            // se nÃ£o tiver match, gera um nÃºmero determinÃ­stico â€œdemoâ€
             const seed = (c.id||"").split("").reduce((a,ch)=> a+ch.charCodeAt(0), 0);
-            const score = c.lastMatch?.percent ?? (40 + (seed % 61)); // 40..100
+            const score = c.lastMatch?.percent ?? (40 + (seed % 61));
             return { ...c, _score: clamp(score,0,100) };
           })
           .sort((a,b)=> b._score - a._score)
           .slice(0, 12);
 
-        const labels = list.slice(0, 6).map(c => (c.nome||"â€”").split(" ")[0].slice(0,10));
+        const labels = list.slice(0, 6).map(c => (c.nome||EMPTY_TEXT).split(" ")[0].slice(0,10));
         const values = list.slice(0, 6).map(c => c._score);
 
         const headers = ["Candidato", "Email", "Vaga", "Match", "Atualizado"];
@@ -430,15 +506,15 @@ function loadAll(){
           const v = findVaga(c.vagaId);
           const s = c._score;
           const badge =
-            s >= 80 ? tag(`<i class="bi bi-stars"></i>${s}%`,"tag ok") :
-            s >= 60 ? tag(`<i class="bi bi-stars"></i>${s}%`,"tag warn") :
-                      tag(`<i class="bi bi-stars"></i>${s}%`,"tag bad");
+            s >= 80 ? makeTagCell(`${s}%`, "ok", "bi-stars") :
+            s >= 60 ? makeTagCell(`${s}%`, "warn", "bi-stars") :
+                      makeTagCell(`${s}%`, "bad", "bi-stars");
           return [
-            escapeHtml(c.nome || "â€”"),
-            c.email ? `<span class="mono">${escapeHtml(c.email)}</span>` : "â€”",
-            escapeHtml(v ? `${v.titulo} (${v.codigo||"â€”"})` : "â€”"),
+            c.nome || EMPTY_TEXT,
+            c.email ? makeCell(c.email, "mono") : EMPTY_TEXT,
+            v ? `${v.titulo} (${v.codigo||EMPTY_TEXT})` : EMPTY_TEXT,
             badge,
-            escapeHtml(fmtDate(c.updatedAt || c.createdAt))
+            fmtDate(c.updatedAt || c.createdAt)
           ];
         });
 
@@ -448,7 +524,7 @@ function loadAll(){
       return { labels:[], values:[], headers:[], rows:[], title:r.title, desc:r.desc, scope:r.scope };
     }
 
-    // ========= Render report
+    
     function renderReport(){
       const r = REPORTS.find(x => x.id === state.reportId);
       $("#reportTitle").textContent = r ? r.title : "â€”";
@@ -456,8 +532,8 @@ function loadAll(){
 
       const data = buildReportData();
 
-      $("#tagScope").innerHTML = `<i class="bi bi-sliders"></i>${escapeHtml(data.scope||"escopo")}`;
-      $("#tagFresh").innerHTML = `<i class="bi bi-clock-history"></i>atual`;
+      setIconText($("#tagScope"), "bi-sliders", data.scope || "escopo");
+      setIconText($("#tagFresh"), "bi-clock-history", "atual");
 
       drawBarChart(data.labels || [], data.values || []);
       setTable(data.headers || [], data.rows || []);
@@ -475,15 +551,16 @@ function loadAll(){
       const rows = data.rows || [];
 
       // remove HTML dos cells para CSV bÃ¡sico
-      const strip = (html) => String(html)
-        .replace(/<br\s*\/?>/gi, " ")
-        .replace(/<\/?[^>]+>/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
+      const cellText = (cell) => {
+        if(cell == null) return "";
+        if(cell instanceof Node) return (cell.textContent || "").trim();
+        if(typeof cell === "object" && !Array.isArray(cell)) return String(cell.text ?? "").trim();
+        return String(cell).trim();
+      };
 
       const csv = [
         headers.map(h => `"${String(h).replaceAll('"','""')}"`).join(";"),
-        ...rows.map(r => r.map(c => `"${strip(c).replaceAll('"','""')}"`).join(";"))
+        ...rows.map(r => r.map(c => `"${cellText(c).replaceAll('"','""')}"`).join(";"))
       ].join("\n");
 
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -503,7 +580,8 @@ function loadAll(){
       $("#logoMobile").src = LOGO_DATA_URI;
     }
     function wireClock(){
-$("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) + "-" + String(now.getMonth()+1).padStart(2,"0");
+      const now = new Date();
+      $("#buildId").textContent = "build: demo-" + String(now.getFullYear()).slice(2) + "-" + String(now.getMonth()+1).padStart(2,"0");
 
       const tick = () => {
         const d = new Date();

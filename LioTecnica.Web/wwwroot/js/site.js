@@ -31,12 +31,54 @@
     return opt ? opt.text : (fallback || code || "");
   };
 
-  g.renderEnumOptions = (key, selectedCode) => {
+  g.buildOption = (code, text, selected = false) => {
+    const opt = document.createElement("option");
+    opt.value = code ?? "";
+    opt.textContent = text ?? "";
+    if (selected) opt.selected = true;
+    return opt;
+  };
+
+  g.fillSelectFromEnum = (select, key, selectedCode) => {
+    if (!select) return;
+    select.replaceChildren();
     const list = g.getEnumOptions(key);
-    return list.map(opt => {
-      const selected = opt.code === selectedCode ? " selected" : "";
-      return `<option value="${g.escapeHtml(opt.code)}"${selected}>${g.escapeHtml(opt.text)}</option>`;
-    }).join("");
+    list.forEach(opt => {
+      select.appendChild(g.buildOption(opt.code, opt.text, opt.code === selectedCode));
+    });
+  };
+
+  g.cloneTemplate = (id) => {
+    const tpl = document.getElementById(id);
+    if (!tpl) return null;
+    return tpl.content.firstElementChild.cloneNode(true);
+  };
+
+  g.cloneTemplateContent = (id) => {
+    const tpl = document.getElementById(id);
+    return tpl ? tpl.content.cloneNode(true) : document.createDocumentFragment();
+  };
+
+  g.bindText = (root, key, value, fallback = "") => {
+    if (!root) return;
+    const text = value ?? fallback;
+    root.querySelectorAll(`[data-text="${key}"]`).forEach(el => {
+      el.textContent = text;
+    });
+  };
+
+  g.bindValue = (root, key, value) => {
+    if (!root) return;
+    root.querySelectorAll(`[data-value="${key}"]`).forEach(el => {
+      el.value = value ?? "";
+    });
+  };
+
+  g.toggleRole = (root, key, show) => {
+    if (!root) return;
+    root.querySelectorAll(`[data-role="${key}"]`).forEach(el => {
+      el.classList.toggle("d-none", !show);
+    });
   };
 
   g.fmtDate = (iso) => {

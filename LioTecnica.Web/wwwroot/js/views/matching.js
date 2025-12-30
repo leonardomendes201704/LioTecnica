@@ -7,6 +7,48 @@ function enumFirstCode(key, fallback){
     }
 
     const VAGA_ALL = enumFirstCode("vagaFilter", "all");
+    const EMPTY_TEXT = "—";
+    const BULLET = "-";
+    function setText(root, role, value, fallback = EMPTY_TEXT){
+      if(!root) return;
+      const el = root.querySelector(`[data-role="${role}"]`);
+      if(!el) return;
+      el.textContent = (value ?? fallback);
+    }
+
+    function buildTag(iconClass, text, cls){
+      const tag = cloneTemplate("tpl-matching-tag");
+      if(!tag) return document.createElement("span");
+      tag.classList.toggle("ok", cls === "ok");
+      tag.classList.toggle("warn", cls === "warn");
+      tag.classList.toggle("bad", cls === "bad");
+      const icon = tag.querySelector('[data-role="icon"]');
+      if(icon) icon.className = "bi " + iconClass;
+      const label = tag.querySelector('[data-role="text"]');
+      if(label) label.textContent = text || "";
+      return tag;
+    }
+
+    function buildStatusTag(status){
+      const map = {
+        novo: { label: "Novo", cls: "" },
+        triagem: { label: "Triagem", cls: "warn" },
+        pendente: { label: "Pendente", cls: "warn" },
+        aprovado: { label: "Aprov.", cls: "ok" },
+        reprovado: { label: "Reprov.", cls: "bad" }
+      };
+      const it = map[status] || { label: status, cls: "" };
+      return buildTag("bi-dot", it.label, it.cls);
+    }
+
+    function buildMatchTag(score, thr){
+      const s = clamp(parseInt(score||0,10)||0,0,100);
+      const t = clamp(parseInt(thr||0,10)||0,0,100);
+      const ok = s >= t;
+      const cls = ok ? "ok" : (s >= (t*0.8) ? "warn" : "bad");
+      const text = ok ? "Dentro" : "Abaixo";
+      return buildTag("bi-stars", `${s}% ${BULLET} ${text}`, cls);
+    }
 // ========= Storage keys
     const VAGAS_KEY = "lt_rh_vagas_v1";
     const CANDS_KEY = "lt_rh_candidatos_v1";
@@ -19,6 +61,14 @@ function enumFirstCode(key, fallback){
       selectedId: null,
       filters: { q:"", vagaId:"all", status:"all", sort:"score_desc" }
     };
+
+    function findVaga(id){
+      return state.vagas.find(v => v.id === id) || null;
+    }
+
+    function findCand(id){
+      return state.candidatos.find(c => c.id === id) || null;
+    }
 
     function loadVagas(){
       try{
@@ -138,14 +188,7 @@ function enumFirstCode(key, fallback){
       return { ...result, fromCache: false };
     }
 
-    function matchTag(score, thr){
-      const s = clamp(parseInt(score||0,10)||0,0,100);
-      const t = clamp(parseInt(thr||0,10)||0,0,100);
-      const ok = s >= t;
-      const cls = ok ? "ok" : (s >= (t*0.8) ? "warn" : "bad");
-      const text = ok ? "Dentro" : "Abaixo";
-      return `<span class="status-tag ${cls}"><i class="bi bi-stars"></i>${s}% â€¢ ${text}</span>`;
-    }
+    
 
     // ========= Filters
     function getFiltered(){
@@ -196,11 +239,27 @@ function enumFirstCode(key, fallback){
       return list;
     }
 
-    function renderVagaFilter(){
+    
+
+    function distinctVagas(){
+      return state.vagas
+        .map(v => {
+          const title = v.titulo || EMPTY_TEXT;
+          const code = v.codigo || EMPTY_TEXT;
+          return { id: v.id, label: `${title} (${code})` };
+        })
+        .sort((a,b)=>a.label.localeCompare(b.label, "pt-BR"));
+    }
+function renderVagaFilter(){
       const sel = $("#fVaga");
       const cur = sel.value || VAGA_ALL;
-      const opts = distinctVagas().map(v => `<option value="${v.id}">${escapeHtml(v.label)}</option>`).join("");
-      sel.innerHTML = renderEnumOptions("vagaFilter", VAGA_ALL) + opts;
+      sel.replaceChildren();
+      getEnumOptions("vagaFilter").forEach(opt => {
+        sel.appendChild(buildOption(opt.code, opt.text, opt.code === cur));
+      });
+      distinctVagas().forEach(v => {
+        sel.appendChild(buildOption(v.id, v.label, v.id === cur));
+      });
       sel.value = (cur === VAGA_ALL || state.vagas.some(v => v.id === cur)) ? cur : VAGA_ALL;
     }
 
@@ -210,7 +269,6 @@ function enumFirstCode(key, fallback){
       $("#listCount").textContent = filtered.length;
       $("#kpiTotal").textContent = filtered.length;
 
-      // KPIs
       let inside = 0, mandatoryFail = 0, sum = 0, countScored = 0;
       filtered.forEach(c => {
         const v = state.filters.vagaId === "all" ? findVaga(c.vagaId) : findVaga(state.filters.vagaId);
@@ -226,7 +284,6 @@ function enumFirstCode(key, fallback){
       $("#kpiMandatoryFail").textContent = mandatoryFail;
       $("#kpiAvg").textContent = countScored ? (Math.round(sum / countScored) + "%") : "0%";
 
-      // maintain selection
       const visibleIds = new Set(filtered.map(x => x.id));
       if(state.selectedId && !visibleIds.has(state.selectedId)){
         state.selectedId = null;
@@ -238,102 +295,126 @@ function enumFirstCode(key, fallback){
         saveCands();
       }
 
-      const html = filtered.map(c => renderListItem(c)).join("");
-      $("#candList").innerHTML = html || `<div class="text-muted small">Nenhum candidato com os filtros atuais.</div>`;
-
-      $$(".item").forEach(el => {
-        if(el.dataset.id === state.selectedId) el.classList.add("active");
-        el.addEventListener("click", () => {
-          state.selectedId = el.dataset.id;
-          saveCands();
-          renderList();
-          renderDetail(findCand(state.selectedId));
-          if(window.matchMedia("(max-width: 991.98px)").matches){
-            syncMobileDetail();
-            bootstrap.Offcanvas.getOrCreateInstance($("#offcanvasDetails")).show();
-          }
+      const host = $("#candList");
+      host.replaceChildren();
+      if(!filtered.length){
+        const empty = cloneTemplate("tpl-matching-empty");
+        if(empty) host.appendChild(empty);
+      }else{
+        filtered.forEach(c => {
+          const item = buildListItem(c);
+          if(item) host.appendChild(item);
         });
-      });
+      }
 
       renderDetail(state.selectedId ? findCand(state.selectedId) : null);
       syncMobileDetail();
     }
 
-    function renderListItem(c){
+    function buildListItem(c){
       const v = state.filters.vagaId === "all" ? findVaga(c.vagaId) : findVaga(state.filters.vagaId);
       const m = v ? calcMatch(c, v) : { score: 0, threshold: 0, pass:false, hits:[], missMandatory:[] };
 
-      const missCount = (m.missMandatory||[]).length;
-      const missBadge = missCount
-        ? `<span class="status-tag bad"><i class="bi bi-exclamation-triangle"></i>${missCount} obrig.</span>`
-        : `<span class="status-tag ok"><i class="bi bi-check2"></i>Obrig. OK</span>`;
+      const item = cloneTemplate("tpl-matching-item");
+      if(!item) return null;
+      item.dataset.id = c.id;
+      if(c.id === state.selectedId) item.classList.add("active");
 
-      const st = (c.status || "novo");
-      const stTag = ({
-        novo: `<span class="status-tag"><i class="bi bi-dot"></i>Novo</span>`,
-        triagem: `<span class="status-tag warn"><i class="bi bi-dot"></i>Triagem</span>`,
-        pendente: `<span class="status-tag warn"><i class="bi bi-dot"></i>Pendente</span>`,
-        aprovado: `<span class="status-tag ok"><i class="bi bi-dot"></i>Aprov.</span>`,
-        reprovado: `<span class="status-tag bad"><i class="bi bi-dot"></i>Reprov.</span>`
-      })[st] || `<span class="status-tag"><i class="bi bi-dot"></i>${escapeHtml(st)}</span>`;
+      setText(item, "item-initials", initials(c.nome));
+      setText(item, "item-name", c.nome);
+      setText(item, "item-email", c.email);
 
-      return `
-        <div class="item" data-id="${c.id}">
-          <div class="d-flex align-items-start justify-content-between gap-2">
-            <div class="d-flex align-items-center gap-2">
-              <div class="avatar">${escapeHtml(initials(c.nome))}</div>
-              <div>
-                <div class="fw-bold">${escapeHtml(c.nome||"â€”")}</div>
-                <div class="text-muted small">${escapeHtml(c.email||"â€”")}</div>
-              </div>
-            </div>
-            <div class="text-end">
-              ${v ? `<div class="pill mono">${escapeHtml(v.codigo||"â€”")}</div>` : `<div class="pill">Sem vaga</div>`}
-              <div class="text-muted small mt-1">${v ? escapeHtml(v.titulo||"â€”") : "â€”"}</div>
-            </div>
-          </div>
+      const vagaCode = item.querySelector('[data-role="item-vaga-code"]');
+      if(vagaCode){
+        vagaCode.textContent = v ? (v.codigo || EMPTY_TEXT) : "Sem vaga";
+        vagaCode.classList.toggle("mono", !!v);
+      }
+      setText(item, "item-vaga-title", v ? v.titulo : EMPTY_TEXT);
 
-          <div class="mt-2">
-            <div class="d-flex align-items-center gap-2">
-              <div class="progress flex-grow-1">
-                <div class="progress-bar" style="width:${clamp(m.score,0,100)}%"></div>
-              </div>
-              <div class="fw-bold" style="min-width:52px;text-align:right;">${clamp(m.score,0,100)}%</div>
-            </div>
-            <div class="d-flex flex-wrap gap-2 mt-2">
-              ${matchTag(m.score, m.threshold)}
-              ${missBadge}
-              ${stTag}
-            </div>
-          </div>
-        </div>
-      `;
+      const score = clamp(parseInt(m.score||0,10)||0,0,100);
+      const progress = item.querySelector('[data-role="item-progress"]');
+      if(progress) progress.style.width = `${score}%`;
+      setText(item, "item-score", `${score}%`);
+
+      const tagsHost = item.querySelector('[data-role="item-tags"]');
+      if(tagsHost){
+        tagsHost.replaceChildren();
+        tagsHost.appendChild(buildMatchTag(m.score, m.threshold));
+
+        const missCount = (m.missMandatory||[]).length;
+        tagsHost.appendChild(buildTag(
+          missCount ? "bi-exclamation-triangle" : "bi-check2",
+          missCount ? `${missCount} obrig.` : "Obrig. OK",
+          missCount ? "bad" : "ok"
+        ));
+
+        tagsHost.appendChild(buildStatusTag(c.status || "novo"));
+      }
+
+      item.addEventListener("click", () => {
+        state.selectedId = item.dataset.id;
+        saveCands();
+        renderList();
+        if(window.matchMedia("(max-width: 991.98px)").matches){
+          syncMobileDetail();
+          bootstrap.Offcanvas.getOrCreateInstance($("#offcanvasDetails")).show();
+        }
+      });
+
+      return item;
+    }
+
+    function buildReqRow(r, hitIds, missIds){
+      const isHit = hitIds.has(r.id);
+      const isMiss = missIds.has(r.id);
+      const row = cloneTemplate("tpl-matching-req-row");
+      if(!row) return null;
+
+      if(isHit) row.classList.add("hit");
+      if(isMiss) row.classList.add("miss");
+
+      const icon = row.querySelector('[data-role="req-icon"]');
+      if(icon) icon.className = "bi bi-" + (isHit ? "check2-circle" : (isMiss ? "x-circle" : "dash-circle"));
+
+      setText(row, "req-term", r.termo);
+      setText(row, "req-weight", clamp(parseInt(r.peso||0,10)||0,0,10));
+
+      const obrigEl = row.querySelector('[data-role="req-obrig"]');
+      if(obrigEl){
+        obrigEl.textContent = r.obrigatorio ? "obrigatorio" : "desejavel";
+        obrigEl.classList.toggle("text-danger", !!r.obrigatorio);
+        obrigEl.classList.toggle("fw-semibold", !!r.obrigatorio);
+      }
+
+      const syn = (r.sinonimos || []).join(", ");
+      setText(row, "req-syn", syn);
+      toggleRole(row, "req-syn-wrap", !!syn);
+
+      const tagHost = row.querySelector('[data-role="req-tag-host"]');
+      if(tagHost){
+        const tag = isHit ? buildTag("bi-check2", "OK", "ok") :
+                    (isMiss ? buildTag("bi-x-lg", "Faltando", "bad") : buildTag("bi-dash", "Nao achou", ""));
+        tagHost.replaceChildren(tag);
+      }
+
+      return row;
     }
 
     // ========= Detail
     function renderDetail(c){
+      const host = $("#detailHost");
+      host.replaceChildren();
+
       if(!c){
-        $("#detailHost").innerHTML = `
-          <div class="empty">
-            <div class="d-flex align-items-start gap-2">
-              <i class="bi bi-info-circle mt-1"></i>
-              <div>
-                <div class="fw-bold">Selecione um candidato</div>
-                <div class="small mt-1">A tela exibirÃ¡ score, requisitos e explicaÃ§Ã£o do cÃ¡lculo.</div>
-              </div>
-            </div>
-          </div>`;
+        const empty = cloneTemplate("tpl-matching-detail-empty");
+        if(empty) host.appendChild(empty);
         return;
       }
 
       const v = state.filters.vagaId === "all" ? findVaga(c.vagaId) : findVaga(state.filters.vagaId);
-
       if(!v){
-        $("#detailHost").innerHTML = `
-          <div class="empty">
-            <div class="fw-bold">Sem vaga vinculada</div>
-            <div class="small mt-1">Vincule a vaga ao candidato para calcular o matching.</div>
-          </div>`;
+        const empty = cloneTemplate("tpl-matching-detail-novaga");
+        if(empty) host.appendChild(empty);
         return;
       }
 
@@ -345,142 +426,53 @@ function enumFirstCode(key, fallback){
       const hitIds = new Set(hits.map(x => x.id));
       const missIds = new Set(miss.map(x => x.id));
 
-      const explain = `
-        <div class="text-muted small">
-          <div><span class="mono">score = (peso_encontrado / peso_total) * 100</span></div>
-          <div class="mt-1">Penalidade (MVP): <span class="mono">-15 pontos</span> por obrigatÃ³rio faltando (mÃ¡x. <span class="mono">-40</span>).</div>
-          <div class="mt-1">CritÃ©rio: <span class="mono">score â‰¥ threshold</span> â‡’ â€œDentroâ€.</div>
-        </div>
-      `;
+      const root = cloneTemplate("tpl-matching-detail");
+      if(!root) return;
 
-      $("#detailHost").innerHTML = `
-        <div class="card-soft p-3">
-          <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
-            <div class="d-flex align-items-center gap-2">
-              <div class="avatar" style="width:52px;height:52px;border-radius:16px;">${escapeHtml(initials(c.nome))}</div>
-              <div>
-                <div class="fw-bold" style="font-size:1.05rem;">${escapeHtml(c.nome||"â€”")}</div>
-                <div class="text-muted small">${escapeHtml(c.email||"â€”")}</div>
-                <div class="text-muted small"><i class="bi bi-clock-history me-1"></i>Atualizado: ${escapeHtml(fmtDate(c.updatedAt))}</div>
-              </div>
-            </div>
+      setText(root, "detail-initials", initials(c.nome));
+      setText(root, "detail-name", c.nome);
+      setText(root, "detail-email", c.email);
+      setText(root, "detail-updated", fmtDate(c.updatedAt));
 
-            <div class="text-end">
-              ${matchTag(m.score, m.threshold)}
-              <div class="text-muted small mt-1">MÃ­nimo: <span class="mono fw-semibold">${clamp(parseInt(m.threshold||0,10)||0,0,100)}%</span></div>
-              <div class="text-muted small">${m.fromCache ? `<i class="bi bi-hdd me-1"></i>cache` : `<i class="bi bi-cpu me-1"></i>calculado`}</div>
-            </div>
-          </div>
+      const matchTagHost = root.querySelector('[data-role="detail-match-tag"]');
+      if(matchTagHost) matchTagHost.replaceChildren(buildMatchTag(m.score, m.threshold));
 
-          <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="pill"><i class="bi bi-briefcase"></i>${escapeHtml(v.titulo||"â€”")}</span>
-            <span class="pill mono">${escapeHtml(v.codigo||"â€”")}</span>
-            <span class="pill"><i class="bi bi-collection me-1"></i>Requisitos: <strong class="ms-1">${reqs.length}</strong></span>
-            <span class="pill"><i class="bi bi-check2-circle me-1"></i>Encontrados: <strong class="ms-1">${hits.length}</strong></span>
-            <span class="pill"><i class="bi bi-exclamation-triangle me-1"></i>Obrig. faltando: <strong class="ms-1">${miss.length}</strong></span>
-          </div>
+      const thrVal = clamp(parseInt(m.threshold||0,10)||0,0,100);
+      setText(root, "detail-thr", `${thrVal}%`);
 
-          <div class="mb-2">
-            <div class="d-flex align-items-center justify-content-between">
-              <div>
-                <div class="fw-bold">Score</div>
-                <div class="text-muted small">baseado em pesos e palavras-chave</div>
-              </div>
-              <div class="fw-bold" style="font-size:1.35rem;color:var(--lt-primary);">${clamp(m.score,0,100)}%</div>
-            </div>
-            <div class="progress mt-2">
-              <div class="progress-bar" style="width:${clamp(m.score,0,100)}%"></div>
-            </div>
-          </div>
+      const cacheIcon = root.querySelector('[data-role="detail-cache-icon"]');
+      if(cacheIcon) cacheIcon.className = m.fromCache ? "bi bi-hdd me-1" : "bi bi-cpu me-1";
+      setText(root, "detail-cache-text", m.fromCache ? "cache" : "calculado");
 
-          <div class="row g-2 mt-3">
-            <div class="col-12 col-lg-6">
-              <div class="fw-bold mb-2">Requisitos (detalhado)</div>
-              <div class="d-grid gap-2" id="reqList">
-                ${reqs.map(r => {
-                  const isHit = hitIds.has(r.id);
-                  const isMiss = missIds.has(r.id);
-                  const cls = isHit ? "hit" : (isMiss ? "miss" : "");
-                  const icon = isHit ? "check2-circle" : (isMiss ? "x-circle" : "dash-circle");
-                  const tag = isHit ? `<span class="status-tag ok"><i class="bi bi-check2"></i>OK</span>` :
-                              (isMiss ? `<span class="status-tag bad"><i class="bi bi-x-lg"></i>Faltando</span>` :
-                                        `<span class="status-tag"><i class="bi bi-dash"></i>NÃ£o achou</span>`);
-                  return `
-                    <div class="req-row ${cls}">
-                      <div class="d-flex align-items-start justify-content-between gap-2">
-                        <div>
-                          <div class="fw-semibold"><i class="bi bi-${icon} me-1"></i>${escapeHtml(r.termo||"â€”")}</div>
-                          <div class="text-muted small">
-                            Peso: <span class="mono">${clamp(parseInt(r.peso||0,10)||0,0,10)}</span>
-                            ${r.obrigatorio ? `â€¢ <span class="fw-semibold" style="color:rgba(153,19,34,.95)">obrigatÃ³rio</span>` : `â€¢ desejÃ¡vel`}
-                          </div>
-                          ${(r.sinonimos && r.sinonimos.length) ? `<div class="text-muted small mt-1">SinÃ´nimos: ${escapeHtml(r.sinonimos.join(", "))}</div>` : ``}
-                        </div>
-                        <div>${tag}</div>
-                      </div>
-                    </div>
-                  `;
-                }).join("")}
-              </div>
-            </div>
+      setText(root, "detail-vaga-title", v.titulo);
+      setText(root, "detail-vaga-code", v.codigo);
+      setText(root, "detail-req-count", reqs.length);
+      setText(root, "detail-hit-count", hits.length);
+      setText(root, "detail-miss-count", miss.length);
 
-            <div class="col-12 col-lg-6">
-              <div class="fw-bold mb-2">ExplicaÃ§Ã£o do cÃ¡lculo</div>
-              <div class="card-soft p-3" style="box-shadow:none;">
-                <div class="d-flex align-items-start gap-2">
-                  <i class="bi bi-info-circle mt-1"></i>
-                  <div>${explain}</div>
-                </div>
+      const score = clamp(parseInt(m.score||0,10)||0,0,100);
+      setText(root, "detail-score", `${score}%`);
+      const scoreBar = root.querySelector('[data-role="detail-score-bar"]');
+      if(scoreBar) scoreBar.style.width = `${score}%`;
 
-                <hr class="my-3" style="border-color: rgba(16,82,144,.14);">
+      const reqHost = root.querySelector("#reqList");
+      if(reqHost){
+        reqHost.replaceChildren();
+        reqs.forEach(r => {
+          const row = buildReqRow(r, hitIds, missIds);
+          if(row) reqHost.appendChild(row);
+        });
+      }
 
-                <div class="d-flex align-items-center justify-content-between">
-                  <div class="text-muted small">Peso encontrado</div>
-                  <div class="fw-bold mono">${m.hitPeso}/${m.totalPeso}</div>
-                </div>
-                <div class="d-flex align-items-center justify-content-between mt-1">
-                  <div class="text-muted small">Penalidade (obrigatÃ³rios)</div>
-                  <div class="fw-bold mono">${miss.length ? ("-" + Math.min(40, miss.length*15)) : "0"}</div>
-                </div>
+      setText(root, "detail-hitPeso", m.hitPeso);
+      setText(root, "detail-totalPeso", m.totalPeso);
+      const penalty = miss.length ? ("-" + Math.min(40, miss.length*15)) : "0";
+      setText(root, "detail-penalty", penalty);
 
-                <div class="alert alert-primary mt-3 mb-0" style="border-radius:14px; border-color: rgba(16,82,144,.25); background: rgba(173,200,220,.22); color: var(--lt-primary);">
-                  <div class="d-flex align-items-start gap-2">
-                    <i class="bi bi-lightning-charge mt-1"></i>
-                    <div>
-                      <div class="fw-semibold">AÃ§Ã£o rÃ¡pida</div>
-                      <div class="small">Recalcule o match apÃ³s atualizar o texto do CV ou requisitos da vaga.</div>
-                      <div class="d-flex flex-wrap gap-2 mt-2">
-                        <button class="btn btn-brand btn-sm" type="button" id="btnRecalcOne">
-                          <i class="bi bi-arrow-repeat me-1"></i>Recalcular este candidato
-                        </button>
-                        <button class="btn btn-ghost btn-sm" type="button" id="btnClearCacheOne">
-                          <i class="bi bi-eraser me-1"></i>Limpar cache deste
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+      const cv = root.querySelector("#cvTextArea");
+      if(cv) cv.value = c.cvText || "";
 
-                <div class="mt-3">
-                  <div class="fw-bold">Trecho do CV (texto)</div>
-                  <div class="text-muted small">No MVP, o texto vem do parser (PDF/Word) e Ã© usado para matching.</div>
-                  <textarea class="form-control mt-2" rows="8" id="cvTextArea" style="border-color:var(--lt-border);">${escapeHtml(c.cvText||"")}</textarea>
-                  <div class="d-flex flex-wrap gap-2 mt-2">
-                    <button class="btn btn-ghost btn-sm" type="button" id="btnSaveCvText">
-                      <i class="bi bi-save me-1"></i>Salvar texto do CV
-                    </button>
-                    <button class="btn btn-ghost btn-sm" type="button" id="btnClearCacheVaga">
-                      <i class="bi bi-trash3 me-1"></i>Limpar cache da vaga
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-        </div>
-      `;
+      host.appendChild(root);
 
       // bind actions
       $("#btnRecalcOne").addEventListener("click", () => {
@@ -512,8 +504,14 @@ function enumFirstCode(key, fallback){
     }
 
     function syncMobileDetail(){
-      $("#mobileDetailBody").innerHTML = $("#detailHost").innerHTML;
-      // rebind minimal actions in mobile detail (delegation)
+      const mobile = $("#mobileDetailBody");
+      const detail = $("#detailHost");
+      if(!mobile || !detail) return;
+
+      mobile.replaceChildren();
+      const content = detail.firstElementChild;
+      if(content) mobile.appendChild(content.cloneNode(true));
+
       const c = findCand(state.selectedId);
       const v = (c && (state.filters.vagaId === "all" ? findVaga(c.vagaId) : findVaga(state.filters.vagaId))) || null;
       if(!c || !v) return;
