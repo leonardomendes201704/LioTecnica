@@ -237,6 +237,12 @@
       flex: 0 0 auto;
     }
     .kpi .icon i{ font-size: 1.2rem; }
+    .kpi.clickable{ cursor: pointer; }
+    .kpi.clickable:hover{
+      box-shadow: 0 10px 22px rgba(15,70,120,.12);
+      transform: translateY(-1px);
+    }
+    .kpi.clickable:active{ transform: translateY(0); }
 
     .table thead th{
       font-size: .78rem;

@@ -1,4 +1,24 @@
 ﻿const seed = window.__seedData || {};
+const EMPTY_TEXT = "-";
+
+    function setText(root, role, value){
+      if(!root) return;
+      const el = root.querySelector(`[data-role="${role}"]`);
+      if(!el) return;
+      el.textContent = (value ?? EMPTY_TEXT);
+    }
+
+    function formatLocal(vaga){
+      const parts = [vaga?.cidade, vaga?.uf].filter(Boolean);
+      return parts.length ? parts.join(" - ") : EMPTY_TEXT;
+    }
+
+    function formatDate(iso){
+      if(!iso) return EMPTY_TEXT;
+      const d = new Date(iso);
+      return Number.isNaN(d.getTime()) ? EMPTY_TEXT : d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
+    }
+
 // ========= Top matches (mock)
     const mockRows = Array.isArray(seed.dashboardRows) ? seed.dashboardRows : [];
 
@@ -83,6 +103,70 @@
         tr.innerHTML = `<td colspan="6" class="text-center text-muted py-4">Nenhum registro atende o filtro atual.</td>`;
         body.appendChild(tr);
       }
+    }
+
+
+
+    function getOpenVagas(){
+      const vagas = Array.isArray(seed.vagas) ? seed.vagas : [];
+      return vagas.filter(v => String(v.status || "").toLowerCase() === "aberta");
+    }
+
+    function renderOpenVagasModal(){
+      const tbody = $("#tblVagasAbertas");
+      const count = $("#openVagaCount");
+      if(!tbody) return;
+      tbody.replaceChildren();
+      const rows = getOpenVagas();
+      if(count) count.textContent = rows.length;
+
+      if(!rows.length){
+        const empty = cloneTemplate("tpl-vaga-aberta-empty-row");
+        if(empty) tbody.appendChild(empty);
+        return;
+      }
+
+      rows
+        .slice()
+        .sort((a,b)=> (a.titulo||"").localeCompare(b.titulo||""))
+        .forEach(v => {
+          const tr = cloneTemplate("tpl-vaga-aberta-row");
+          if(!tr) return;
+          setText(tr, "vaga-code", v.codigo || EMPTY_TEXT);
+          setText(tr, "vaga-title", v.titulo || EMPTY_TEXT);
+          setText(tr, "vaga-desc", v.senioridade || EMPTY_TEXT);
+          setText(tr, "vaga-area", v.area || EMPTY_TEXT);
+          setText(tr, "vaga-modalidade", v.modalidade || EMPTY_TEXT);
+          setText(tr, "vaga-local", formatLocal(v));
+          setText(tr, "vaga-updated", formatDate(v.updatedAt));
+          tbody.appendChild(tr);
+        });
+    }
+
+
+    function updateDashboardKpis(){
+      const openCount = getOpenVagas().length;
+      const el = $("#kpiVagas");
+      if(el) el.textContent = openCount;
+    }
+
+    function wireOpenVagasModal(){
+      const modal = $("#modalVagasAbertas");
+      if(!modal) return;
+      modal.addEventListener("show.bs.modal", renderOpenVagasModal);
+    }
+
+    function wireKpiAccessibility(){
+      document.addEventListener("keydown", (ev) => {
+        if(ev.key !== "Enter" && ev.key !== " ") return;
+        const card = ev.target.closest("[data-modal-target]");
+        if(!card) return;
+        const target = card.dataset.modalTarget;
+        if(!target) return;
+        ev.preventDefault();
+        const modal = document.querySelector(target);
+        if(modal) bootstrap.Modal.getOrCreateInstance(modal).show();
+      });
     }
 
     // ========= Chart
@@ -217,6 +301,9 @@
       wireFilters();
       wireQuickActions();
       wireClock();
+      wireOpenVagasModal();
+      wireKpiAccessibility();
+      updateDashboardKpis();
 
       renderTable(0);
       buildChart();

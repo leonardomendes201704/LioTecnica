@@ -107,6 +107,380 @@ public static class MockDataService
                     new() { Id = "eb7e6573-3e6e-4d8b-b80a-37da574f84a2", Categoria = "Ferramenta/Tecnologia", Termo = "ETL", Peso = 7, Obrigatorio = false, Sinonimos = new []{ "pipelines" }, Obs = "" },
                     new() { Id = "de7ca2d9-e6d4-4a46-b03e-6a8e4ffac2c3", Categoria = "Competencia", Termo = "Modelagem dimensional", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "star schema" }, Obs = "" }
                 }
+            },
+            new()
+            {
+                Id = "vaga-prd-001",
+                Codigo = "PRD-OP-001",
+                Titulo = "Tecnico de Producao",
+                Area = "Producao",
+                Modalidade = "Presencial",
+                Status = "aberta",
+                Cidade = "Embu das Artes",
+                Uf = "SP",
+                Senioridade = "Junior",
+                Threshold = 70,
+                Descricao = "Operar linha de producao, cumprir boas praticas e metas.",
+                CreatedAt = Iso(now.AddDays(-10)),
+                UpdatedAt = Iso(now.AddDays(-1)),
+                Weights = new PesoSeed { Competencia = 40, Experiencia = 35, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-prd-001-1", Categoria = "Experiencia", Termo = "Linha de producao", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "chao de fabrica" }, Obs = "" },
+                    new() { Id = "req-prd-001-2", Categoria = "Certificacao", Termo = "BPF", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "boas praticas de fabricacao" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-prd-002",
+                Codigo = "PRD-SP-002",
+                Titulo = "Supervisor de Producao",
+                Area = "Producao",
+                Modalidade = "Presencial",
+                Status = "aberta",
+                Cidade = "Itapecerica da Serra",
+                Uf = "SP",
+                Senioridade = "Gestao",
+                Threshold = 75,
+                Descricao = "Liderar equipes, acompanhar indicadores e cumprir metas diarias.",
+                CreatedAt = Iso(now.AddDays(-14)),
+                UpdatedAt = Iso(now.AddDays(-3)),
+                Weights = new PesoSeed { Competencia = 35, Experiencia = 40, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-prd-002-1", Categoria = "Gestao", Termo = "Gestao de equipe", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "lideranca" }, Obs = "" },
+                    new() { Id = "req-prd-002-2", Categoria = "Competencia", Termo = "Indicadores de producao", Peso = 7, Obrigatorio = false, Sinonimos = new []{ "kpis" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-qld-004",
+                Codigo = "QLD-PL-004",
+                Titulo = "Analista de Qualidade Pleno",
+                Area = "Qualidade",
+                Modalidade = "Presencial",
+                Status = "aberta",
+                Cidade = "Embu das Artes",
+                Uf = "SP",
+                Senioridade = "Pleno",
+                Threshold = 78,
+                Descricao = "Inspecoes, controles e auditorias de processo.",
+                CreatedAt = Iso(now.AddDays(-7)),
+                UpdatedAt = Iso(now.AddDays(-2)),
+                Weights = new PesoSeed { Competencia = 35, Experiencia = 35, Formacao = 20, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-qld-004-1", Categoria = "Experiencia", Termo = "Controle de qualidade", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "inspecao" }, Obs = "" },
+                    new() { Id = "req-qld-004-2", Categoria = "Certificacao", Termo = "HACCP", Peso = 7, Obrigatorio = false, Sinonimos = new []{ "haccp" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-qld-005",
+                Codigo = "QLD-CD-005",
+                Titulo = "Coordenador de Qualidade",
+                Area = "Qualidade",
+                Modalidade = "Hibrido",
+                Status = "pausada",
+                Cidade = "Osasco",
+                Uf = "SP",
+                Senioridade = "Gestao",
+                Threshold = 80,
+                Descricao = "Coordenar rotinas de auditoria e planos de acao.",
+                CreatedAt = Iso(now.AddDays(-20)),
+                UpdatedAt = Iso(now.AddDays(-6)),
+                Weights = new PesoSeed { Competencia = 30, Experiencia = 45, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-qld-005-1", Categoria = "Experiencia", Termo = "Auditoria interna", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "auditorias" }, Obs = "" },
+                    new() { Id = "req-qld-005-2", Categoria = "Certificacao", Termo = "ISO 22000", Peso = 7, Obrigatorio = false, Sinonimos = new []{ "iso 22000" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-lab-006",
+                Codigo = "LAB-JR-006",
+                Titulo = "Tecnico de Laboratorio",
+                Area = "Pesquisa e Desenvolvimento",
+                Modalidade = "Presencial",
+                Status = "aberta",
+                Cidade = "Embu das Artes",
+                Uf = "SP",
+                Senioridade = "Junior",
+                Threshold = 70,
+                Descricao = "Realizar analises fisico-quimicas e apoiar testes.",
+                CreatedAt = Iso(now.AddDays(-9)),
+                UpdatedAt = Iso(now.AddDays(-2)),
+                Weights = new PesoSeed { Competencia = 40, Experiencia = 30, Formacao = 20, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-lab-006-1", Categoria = "Experiencia", Termo = "Analises fisico-quimicas", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "laboratorio" }, Obs = "" },
+                    new() { Id = "req-lab-006-2", Categoria = "Competencia", Termo = "Boas praticas laboratoriais", Peso = 6, Obrigatorio = false, Sinonimos = new []{ "bpl" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-pd-007",
+                Codigo = "PD-SR-007",
+                Titulo = "Engenheiro de Alimentos",
+                Area = "Pesquisa e Desenvolvimento",
+                Modalidade = "Hibrido",
+                Status = "aberta",
+                Cidade = "Sao Paulo",
+                Uf = "SP",
+                Senioridade = "Senior",
+                Threshold = 82,
+                Descricao = "Desenvolvimento de novos produtos e melhorias de processo.",
+                CreatedAt = Iso(now.AddDays(-16)),
+                UpdatedAt = Iso(now.AddDays(-4)),
+                Weights = new PesoSeed { Competencia = 30, Experiencia = 45, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-pd-007-1", Categoria = "Experiencia", Termo = "Desenvolvimento de produto", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "p&d" }, Obs = "" },
+                    new() { Id = "req-pd-007-2", Categoria = "Experiencia", Termo = "Processos termicos", Peso = 7, Obrigatorio = false, Sinonimos = new []{ "pasteurizacao" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-pcp-008",
+                Codigo = "PCP-PL-008",
+                Titulo = "Analista de PCP",
+                Area = "Operacoes",
+                Modalidade = "Presencial",
+                Status = "aberta",
+                Cidade = "Cotia",
+                Uf = "SP",
+                Senioridade = "Pleno",
+                Threshold = 76,
+                Descricao = "Planejar capacidade, sequenciamento e atendimento de demanda.",
+                CreatedAt = Iso(now.AddDays(-11)),
+                UpdatedAt = Iso(now.AddDays(-2)),
+                Weights = new PesoSeed { Competencia = 35, Experiencia = 35, Formacao = 20, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-pcp-008-1", Categoria = "Experiencia", Termo = "Planejamento de producao", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "pcp" }, Obs = "" },
+                    new() { Id = "req-pcp-008-2", Categoria = "Ferramenta/Tecnologia", Termo = "MRP", Peso = 7, Obrigatorio = false, Sinonimos = new []{ "erp" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-cmp-009",
+                Codigo = "CMP-PL-009",
+                Titulo = "Comprador de Materias-Primas",
+                Area = "Compras",
+                Modalidade = "Hibrido",
+                Status = "aberta",
+                Cidade = "Sao Paulo",
+                Uf = "SP",
+                Senioridade = "Pleno",
+                Threshold = 74,
+                Descricao = "Negociar insumos e garantir fornecimento estrategico.",
+                CreatedAt = Iso(now.AddDays(-18)),
+                UpdatedAt = Iso(now.AddDays(-5)),
+                Weights = new PesoSeed { Competencia = 35, Experiencia = 40, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-cmp-009-1", Categoria = "Competencia", Termo = "Negociacao", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "compras" }, Obs = "" },
+                    new() { Id = "req-cmp-009-2", Categoria = "Experiencia", Termo = "Compras industriais", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "suprimentos" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-log-011",
+                Codigo = "LOG-PL-011",
+                Titulo = "Analista de Suprimentos",
+                Area = "Logistica",
+                Modalidade = "Presencial",
+                Status = "aberta",
+                Cidade = "Taboao da Serra",
+                Uf = "SP",
+                Senioridade = "Pleno",
+                Threshold = 72,
+                Descricao = "Controle de estoque, lead time e abastecimento.",
+                CreatedAt = Iso(now.AddDays(-13)),
+                UpdatedAt = Iso(now.AddDays(-3)),
+                Weights = new PesoSeed { Competencia = 40, Experiencia = 30, Formacao = 20, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-log-011-1", Categoria = "Experiencia", Termo = "Gestao de estoque", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "inventario" }, Obs = "" },
+                    new() { Id = "req-log-011-2", Categoria = "Competencia", Termo = "Lead time", Peso = 6, Obrigatorio = false, Sinonimos = new []{ "prazo" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-log-012",
+                Codigo = "LOG-SP-012",
+                Titulo = "Supervisor de Logistica",
+                Area = "Logistica",
+                Modalidade = "Presencial",
+                Status = "pausada",
+                Cidade = "Sao Paulo",
+                Uf = "SP",
+                Senioridade = "Gestao",
+                Threshold = 78,
+                Descricao = "Supervisionar expedicao, roteiros e indicadores.",
+                CreatedAt = Iso(now.AddDays(-21)),
+                UpdatedAt = Iso(now.AddDays(-8)),
+                Weights = new PesoSeed { Competencia = 30, Experiencia = 45, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-log-012-1", Categoria = "Experiencia", Termo = "Roteirizacao", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "roteiro" }, Obs = "" },
+                    new() { Id = "req-log-012-2", Categoria = "Competencia", Termo = "Indicadores logistica", Peso = 6, Obrigatorio = false, Sinonimos = new []{ "kpis" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-mnt-013",
+                Codigo = "MNT-JR-013",
+                Titulo = "Tecnico de Manutencao",
+                Area = "Manutencao",
+                Modalidade = "Presencial",
+                Status = "aberta",
+                Cidade = "Embu das Artes",
+                Uf = "SP",
+                Senioridade = "Junior",
+                Threshold = 70,
+                Descricao = "Manutencao preventiva e corretiva em linha.",
+                CreatedAt = Iso(now.AddDays(-9)),
+                UpdatedAt = Iso(now.AddDays(-1)),
+                Weights = new PesoSeed { Competencia = 40, Experiencia = 35, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-mnt-013-1", Categoria = "Experiencia", Termo = "Manutencao preventiva", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "preventiva" }, Obs = "" },
+                    new() { Id = "req-mnt-013-2", Categoria = "Ferramenta/Tecnologia", Termo = "CLP", Peso = 6, Obrigatorio = false, Sinonimos = new []{ "automacao" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-mnt-014",
+                Codigo = "MNT-EL-014",
+                Titulo = "Eletricista Industrial",
+                Area = "Manutencao",
+                Modalidade = "Presencial",
+                Status = "fechada",
+                Cidade = "Osasco",
+                Uf = "SP",
+                Senioridade = "Pleno",
+                Threshold = 75,
+                Descricao = "Manutencao eletrica de maquinas e paines.",
+                CreatedAt = Iso(now.AddDays(-28)),
+                UpdatedAt = Iso(now.AddDays(-12)),
+                Weights = new PesoSeed { Competencia = 35, Experiencia = 40, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-mnt-014-1", Categoria = "Experiencia", Termo = "Eletrica industrial", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "painel" }, Obs = "" },
+                    new() { Id = "req-mnt-014-2", Categoria = "Certificacao", Termo = "NR10", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "nr-10" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-fin-015",
+                Codigo = "FIN-PL-015",
+                Titulo = "Analista Financeiro",
+                Area = "Financeiro",
+                Modalidade = "Hibrido",
+                Status = "fechada",
+                Cidade = "Sao Paulo",
+                Uf = "SP",
+                Senioridade = "Pleno",
+                Threshold = 70,
+                Descricao = "Fluxo de caixa, relatorios e conciliacoes.",
+                CreatedAt = Iso(now.AddDays(-25)),
+                UpdatedAt = Iso(now.AddDays(-10)),
+                Weights = new PesoSeed { Competencia = 40, Experiencia = 30, Formacao = 20, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-fin-015-1", Categoria = "Experiencia", Termo = "Fluxo de caixa", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "cash flow" }, Obs = "" },
+                    new() { Id = "req-fin-015-2", Categoria = "Competencia", Termo = "Conciliacao", Peso = 6, Obrigatorio = false, Sinonimos = new []{ "conciliar" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-rh-016",
+                Codigo = "RH-PL-016",
+                Titulo = "Analista de RH",
+                Area = "RH",
+                Modalidade = "Hibrido",
+                Status = "aberta",
+                Cidade = "Sao Paulo",
+                Uf = "SP",
+                Senioridade = "Pleno",
+                Threshold = 72,
+                Descricao = "Recrutamento, indicadores e suporte a gestores.",
+                CreatedAt = Iso(now.AddDays(-6)),
+                UpdatedAt = Iso(now.AddDays(-1)),
+                Weights = new PesoSeed { Competencia = 40, Experiencia = 30, Formacao = 20, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-rh-016-1", Categoria = "Experiencia", Termo = "Recrutamento e selecao", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "r&s" }, Obs = "" },
+                    new() { Id = "req-rh-016-2", Categoria = "Competencia", Termo = "Indicadores de RH", Peso = 6, Obrigatorio = false, Sinonimos = new []{ "kpis" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-ti-017",
+                Codigo = "TI-SR-017",
+                Titulo = "Analista de TI",
+                Area = "TI",
+                Modalidade = "Hibrido",
+                Status = "pausada",
+                Cidade = "Sao Paulo",
+                Uf = "SP",
+                Senioridade = "Senior",
+                Threshold = 78,
+                Descricao = "Suporte a usuarios, infraestrutura e melhorias.",
+                CreatedAt = Iso(now.AddDays(-17)),
+                UpdatedAt = Iso(now.AddDays(-7)),
+                Weights = new PesoSeed { Competencia = 35, Experiencia = 40, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-ti-017-1", Categoria = "Experiencia", Termo = "Suporte a usuarios", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "help desk" }, Obs = "" },
+                    new() { Id = "req-ti-017-2", Categoria = "Competencia", Termo = "Infraestrutura", Peso = 6, Obrigatorio = false, Sinonimos = new []{ "redes" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-com-018",
+                Codigo = "COM-PL-018",
+                Titulo = "Representante Comercial",
+                Area = "Comercial",
+                Modalidade = "Remoto",
+                Status = "fechada",
+                Cidade = "Sao Paulo",
+                Uf = "SP",
+                Senioridade = "Pleno",
+                Threshold = 70,
+                Descricao = "Prospeccao e relacionamento com clientes B2B.",
+                CreatedAt = Iso(now.AddDays(-22)),
+                UpdatedAt = Iso(now.AddDays(-9)),
+                Weights = new PesoSeed { Competencia = 45, Experiencia = 30, Formacao = 15, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-com-018-1", Categoria = "Experiencia", Termo = "Vendas B2B", Peso = 8, Obrigatorio = true, Sinonimos = new []{ "comercial" }, Obs = "" },
+                    new() { Id = "req-com-018-2", Categoria = "Competencia", Termo = "Carteira de clientes", Peso = 6, Obrigatorio = false, Sinonimos = new []{ "relacionamento" }, Obs = "" }
+                }
+            },
+            new()
+            {
+                Id = "vaga-qld-019",
+                Codigo = "QLD-JR-019",
+                Titulo = "Assistente de Controle de Qualidade",
+                Area = "Qualidade",
+                Modalidade = "Presencial",
+                Status = "fechada",
+                Cidade = "Embu das Artes",
+                Uf = "SP",
+                Senioridade = "Junior",
+                Threshold = 68,
+                Descricao = "Apoiar inspecoes e registros de processo.",
+                CreatedAt = Iso(now.AddDays(-19)),
+                UpdatedAt = Iso(now.AddDays(-11)),
+                Weights = new PesoSeed { Competencia = 40, Experiencia = 30, Formacao = 20, Localidade = 10 },
+                Requisitos = new List<RequisitoSeed>
+                {
+                    new() { Id = "req-qld-019-1", Categoria = "Experiencia", Termo = "Inspecao de linha", Peso = 7, Obrigatorio = true, Sinonimos = new []{ "inspecao" }, Obs = "" },
+                    new() { Id = "req-qld-019-2", Categoria = "Competencia", Termo = "Registro de nao conformidade", Peso = 6, Obrigatorio = false, Sinonimos = new []{ "nao conformidade" }, Obs = "" }
+                }
             }
         };
 

@@ -47,10 +47,10 @@
                 @{
           var kpis = new[]
           {
-            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Vagas abertas", ValueId = "kpiVagas", Value = "12", Hint = "+2 na última semana", Icon = "bi-briefcase" },
-            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "CVs recebidos hoje", ValueId = "kpiCvsHoje", Value = "37", Hint = "Entrada email/pasta", Icon = "bi-inbox" },
-            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Pendentes de match", ValueId = "kpiPendentes", Value = "9", Hint = "Fila de processamento", Icon = "bi-hourglass-split" },
-            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Aprovados (7 dias)", ValueId = "kpiAprovados", Value = "18", Hint = "+6 vs semana anterior", Icon = "bi-patch-check" }
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Vagas abertas", ValueId = "kpiVagas", Value = "0", Hint = "+2 na ultima semana", Icon = "bi-briefcase", ModalTarget = "#modalVagasAbertas" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "CVs recebidos hoje", ValueId = "kpiCvsHoje", Value = "37", Hint = "Entrada email/pasta", Icon = "bi-inbox", ModalTarget = "" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Pendentes de match", ValueId = "kpiPendentes", Value = "9", Hint = "Fila de processamento", Icon = "bi-hourglass-split", ModalTarget = "" },
+            new { ColClass = "col-12 col-md-6 col-xl-3", Label = "Aprovados (7 dias)", ValueId = "kpiAprovados", Value = "18", Hint = "+6 vs semana anterior", Icon = "bi-patch-check", ModalTarget = "" }
           };
         }
         @await Html.PartialAsync("_KpiCardRow", kpis)
@@ -155,6 +155,60 @@
 
         <div style="height: 14px;"></div>
       </section>
+
+  <div class="modal fade" id="modalVagasAbertas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content" style="border-radius: 18px; border: 1px solid var(--lt-border);">
+        <div class="modal-header">
+          <div class="d-flex align-items-center gap-2">
+            <div>
+              <h5 class="modal-title fw-bold">Vagas abertas</h5>
+              <div class="text-muted small">Lista de vagas com status aberto.</div>
+            </div>
+            <span class="badge-soft" id="openVagaCount">0</span>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th style="min-width: 120px;">Codigo</th>
+                  <th style="min-width: 240px;">Vaga</th>
+                  <th style="min-width: 160px;">Area</th>
+                  <th style="min-width: 150px;">Modalidade</th>
+                  <th style="min-width: 160px;">Local</th>
+                  <th class="text-end" style="min-width: 140px;">Atualizado</th>
+                </tr>
+              </thead>
+              <tbody id="tblVagasAbertas"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <template id="tpl-vaga-aberta-row">
+    <tr>
+      <td class="mono" data-role="vaga-code"></td>
+      <td>
+        <div class="fw-semibold" data-role="vaga-title"></div>
+        <div class="text-muted small" data-role="vaga-desc"></div>
+      </td>
+      <td data-role="vaga-area"></td>
+      <td data-role="vaga-modalidade"></td>
+      <td data-role="vaga-local"></td>
+      <td class="text-end mono" data-role="vaga-updated"></td>
+    </tr>
+  </template>
+
+  <template id="tpl-vaga-aberta-empty-row">
+    <tr>
+      <td colspan="6" class="text-center text-muted py-3">Nenhuma vaga aberta.</td>
+    </tr>
+  </template>
 
             @section Footer {
         @{
