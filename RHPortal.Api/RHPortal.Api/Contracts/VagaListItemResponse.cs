@@ -1,6 +1,6 @@
 ﻿using RHPortal.Api.Domain.Enums;
 
-namespace RhPortal.Api.Controllers;
+namespace RhPortal.Api.Contracts.Vagas;
 
 public sealed record VagaListItemResponse(
     Guid Id,
@@ -31,7 +31,6 @@ public sealed record VagaListItemResponse(
     string? Cidade,
     string? Uf,
 
-    // ✅ agregados
     int RequisitosTotal,
     int RequisitosObrigatorios,
 

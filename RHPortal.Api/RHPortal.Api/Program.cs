@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+ï»¿using Microsoft.EntityFrameworkCore;
 using RhPortal.Api.Application.Departments;
 using RhPortal.Api.Application.Departments.Handlers;
 using RhPortal.Api.Application.Units.Handlers;
@@ -11,6 +11,8 @@ using RhPortal.Api.Application.JobPositions.Handlers;
 using RhPortal.Api.Application.JobPositions;
 using RhPortal.Api.Application.Managers;
 using RhPortal.Api.Application.Managers.Handlers;
+using RhPortal.Api.Application.Vagas;
+using RhPortal.Api.Application.Vagas.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,34 +40,42 @@ builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<IUnitService, UnitService>();
 builder.Services.AddScoped<IJobPositionService, JobPositionService>();
 builder.Services.AddScoped<IManagerService, ManagerService>();
+builder.Services.AddScoped<IVagaService, VagaService>();
 
-//Departamentos
+// Departamentos
 builder.Services.AddScoped<IListDepartmentsHandler, ListDepartmentsHandler>();
 builder.Services.AddScoped<IGetDepartmentByIdHandler, GetDepartmentByIdHandler>();
 builder.Services.AddScoped<ICreateDepartmentHandler, CreateDepartmentHandler>();
 builder.Services.AddScoped<IUpdateDepartmentHandler, UpdateDepartmentHandler>();
 builder.Services.AddScoped<IDeleteDepartmentHandler, DeleteDepartmentHandler>();
 
-//Unidades|Filiais
+// Unidades|Filiais
 builder.Services.AddScoped<IListUnitsHandler, ListUnitsHandler>();
 builder.Services.AddScoped<IGetUnitByIdHandler, GetUnitByIdHandler>();
 builder.Services.AddScoped<ICreateUnitHandler, CreateUnitHandler>();
 builder.Services.AddScoped<IUpdateUnitHandler, UpdateUnitHandler>();
 builder.Services.AddScoped<IDeleteUnitHandler, DeleteUnitHandler>();
 
-//Cargos
+// Cargos
 builder.Services.AddScoped<IListJobPositionsHandler, ListJobPositionsHandler>();
 builder.Services.AddScoped<IGetJobPositionByIdHandler, GetJobPositionByIdHandler>();
 builder.Services.AddScoped<ICreateJobPositionHandler, CreateJobPositionHandler>();
 builder.Services.AddScoped<IUpdateJobPositionHandler, UpdateJobPositionHandler>();
 builder.Services.AddScoped<IDeleteJobPositionHandler, DeleteJobPositionHandler>();
 
-//Gestores
+// Gestores
 builder.Services.AddScoped<IListManagersHandler, ListManagersHandler>();
 builder.Services.AddScoped<IGetManagerByIdHandler, GetManagerByIdHandler>();
 builder.Services.AddScoped<ICreateManagerHandler, CreateManagerHandler>();
 builder.Services.AddScoped<IUpdateManagerHandler, UpdateManagerHandler>();
 builder.Services.AddScoped<IDeleteManagerHandler, DeleteManagerHandler>();
+
+// Vagas
+builder.Services.AddScoped<IListVagasHandler, ListVagasHandler>();
+builder.Services.AddScoped<IGetVagaByIdHandler, GetVagaByIdHandler>();
+builder.Services.AddScoped<ICreateVagaHandler, CreateVagaHandler>();
+builder.Services.AddScoped<IUpdateVagaHandler, UpdateVagaHandler>();
+builder.Services.AddScoped<IDeleteVagaHandler, DeleteVagaHandler>();
 
 builder.Services
     .AddControllers()
@@ -76,7 +86,7 @@ var app = builder.Build();
 // garante pasta do banco
 Directory.CreateDirectory(Path.Combine(app.Environment.ContentRootPath, "App_Data"));
 
-// migrate + seed ao subir (ótimo para DEV)
+// migrate + seed ao subir (otimo para DEV)
 await DbSeeder.MigrateAndSeedAsync(app.Services, app.Configuration, app.Environment);
 
 if (app.Environment.IsDevelopment())
@@ -87,7 +97,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Tenant obrigatório ANTES de Authorization
+// Tenant obrigatorio ANTES de Authorization
 app.UseMiddleware<TenantMiddleware>();
 
 app.MapControllers();
