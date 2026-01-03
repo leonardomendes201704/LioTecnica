@@ -2,6 +2,7 @@
     // Observação: o arquivo fornecido veio como WebP (mesmo com nome .png).
 const seed = window.__seedData || {};
 const VAGAS_API_URL = window.__vagasApiUrl || "/api/vagas";
+const AREAS_API_URL = window.__areasApiUrl || "/api/lookup/areas";
 
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
 function enumFirstCode(key, fallback){
@@ -10,7 +11,6 @@ function enumFirstCode(key, fallback){
     }
 
     const AREA_ALL = enumFirstCode("vagaAreaFilter", "all");
-    const AREAS_STORE_KEY = "lt_rh_areas_v1";
     const REQ_CATEGORIAS_STORE_KEY = "lt_rh_req_categorias_v1";
     const DEFAULT_MODALIDADE = enumFirstCode("vagaModalidade", "Presencial");
     const DEFAULT_STATUS = enumFirstCode("vagaStatus", "aberta");
@@ -81,23 +81,23 @@ function enumFirstCode(key, fallback){
       return (Array.isArray(list) ? list : []).join("; ");
     }
 
-    function loadAreas(){
-      try{
-        const raw = localStorage.getItem(AREAS_STORE_KEY);
-        if(!raw) return Array.isArray(seed.areas) ? seed.areas : [];
-        const data = JSON.parse(raw);
-        if(data && Array.isArray(data.areas)) return data.areas;
-        return Array.isArray(seed.areas) ? seed.areas : [];
-      }catch{
-        return Array.isArray(seed.areas) ? seed.areas : [];
-      }
-    }
-
     function listAreas(){
-      const list = loadAreas().map(a => a.nome).filter(Boolean);
+      const list = (state.areas || []).map(a => a.name).filter(Boolean);
       const fromVagas = state.vagas.map(v => v.area).filter(Boolean);
       const set = new Set([...list, ...fromVagas]);
       return Array.from(set).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+    }
+
+    async function syncAreasFromApi(){
+      try{
+        const res = await fetch(AREAS_API_URL, { headers: { "Accept": "application/json" } });
+        if(!res.ok) throw new Error(`Falha ao buscar areas: ${res.status}`);
+        const data = await res.json();
+        state.areas = Array.isArray(data) ? data : [];
+      }catch(e){
+        console.error("Falha ao carregar areas da API:", e);
+        state.areas = [];
+      }
     }
 
     function fillVagaAreaSelect(selected){
@@ -156,12 +156,15 @@ function enumFirstCode(key, fallback){
 function normalizeStatusCode(s) {
     const v = (s || "").toString().trim().toLowerCase();
 
-    // aceita: "Aberta", "aberta", "open", etc
     if (v === "aberta" || v === "open" || v === "ativa" || v === "active") return "aberta";
     if (v === "pausada" || v === "paused" || v === "pause") return "pausada";
-    if (v === "fechada" || v === "closed" || v === "encerrada" || v === "inactive") return "fechada";
+    if (v === "fechada" || v === "closed" || v === "encerrada" || v === "cancelada" || v === "inactive") return "fechada";
+    if (v === "rascunho" || v === "draft") return "rascunho";
+    if (v === "emtriagem" || v === "triagem") return "triagem";
+    if (v === "ementrevistas" || v === "entrevistas") return "entrevistas";
+    if (v === "emoferta" || v === "oferta") return "oferta";
+    if (v === "congelada") return "congelada";
 
-    // fallback: se vier algo inesperado, deixa como está (mas em lower)
     return v || "aberta";
 }
 
@@ -174,15 +177,19 @@ function parseDateOnly(ymd) {
 }
 
 function mapApiVagaToState(v) {
+    const areaName = v.areaName ?? v.area?.name ?? "";
+    const matchMinimo = Number.isFinite(+v.matchMinimoPercentual) ? +v.matchMinimoPercentual : 0;
+
     return {
         id: v.id,
         codigo: v.codigo ?? "",
         titulo: v.titulo ?? "",
-        status: v.status ?? "Aberta",
+        status: normalizeStatusCode(v.status),
+        area: areaName,
 
         areaId: v.areaId ?? null,
         areaCode: v.areaCode ?? "",
-        areaName: v.areaName ?? "",
+        areaName,
 
         departmentId: v.departmentId ?? null,
         departmentCode: v.departmentCode ?? "",
@@ -191,7 +198,8 @@ function mapApiVagaToState(v) {
         modalidade: v.modalidade ?? "",
         senioridade: v.senioridade ?? "",
         quantidadeVagas: Number.isFinite(+v.quantidadeVagas) ? +v.quantidadeVagas : 0,
-        matchMinimoPercentual: Number.isFinite(+v.matchMinimoPercentual) ? +v.matchMinimoPercentual : 0,
+        matchMinimoPercentual: matchMinimo,
+        threshold: matchMinimo,
 
         confidencial: !!v.confidencial,
         urgente: !!v.urgente,
@@ -203,51 +211,15 @@ function mapApiVagaToState(v) {
         cidade: v.cidade ?? "",
         uf: v.uf ?? "",
 
-        createdAtUtc: v.createdAtUtc ?? null,
-        updatedAtUtc: v.updatedAtUtc ?? null,
+        descricao: v.descricaoInterna ?? v.descricao ?? "",
+        createdAt: v.createdAtUtc ?? null,
+        updatedAt: v.updatedAtUtc ?? null,
 
-        // requisitos não vêm nesse GET (por isso tá 0 total / 0 obrig.)
+        requisitosTotal: Number.isFinite(+v.requisitosTotal) ? +v.requisitosTotal : null,
+        requisitosObrigatorios: Number.isFinite(+v.requisitosObrigatorios) ? +v.requisitosObrigatorios : null,
         requisitos: Array.isArray(v.requisitos) ? v.requisitos : []
     };
 }
-
-function getAreasFromState() {
-    const map = new Map();
-    for (const v of state.vagas) {
-        const id = v.areaId || "";
-        const name = v.areaName || "";
-        if (id && name) map.set(id, name);
-    }
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-
-/**
- * Mescla campos “locais” (ex.: requisitos/weights/threshold ajustado no front)
- * em cima do que veio da API.
- */
-function mergeLocalIntoApi(apiVaga, localById) {
-    const local = localById.get(apiVaga.id);
-    if (!local) return apiVaga;
-
-    // preserva o que o usuário mexeu no MVP (localStorage)
-    apiVaga.requisitos = Array.isArray(local.requisitos) ? local.requisitos : apiVaga.requisitos;
-    apiVaga.weights = local.weights || apiVaga.weights;
-
-    // se o usuário ajustou threshold localmente, mantém
-    if (local.threshold != null) apiVaga.threshold = local.threshold;
-
-    // mantém “blocos ricos” que sua tela usa (modal completo)
-    apiVaga.jornada = local.jornada || apiVaga.jornada;
-    apiVaga.remuneracao = local.remuneracao || apiVaga.remuneracao;
-    apiVaga.requisitosExtras = local.requisitosExtras || apiVaga.requisitosExtras;
-    apiVaga.processo = local.processo || apiVaga.processo;
-    apiVaga.compliance = local.compliance || apiVaga.compliance;
-
-    return apiVaga;
-}
-
 
 function fmtStatus(s){
       const map = {
@@ -282,11 +254,10 @@ function fmtStatus(s){
       if(text) text.textContent = fmtStatus(s);
       return badge;
     }
-// ========= Storage
-    const STORE_KEY = "lt_rh_vagas_v1";
-
+    // ========= State
     const state = {
       vagas: [],
+      areas: [],
       selectedId: null,
       filters: { q:"", status:"all", area:"all" }
     };
@@ -355,8 +326,12 @@ function fmtStatus(s){
       }
 
       rows.forEach(v => {
-        const reqTotal = (v.requisitos || []).length;
-        const reqObrig = (v.requisitos || []).filter(r => !!r.obrigatorio).length;
+        const reqTotal = Number.isFinite(+v.requisitosTotal)
+          ? +v.requisitosTotal
+          : (v.requisitos || []).length;
+        const reqObrig = Number.isFinite(+v.requisitosObrigatorios)
+          ? +v.requisitosObrigatorios
+          : (v.requisitos || []).filter(r => !!r.obrigatorio).length;
         const isSel = v.id === state.selectedId;
 
         const tr = cloneTemplate("tpl-vaga-row");
@@ -1825,17 +1800,21 @@ function simulateMatch(vagaId, fromMobile=false){
       $("#btnExportJson").addEventListener("click", exportJson);
       $("#btnImportJson").addEventListener("click", importJson);
 
-      $("#btnSeedReset").addEventListener("click", () => {
-        const ok = confirm("Restaurar dados de exemplo? Isso substitui suas vagas atuais no MVP.");
+      $("#btnSeedReset").addEventListener("click", async () => {
+        const ok = confirm("Recarregar vagas da API?");
         if(!ok) return;
-        state.vagas = [];
-        state.selectedId = null;
-
+        try{
+          await syncAreasFromApi();
+          await syncVagasFromApi();
+          toast("Dados atualizados.");
+        }catch(e){
+          console.error("Falha ao atualizar vagas:", e);
+          toast("Falha ao atualizar vagas.");
+        }
         renderAreaFilter();
         updateKpis();
         renderList();
         renderDetail();
-        toast("Demo restaurada.");
       });
     }
 
@@ -1844,24 +1823,24 @@ function simulateMatch(vagaId, fromMobile=false){
       $("#logoMobile").src = LOGO_DATA_URI;
     }
 
-    function openDetailFromQuery(){
+    async function openDetailFromQuery(){
       const params = new URLSearchParams(window.location.search);
       const vagaId = params.get("vagaId");
       const open = params.get("open");
       if(!vagaId) return;
+
       let v = findVaga(vagaId);
       if(!v){
-        const seedVaga = Array.isArray(seed.vagas) ? seed.vagas.find(x => x.id === vagaId) : null;
-        if(seedVaga){
-          state.vagas.unshift(seedVaga);
-
+        v = await fetchVagaById(vagaId);
+        if(v){
+          state.vagas.unshift(v);
           renderAreaFilter();
           updateKpis();
           renderList();
           renderDetail();
-          v = seedVaga;
         }
       }
+
       if(!v) return;
       if(open === "detail"){
         openDetailModal(vagaId);
@@ -1870,6 +1849,14 @@ function simulateMatch(vagaId, fromMobile=false){
       }
     }
 
+
+async function fetchVagaById(id) {
+    const res = await fetch(`${VAGAS_API_URL}/${id}`, { headers: { "Accept": "application/json" } });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`Falha ao buscar vaga: ${res.status}`);
+    const data = await res.json();
+    return data ? mapApiVagaToState(data) : null;
+}
 
 async function syncVagasFromApi() {
     const res = await fetch(VAGAS_API_URL, { headers: { "Accept": "application/json" } });
@@ -1889,6 +1876,7 @@ async function syncVagasFromApi() {
     wireClock();
 
     try {
+        await syncAreasFromApi();
         await syncVagasFromApi();
     } catch (e) {
         console.error("Falha ao carregar vagas da API:", e);
@@ -1903,7 +1891,7 @@ async function syncVagasFromApi() {
 
     wireFilters();
     wireButtons();
-    openDetailFromQuery();
+    await openDetailFromQuery();
 })();
 
 
