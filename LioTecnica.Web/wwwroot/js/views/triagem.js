@@ -587,7 +587,7 @@ function enumFirstCode(key, fallback){
       $("#decReason").value = suggested.reason || "";
       $("#decObs").value = "";
 
-      $("#decisionTitle").textContent = `Decisão â€¢ ${c.nome}`;
+        $("#decisionTitle").textContent = `Decisão • ${c.nome}`;
 
       bootstrap.Modal.getOrCreateInstance($("#modalDecision")).show();
     }
@@ -632,7 +632,7 @@ function enumFirstCode(key, fallback){
         const lines = [];
         if(reason) lines.push(reasonLabel || reason);
         if(obs) lines.push(obs);
-        const note = lines.join(" â€¢ ");
+          const note = lines.join(" • ");
         c.obs = (c.obs || "").trim();
         c.obs = c.obs ? (c.obs + "\n" + note) : note;
         c.updatedAt = new Date().toISOString();

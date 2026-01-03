@@ -1,4 +1,4 @@
-const seed = window.__seedData || {};
+﻿const seed = window.__seedData || {};
 const STORE_KEY = "lt_rh_unidades_v1";
 const VAGAS_STORE_KEY = "lt_rh_vagas_v1";
 const GESTORES_STORE_KEY = "lt_rh_gestores_v1";
@@ -353,79 +353,125 @@ function goToVagaDetail(vagaId){
   window.location.href = url.toString();
 }
 
-function openUnidadeDetail(id){
-  const u = findUnidade(id);
-  if(!u) return;
-  const root = $("#modalUnidadeDetalhes");
-  if(!root) return;
-  const modal = bootstrap.Modal.getOrCreateInstance(root);
+async function renderGestoresFromApi(unitId) {
+    const gestoresBody = $("#unGestoresTbody");
+    if (!gestoresBody) return;
 
-  setText(root, "un-name", u.nome || EMPTY_TEXT);
-  setText(root, "un-code", u.codigo || EMPTY_TEXT);
-  const addressParts = [u.endereco, u.bairro, u.cidade, u.uf].filter(Boolean);
-  setText(root, "un-address", addressParts.join(" - ") || EMPTY_TEXT);
-  setText(root, "un-email", u.email || EMPTY_TEXT);
-  setText(root, "un-phone", u.telefone || EMPTY_TEXT);
-  setText(root, "un-owner", u.responsavel || EMPTY_TEXT);
-  setText(root, "un-type", u.tipo || EMPTY_TEXT);
+    // estado "carregando..."
+    gestoresBody.replaceChildren();
+    const trLoading = document.createElement("tr");
+    trLoading.innerHTML = `<td colspan="5" class="text-muted py-3">Carregando gestores...</td>`;
+    gestoresBody.appendChild(trLoading);
 
-  const statusHost = root.querySelector('[data-role="un-status-host"]');
-  if(statusHost) statusHost.replaceChildren(buildStatusBadge(u.status));
+    // contador provisório
+    $("#unGestoresCount").textContent = "…";
 
-  const gestores = getUnidadeGestores(u);
-  $("#unGestoresCount").textContent = gestores.length;
-  const gestoresBody = $("#unGestoresTbody");
-  gestoresBody.replaceChildren();
-  if(!gestores.length){
-    const empty = cloneTemplate("tpl-un-gestor-empty-row");
-    if(empty) gestoresBody.appendChild(empty);
-  }else{
-    gestores
-      .slice()
-      .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""))
-      .forEach(g => {
-        const tr = cloneTemplate("tpl-un-gestor-row");
-        if(!tr) return;
-        setText(tr, "gestor-name", g.nome || EMPTY_TEXT);
-        setText(tr, "gestor-email", g.email || EMPTY_TEXT);
-        setText(tr, "gestor-cargo", g.cargo || EMPTY_TEXT);
-        setText(tr, "gestor-area", g.area || EMPTY_TEXT);
-        setText(tr, "gestor-headcount", g.headcount != null ? String(g.headcount) : "0");
-        const statusEl = tr.querySelector('[data-role="gestor-status-host"]');
-        if(statusEl) statusEl.replaceChildren(buildStatusBadge(g.status));
-        gestoresBody.appendChild(tr);
-      });
-  }
+    try {
+        // endpoint do WEB (proxy) sugerido: /Unidades/{id}/gestores
+        const resp = await fetch(`/Unidades/${unitId}/gestores`, {
+            headers: { "accept": "application/json" }
+        });
 
-  const vagas = getUnidadeVagas(u);
-  $("#unVagasCount").textContent = vagas.length;
-  const vagasBody = $("#unVagasTbody");
-  vagasBody.replaceChildren();
-  if(!vagas.length){
-    const empty = cloneTemplate("tpl-un-vaga-empty-row");
-    if(empty) vagasBody.appendChild(empty);
-  }else{
-    vagas
-      .slice()
-      .sort((a,b)=> (a.titulo||"").localeCompare(b.titulo||""))
-      .forEach(v => {
-        const tr = cloneTemplate("tpl-un-vaga-row");
-        if(!tr) return;
-        setText(tr, "vaga-code", v.codigo || EMPTY_TEXT);
-        setText(tr, "vaga-title", v.titulo || EMPTY_TEXT);
-        setText(tr, "vaga-modalidade", v.modalidade || EMPTY_TEXT);
-        setText(tr, "vaga-local", formatLocal(v));
-        setText(tr, "vaga-updated", formatDate(v.updatedAt));
-        const statusEl = tr.querySelector('[data-role="vaga-status-host"]');
-        if(statusEl) statusEl.replaceChildren(buildVagaStatusBadge(v.status));
-        const btn = tr.querySelector('[data-act="open-vaga"]');
-        if(btn) btn.addEventListener("click", () => goToVagaDetail(v.id));
-        vagasBody.appendChild(tr);
-      });
-  }
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-  modal.show();
+        const data = await resp.json();
+        const gestores = Array.isArray(data?.items) ? data.items : [];
+
+        $("#unGestoresCount").textContent = gestores.length;
+
+        gestoresBody.replaceChildren();
+
+        if (!gestores.length) {
+            const empty = cloneTemplate("tpl-un-gestor-empty-row");
+            if (empty) gestoresBody.appendChild(empty);
+            return;
+        }
+
+        gestores
+            .slice()
+            .sort((a, b) => (a.nome || "").localeCompare(b.nome || ""))
+            .forEach(g => {
+                const tr = cloneTemplate("tpl-un-gestor-row");
+                if (!tr) return;
+
+                setText(tr, "gestor-name", g.nome || EMPTY_TEXT);
+                setText(tr, "gestor-email", g.email || EMPTY_TEXT);
+                setText(tr, "gestor-cargo", g.cargo || EMPTY_TEXT);
+                setText(tr, "gestor-area", g.area || EMPTY_TEXT);
+                setText(tr, "gestor-headcount", g.headcount != null ? String(g.headcount) : "0");
+
+                const statusEl = tr.querySelector('[data-role="gestor-status-host"]');
+                if (statusEl) statusEl.replaceChildren(buildStatusBadge(g.status)); // espera "ativo/inativo"
+
+                gestoresBody.appendChild(tr);
+            });
+    } catch (err) {
+        $("#unGestoresCount").textContent = "0";
+        gestoresBody.replaceChildren();
+        const empty = cloneTemplate("tpl-un-gestor-empty-row");
+        if (empty) gestoresBody.appendChild(empty);
+        toast("Não foi possível carregar gestores desta unidade.");
+    }
 }
+
+async function openUnidadeDetail(id) {
+    const u = findUnidade(id);
+    if (!u) return;
+    const root = $("#modalUnidadeDetalhes");
+    if (!root) return;
+    const modal = bootstrap.Modal.getOrCreateInstance(root);
+
+    setText(root, "un-name", u.nome || EMPTY_TEXT);
+    setText(root, "un-code", u.codigo || EMPTY_TEXT);
+    const addressParts = [u.endereco, u.bairro, u.cidade, u.uf].filter(Boolean);
+    setText(root, "un-address", addressParts.join(" - ") || EMPTY_TEXT);
+    setText(root, "un-email", u.email || EMPTY_TEXT);
+    setText(root, "un-phone", u.telefone || EMPTY_TEXT);
+    setText(root, "un-owner", u.responsavel || EMPTY_TEXT);
+    setText(root, "un-type", u.tipo || EMPTY_TEXT);
+
+    const statusHost = root.querySelector('[data-role="un-status-host"]');
+    if (statusHost) statusHost.replaceChildren(buildStatusBadge(u.status));
+
+    // ✅ Gestores agora vêm da API (on-demand)
+    renderGestoresFromApi(u.id);
+
+    // ✅ Vagas continuam como estava (localStorage/seed)
+    const vagas = getUnidadeVagas(u);
+    $("#unVagasCount").textContent = vagas.length;
+    const vagasBody = $("#unVagasTbody");
+    vagasBody.replaceChildren();
+
+    if (!vagas.length) {
+        const empty = cloneTemplate("tpl-un-vaga-empty-row");
+        if (empty) vagasBody.appendChild(empty);
+    } else {
+        vagas
+            .slice()
+            .sort((a, b) => (a.titulo || "").localeCompare(b.titulo || ""))
+            .forEach(v => {
+                const tr = cloneTemplate("tpl-un-vaga-row");
+                if (!tr) return;
+
+                setText(tr, "vaga-code", v.codigo || EMPTY_TEXT);
+                setText(tr, "vaga-title", v.titulo || EMPTY_TEXT);
+                setText(tr, "vaga-modalidade", v.modalidade || EMPTY_TEXT);
+                setText(tr, "vaga-local", formatLocal(v));
+                setText(tr, "vaga-updated", formatDate(v.updatedAt));
+
+                const statusEl = tr.querySelector('[data-role="vaga-status-host"]');
+                if (statusEl) statusEl.replaceChildren(buildVagaStatusBadge(v.status));
+
+                const btn = tr.querySelector('[data-act="open-vaga"]');
+                if (btn) btn.addEventListener("click", () => goToVagaDetail(v.id));
+
+                vagasBody.appendChild(tr);
+            });
+    }
+
+    modal.show();
+}
+
 
 function exportCsv(){
   const headers = ["Codigo", "Unidade", "Status", "Cidade", "UF", "Endereco", "Bairro", "CEP", "Email", "Telefone", "Responsavel", "Tipo", "Headcount"];

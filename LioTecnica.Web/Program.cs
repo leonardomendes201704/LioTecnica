@@ -1,7 +1,38 @@
+using LioTecnica.Web.Infrastructure.ApiClients;
+using LioTecnica.Web.Services;
+using RhPortal.Web.Infrastructure.ApiClients;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddHttpClient<IGestoresLookupService, GestoresLookupService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
+});
+
+builder.Services.AddHttpClient<UnitsApiClient>(c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
+});
+builder.Services.AddHttpClient<ManagersApiClient>(c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
+});
+builder.Services.AddHttpClient<DepartmentsApiClient>(c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
+});
+builder.Services.AddHttpClient<AreasApiClient>(c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
+});
+builder.Services.AddHttpClient<VagasApiClient>(http =>
+{
+    http.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
+});
+
 
 var app = builder.Build();
 

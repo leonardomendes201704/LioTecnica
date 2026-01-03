@@ -541,7 +541,7 @@ function loadAll(){
       // hint
       const p = state.filters.period;
       const pl = p==="7d"?"7 dias":p==="30d"?"30 dias":p==="90d"?"90 dias":"YTD";
-      $("#resultHint").textContent = `Perí­odo: ${pl} â€¢ Vaga: ${state.filters.vaga==="all"?"todas":"filtrada"} â€¢ Origem/Status: conforme filtros.`;
+        $("#resultHint").textContent = `Perí­odo: ${pl} • Vaga: ${state.filters.vaga === "all" ? "todas" : "filtrada"} • Origem/Status: conforme filtros.`;
     }
 
     // ========= CSV export do relatório atual

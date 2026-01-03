@@ -104,7 +104,7 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
             </td>
             <td>
               <div class="fw-semibold">${x.cand}</div>
-              <div class="text-muted small">CV: PDF â€¢ 2 páginas</div>
+              <div class="text-muted small">CV: PDF • 2 páginas</div>
             </td>
             <td>
               <span class="badge-soft"><i class="bi ${x.origem === "Email" ? "bi-envelope" : "bi-folder2"} me-1"></i>${x.origem}</span>
@@ -114,7 +114,7 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
                 <div class="progress flex-grow-1"><div class="progress-bar" style="width:${x.match}%"></div></div>
                 <div class="fw-bold" style="min-width:44px;text-align:right;">${x.match}%</div>
               </div>
-              <div class="text-muted small mt-1">Encontrou: 9 termos â€¢ Faltou: 1 obrigatório</div>
+              <div class="text-muted small mt-1">Encontrou: 9 termos • Faltou: 1 obrigatório</div>
             </td>
             <td>${badgeEtapa(x.etapa)}</td>
             <td class="text-end">

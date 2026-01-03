@@ -1,6 +1,8 @@
 ﻿// ========= Logo (embutido em Data URI - auto contido)
     // Observação: o arquivo fornecido veio como WebP (mesmo com nome .png).
-    const seed = window.__seedData || {};
+const seed = window.__seedData || {};
+const VAGAS_API_URL = window.__vagasApiUrl || "/api/vagas";
+
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
 function enumFirstCode(key, fallback){
       const list = getEnumOptions(key);
@@ -150,6 +152,103 @@ function enumFirstCode(key, fallback){
       }
       if(selected) select.value = selected;
     }
+
+function normalizeStatusCode(s) {
+    const v = (s || "").toString().trim().toLowerCase();
+
+    // aceita: "Aberta", "aberta", "open", etc
+    if (v === "aberta" || v === "open" || v === "ativa" || v === "active") return "aberta";
+    if (v === "pausada" || v === "paused" || v === "pause") return "pausada";
+    if (v === "fechada" || v === "closed" || v === "encerrada" || v === "inactive") return "fechada";
+
+    // fallback: se vier algo inesperado, deixa como está (mas em lower)
+    return v || "aberta";
+}
+
+function parseDateOnly(ymd) {
+    // evita bug de fuso (não use new Date("2026-01-20") puro)
+    if (!ymd) return null;
+    const [y, m, d] = String(ymd).split("-").map(n => parseInt(n, 10));
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d); // local midnight
+}
+
+function mapApiVagaToState(v) {
+    return {
+        id: v.id,
+        codigo: v.codigo ?? "",
+        titulo: v.titulo ?? "",
+        status: v.status ?? "Aberta",
+
+        areaId: v.areaId ?? null,
+        areaCode: v.areaCode ?? "",
+        areaName: v.areaName ?? "",
+
+        departmentId: v.departmentId ?? null,
+        departmentCode: v.departmentCode ?? "",
+        departmentName: v.departmentName ?? "",
+
+        modalidade: v.modalidade ?? "",
+        senioridade: v.senioridade ?? "",
+        quantidadeVagas: Number.isFinite(+v.quantidadeVagas) ? +v.quantidadeVagas : 0,
+        matchMinimoPercentual: Number.isFinite(+v.matchMinimoPercentual) ? +v.matchMinimoPercentual : 0,
+
+        confidencial: !!v.confidencial,
+        urgente: !!v.urgente,
+        aceitaPcd: !!v.aceitaPcd,
+
+        dataInicio: parseDateOnly(v.dataInicio),
+        dataEncerramento: parseDateOnly(v.dataEncerramento),
+
+        cidade: v.cidade ?? "",
+        uf: v.uf ?? "",
+
+        createdAtUtc: v.createdAtUtc ?? null,
+        updatedAtUtc: v.updatedAtUtc ?? null,
+
+        // requisitos não vêm nesse GET (por isso tá 0 total / 0 obrig.)
+        requisitos: Array.isArray(v.requisitos) ? v.requisitos : []
+    };
+}
+
+function getAreasFromState() {
+    const map = new Map();
+    for (const v of state.vagas) {
+        const id = v.areaId || "";
+        const name = v.areaName || "";
+        if (id && name) map.set(id, name);
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+
+/**
+ * Mescla campos “locais” (ex.: requisitos/weights/threshold ajustado no front)
+ * em cima do que veio da API.
+ */
+function mergeLocalIntoApi(apiVaga, localById) {
+    const local = localById.get(apiVaga.id);
+    if (!local) return apiVaga;
+
+    // preserva o que o usuário mexeu no MVP (localStorage)
+    apiVaga.requisitos = Array.isArray(local.requisitos) ? local.requisitos : apiVaga.requisitos;
+    apiVaga.weights = local.weights || apiVaga.weights;
+
+    // se o usuário ajustou threshold localmente, mantém
+    if (local.threshold != null) apiVaga.threshold = local.threshold;
+
+    // mantém “blocos ricos” que sua tela usa (modal completo)
+    apiVaga.jornada = local.jornada || apiVaga.jornada;
+    apiVaga.remuneracao = local.remuneracao || apiVaga.remuneracao;
+    apiVaga.requisitosExtras = local.requisitosExtras || apiVaga.requisitosExtras;
+    apiVaga.processo = local.processo || apiVaga.processo;
+    apiVaga.compliance = local.compliance || apiVaga.compliance;
+
+    return apiVaga;
+}
+
+
 function fmtStatus(s){
       const map = {
         aberta: "Aberta",
@@ -192,37 +291,7 @@ function fmtStatus(s){
       filters: { q:"", status:"all", area:"all" }
     };
 
-    function loadState(){
-      try{
-        const raw = localStorage.getItem(STORE_KEY);
-        if(!raw) return false;
-        const data = JSON.parse(raw);
-        if(!data || !Array.isArray(data.vagas)) return false;
-        state.vagas = data.vagas;
-        state.selectedId = data.selectedId ?? null;
-        return true;
-      }catch{
-        return false;
-      }
-    }
 
-    function saveState(){
-      localStorage.setItem(STORE_KEY, JSON.stringify({
-        vagas: state.vagas,
-        selectedId: state.selectedId
-      }));
-    }
-
-    function seedIfEmpty(){
-      if(state.vagas.length) return;
-
-      const vagasSeed = Array.isArray(seed.vagas) ? seed.vagas : [];
-      if(!vagasSeed.length) return;
-
-      state.vagas = vagasSeed;
-      state.selectedId = seed.selectedVagaId || vagasSeed[0]?.id || null;
-      saveState();
-    }
 
     // ========= Rendering
     function updateKpis(){
@@ -343,7 +412,6 @@ function fmtStatus(s){
 
     function selectVaga(id){
       state.selectedId = id;
-      saveState();
       renderList();
       renderDetail();
     }
@@ -1195,7 +1263,6 @@ function fmtStatus(s){
         toast("Vaga criada.");
       }
 
-      saveState();
       renderAreaFilter();
       updateKpis();
       renderList();
@@ -1215,7 +1282,6 @@ function fmtStatus(s){
       if(state.selectedId === id){
         state.selectedId = state.vagas[0]?.id || null;
       }
-      saveState();
       renderAreaFilter();
       updateKpis();
       renderList();
@@ -1239,7 +1305,6 @@ function fmtStatus(s){
 
       state.vagas.unshift(copy);
       state.selectedId = copy.id;
-      saveState();
       renderAreaFilter();
       updateKpis();
       renderList();
@@ -1335,7 +1400,6 @@ function fmtStatus(s){
       }
 
       v.updatedAt = new Date().toISOString();
-      saveState();
       renderList();
       renderDetail();
       bootstrap.Modal.getOrCreateInstance($("#modalReq")).hide();
@@ -1353,7 +1417,6 @@ function fmtStatus(s){
 
       v.requisitos = (v.requisitos || []).filter(x => x.id !== reqId);
       v.updatedAt = new Date().toISOString();
-      saveState();
       renderList();
       renderDetail();
       toast("Requisito removido.");
@@ -1367,7 +1430,6 @@ function fmtStatus(s){
 
       r.obrigatorio = !r.obrigatorio;
       v.updatedAt = new Date().toISOString();
-      saveState();
       renderList();
       renderDetail();
       toast(r.obrigatorio ? "Requisito marcado como obrigatório." : "Requisito marcado como não obrigatório.");
@@ -1392,7 +1454,6 @@ function fmtStatus(s){
       v.weights = w;
       v.updatedAt = new Date().toISOString();
 
-      saveState();
       renderList();
       renderDetail();
       toast("Pesos e match mí­nimo salvos.");
@@ -1688,7 +1749,6 @@ function simulateMatch(vagaId, fromMobile=false){
             });
 
             state.selectedId = state.vagas[0]?.id || null;
-            saveState();
             renderAreaFilter();
             updateKpis();
             renderList();
@@ -1770,8 +1830,7 @@ function simulateMatch(vagaId, fromMobile=false){
         if(!ok) return;
         state.vagas = [];
         state.selectedId = null;
-        saveState();
-        seedIfEmpty();
+
         renderAreaFilter();
         updateKpis();
         renderList();
@@ -1795,7 +1854,7 @@ function simulateMatch(vagaId, fromMobile=false){
         const seedVaga = Array.isArray(seed.vagas) ? seed.vagas.find(x => x.id === vagaId) : null;
         if(seedVaga){
           state.vagas.unshift(seedVaga);
-          saveState();
+
           renderAreaFilter();
           updateKpis();
           renderList();
@@ -1811,31 +1870,43 @@ function simulateMatch(vagaId, fromMobile=false){
       }
     }
 
-    (function init(){
-      initLogo();
-      wireClock();
 
-      const has = loadState();
-      if(!has) seedIfEmpty();
-      else seedIfEmpty(); // caso tenha vindo vazio por algum motivo
+async function syncVagasFromApi() {
+    const res = await fetch(VAGAS_API_URL, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error(`Falha ao buscar vagas: ${res.status}`);
 
-      renderAreaFilter();
-      updateKpis();
-      renderList();
-      renderDetail();
+    const apiList = await res.json();
+    const list = Array.isArray(apiList) ? apiList : (apiList?.items ?? []);
 
-      wireFilters();
-      wireButtons();
-      openDetailFromQuery();
+    // se você já tem mapApiVagaToState, use aqui
+    state.vagas = list.map(mapApiVagaToState);
 
-      // garantir que haja seleção
-      if(!state.selectedId && state.vagas.length){
-        state.selectedId = state.vagas[0].id;
-        saveState();
-        renderList();
-        renderDetail();
-      }
-    })();
+    state.selectedId = state.vagas[0]?.id || null;
+}
+
+(async function init() {
+    initLogo();
+    wireClock();
+
+    try {
+        await syncVagasFromApi();
+    } catch (e) {
+        console.error("Falha ao carregar vagas da API:", e);
+        state.vagas = [];
+        state.selectedId = null;
+    }
+
+    renderAreaFilter();
+    updateKpis();
+    renderList();
+    renderDetail();
+
+    wireFilters();
+    wireButtons();
+    openDetailFromQuery();
+})();
+
+
 
 
 

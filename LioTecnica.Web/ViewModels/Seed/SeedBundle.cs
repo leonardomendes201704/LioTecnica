@@ -1,6 +1,6 @@
 namespace LioTecnica.Web.ViewModels.Seed;
 
-public sealed class SeedBundle
+public sealed record SeedBundle
 {
     public IReadOnlyList<VagaSeed> Vagas { get; init; } = Array.Empty<VagaSeed>();
     public string? SelectedVagaId { get; init; }
@@ -24,6 +24,8 @@ public sealed class SeedBundle
     public IReadOnlyList<GestorSeed> Gestores { get; init; } = Array.Empty<GestorSeed>();
 
     public IReadOnlyList<AreaSeed> Areas { get; init; } = Array.Empty<AreaSeed>();
+
+    public IReadOnlyList<CentrosCustosSeed> CentrosCustos { get; init; } = Array.Empty<CentrosCustosSeed>();
 
     public IReadOnlyList<RequisitoCategoriaSeed> RequisitoCategorias { get; init; } = Array.Empty<RequisitoCategoriaSeed>();
 
