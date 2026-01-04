@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using RhPortal.Api.Domain.Entities;
 using RhPortal.Api.Domain.Enums;
 using RhPortal.Api.Infrastructure.Tenancy;
@@ -15,6 +16,8 @@ public static class DbSeeder
         using var scope = services.CreateScope();
         var tenantContext = scope.ServiceProvider.GetRequiredService<ITenantContext>();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
 
         var resetDb = config.GetValue<bool>("Seed:ResetDatabase");
 
@@ -29,8 +32,12 @@ public static class DbSeeder
 
         await db.Database.MigrateAsync(ct);
 
-        await SeedTenantAsync(db, tenantContext, "liotecnica");
-        await SeedTenantAsync(db, tenantContext, "dev");
+        var adminPassword = config.GetValue<string>("Seed:AdminPassword");
+        if (string.IsNullOrWhiteSpace(adminPassword))
+            throw new InvalidOperationException("Seed:AdminPassword is required.");
+
+        await SeedTenantAsync(db, tenantContext, userManager, roleManager, "liotecnica", "Liotecnica", adminPassword);
+        await SeedTenantAsync(db, tenantContext, userManager, roleManager, "dev", "Development", adminPassword);
     }
 
     private sealed record DepartmentSeed(
@@ -43,13 +50,23 @@ public static class DbSeeder
         string BranchOrLocation,
         string Description);
 
-    private static async Task SeedTenantAsync(AppDbContext db, ITenantContext tenantContext, string tenantId)
+    private static async Task SeedTenantAsync(
+        AppDbContext db,
+        ITenantContext tenantContext,
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
+        string tenantId,
+        string tenantName,
+        string adminPassword)
     {
+        await EnsureTenantAsync(db, tenantId, tenantName);
         tenantContext.SetTenantId(tenantId);
 
         var emailDomain = tenantId.Equals("liotecnica", StringComparison.OrdinalIgnoreCase)
             ? "liotecnica.com.br"
             : "dev.local";
+
+        await EnsureAdminAccessAsync(db, userManager, roleManager, tenantId, emailDomain, adminPassword);
 
         // Áreas (bem realistas pra indústria alimentícia)
         var areas = new (string Code, string Name)[]
@@ -1125,6 +1142,323 @@ BuildDemoRequisitos(string areaCode)
             new("TEC-004","Dados & BI (KPIs, OEE, perdas)","TEC",3,"Mário Tavares","CC-TEC-940","Escritório - Matriz","Modelagem de dados, dashboards, indicadores industriais (OEE, perdas) e suporte à tomada de decisão."),
             new("TEC-005","Segurança da Informação & Governança","TEC",2,"Hugo Lima","CC-TEC-950","Escritório - Matriz","Políticas de segurança, acessos, gestão de vulnerabilidades e governança mínima (LGPD e auditorias)."),
         };
+
+    private static async Task EnsureTenantAsync(AppDbContext db, string tenantId, string tenantName)
+    {
+        var existing = await db.Tenants.FirstOrDefaultAsync(x => x.TenantId == tenantId);
+        if (existing is null)
+        {
+            db.Tenants.Add(new Tenant
+            {
+                TenantId = tenantId,
+                Name = tenantName,
+                IsActive = true
+            });
+            await db.SaveChangesAsync();
+            return;
+        }
+
+        if (!string.Equals(existing.Name, tenantName, StringComparison.OrdinalIgnoreCase))
+        {
+            existing.Name = tenantName;
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private static async Task EnsureAdminAccessAsync(
+        AppDbContext db,
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
+        string tenantId,
+        string emailDomain,
+        string adminPassword)
+    {
+        var adminRole = await roleManager.Roles.FirstOrDefaultAsync(x => x.Name == "Admin");
+        if (adminRole is null)
+        {
+            adminRole = new ApplicationRole
+            {
+                Id = Guid.NewGuid(),
+                Name = "Admin",
+                Description = "Tenant administrator",
+                IsActive = true
+            };
+
+            var roleResult = await roleManager.CreateAsync(adminRole);
+            if (!roleResult.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", roleResult.Errors.Select(x => x.Description)));
+        }
+
+        var adminEmail = $"admin@{emailDomain}";
+        var adminUser = await userManager.Users.FirstOrDefaultAsync(x => x.Email == adminEmail);
+        if (adminUser is null)
+        {
+            adminUser = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                Email = adminEmail,
+                UserName = adminEmail,
+                FullName = $"{tenantId.ToUpperInvariant()} Admin",
+                IsActive = true
+            };
+
+            var userResult = await userManager.CreateAsync(adminUser, adminPassword);
+            if (!userResult.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", userResult.Errors.Select(x => x.Description)));
+        }
+
+        var isInRole = await userManager.IsInRoleAsync(adminUser, "Admin");
+        if (!isInRole)
+        {
+            var addToRole = await userManager.AddToRoleAsync(adminUser, "Admin");
+            if (!addToRole.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", addToRole.Errors.Select(x => x.Description)));
+        }
+
+        var menus = BuildDefaultMenus();
+        foreach (var menu in menus)
+        {
+            var exists = await db.Menus.AnyAsync(x => x.PermissionKey == menu.PermissionKey);
+            if (!exists)
+            {
+                db.Menus.Add(menu);
+            }
+        }
+
+        await db.SaveChangesAsync();
+
+        var menuByKey = await db.Menus.ToDictionaryAsync(x => x.PermissionKey, x => x);
+
+        var adminMenuAssignments = menuByKey.Values
+            .Select(x => (MenuId: x.Id, x.PermissionKey))
+            .ToList();
+
+        if (menuByKey.TryGetValue("users.read", out var usersMenu))
+            adminMenuAssignments.Add((usersMenu.Id, "users.write"));
+
+        var existingAssignments = await db.RoleMenus
+            .Where(x => x.RoleId == adminRole.Id)
+            .Select(x => new { x.MenuId, x.PermissionKey })
+            .ToListAsync();
+
+        var existingKeys = existingAssignments
+            .Select(x => $"{x.MenuId}:{x.PermissionKey}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var toAdd = adminMenuAssignments
+            .Where(x => !existingKeys.Contains($"{x.MenuId}:{x.PermissionKey}"))
+            .Select(x => new RoleMenu
+            {
+                Id = Guid.NewGuid(),
+                RoleId = adminRole.Id,
+                MenuId = x.MenuId,
+                PermissionKey = x.PermissionKey
+            })
+            .ToList();
+
+        if (toAdd.Count() > 0)
+        {
+            db.RoleMenus.AddRange(toAdd);
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private static List<Menu> BuildDefaultMenus()
+    {
+        return new List<Menu>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Dashboard",
+                Route = "/Dashboard",
+                Icon = "bi-speedometer2",
+                Order = 1,
+                PermissionKey = "dashboard.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Agenda",
+                Route = "/Agendas",
+                Icon = "bi-calendar-event",
+                Order = 2,
+                PermissionKey = "agenda.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Vagas",
+                Route = "/Vagas",
+                Icon = "bi-briefcase",
+                Order = 3,
+                PermissionKey = "vagas.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Candidatos",
+                Route = "/Candidatos",
+                Icon = "bi-people",
+                Order = 4,
+                PermissionKey = "candidatos.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Triagem",
+                Route = "/Triagem",
+                Icon = "bi-funnel",
+                Order = 5,
+                PermissionKey = "triagem.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Matching",
+                Route = "/Matching",
+                Icon = "bi-stars",
+                Order = 6,
+                PermissionKey = "matching.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Entrada (Email/Pasta)",
+                Route = "/EntradaEmailPasta",
+                Icon = "bi-inbox",
+                Order = 20,
+                PermissionKey = "entrada.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Relatorios",
+                Route = "/Relatorios",
+                Icon = "bi-graph-up",
+                Order = 40,
+                PermissionKey = "relatorios.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Departamentos",
+                Route = "/Departamentos",
+                Icon = "bi-diagram-2",
+                Order = 41,
+                PermissionKey = "departments.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Centros de Custo",
+                Route = "/CentrosCustos",
+                Icon = "bi-cash-coin",
+                Order = 42,
+                PermissionKey = "costcenters.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Areas",
+                Route = "/Areas",
+                Icon = "bi-diagram-3",
+                Order = 43,
+                PermissionKey = "areas.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Categorias",
+                Route = "/Categorias",
+                Icon = "bi-tags",
+                Order = 44,
+                PermissionKey = "categories.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Cargos",
+                Route = "/Cargos",
+                Icon = "bi-briefcase",
+                Order = 45,
+                PermissionKey = "jobpositions.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Unidades",
+                Route = "/Unidades",
+                Icon = "bi-building",
+                Order = 46,
+                PermissionKey = "units.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Gestores",
+                Route = "/Gestores",
+                Icon = "bi-person-badge",
+                Order = 47,
+                PermissionKey = "managers.view",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Users",
+                Route = "/Admin/Users",
+                Icon = "bi-people",
+                Order = 80,
+                PermissionKey = "users.read",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Roles",
+                Route = "/Admin/Roles",
+                Icon = "bi-shield-lock",
+                Order = 81,
+                PermissionKey = "roles.manage",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Menus",
+                Route = "/Admin/Menus",
+                Icon = "bi-list-check",
+                Order = 82,
+                PermissionKey = "menus.manage",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = "Accesses",
+                Route = "/Admin/Accesses",
+                Icon = "bi-key",
+                Order = 83,
+                PermissionKey = "access.manage",
+                IsActive = true
+            }
+        };
+    }
 
     private static string ToEmailUser(string fullName)
     {

@@ -1,5 +1,3 @@
-﻿const AREAS_API_BASE = "https://localhost:7073"; // ✅ sua API de áreas
-const TENANT_ID = (window.__tenantId || "liotecnica"); // ajuste se você já tem isso em algum lugar
 const AREAS_PROXY_URLS = [
     "/api/lookup/areas"
 ];
@@ -17,9 +15,6 @@ const cache = {
     managersFirstPage: null
 };
 
-function withTenant(headers = {}) {
-    return { "X-Tenant-Id": TENANT_ID, ...headers };
-}
 
 function normalizeManager(m) {
     return {
@@ -125,7 +120,7 @@ function deriveManagersFromDepartments() {
 
 async function apiFetchJson(url, opts) {
     const res = await fetch(url, {
-        headers: withTenant({ "Accept": "application/json", ...(opts?.headers || {}) }),
+        headers: { "Accept": "application/json", ...(opts?.headers || {}) },
         ...opts
     });
 
@@ -337,7 +332,7 @@ function loadVagas() {
 
 async function apiFetchJson(url, opts) {
     const res = await fetch(url, {
-        headers: withTenant({ "Accept": "application/json", ...(opts?.headers || {}) }),
+        headers: { "Accept": "application/json", ...(opts?.headers || {}) },
         ...opts
     });
 
@@ -464,7 +459,6 @@ const LOOKUP_API_BASE = window.LOOKUP_API_BASE || window.location.origin;
 async function loadAreasLookup(force = false) {
     if (cache.areas && !force) return cache.areas;
 
-    // 1) tenta urls do seu site (evita CORS)
     for (const url of AREAS_PROXY_URLS) {
         try {
             const raw = await apiFetchJson(url, { method: "GET" });
@@ -472,33 +466,21 @@ async function loadAreasLookup(force = false) {
             cache.areas = arr;
             return arr;
         } catch (e) {
-            // 404 = rota não existe -> tenta a próxima
-            if (e?.status !== 404) console.warn("Falha ao carregar áreas (proxy):", url, e);
+            if (e?.status !== 404) console.warn("Failed to load areas:", url, e);
         }
     }
 
-    // 2) fallback: chama a API diretamente (vai precisar CORS liberado na 7073)
-    try {
-        const raw = await apiFetchJson(`${AREAS_API_BASE}/api/areas`, { method: "GET" });
-        const arr = Array.isArray(raw) ? raw : [];
-        cache.areas = arr;
-        return arr;
-    } catch (e) {
-        console.warn("Falha ao carregar áreas (API direta). Se der CORS, use proxy no MVC.", e);
-        cache.areas = [];
-        return [];
-    }
+    cache.areas = [];
+    return [];
 }
+
 
 async function loadUnitsLookup(force = false) {
     if (cache.units && !force) return cache.units;
 
-    // 1) tenta via proxy (mesmo domínio do portal)
     for (const url of UNITS_PROXY_URLS) {
         try {
             const raw = await apiFetchJson(url, { method: "GET" });
-
-            // aceita array direto ou {items:[...]}
             const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : []);
 
             cache.units = arr
@@ -511,35 +493,16 @@ async function loadUnitsLookup(force = false) {
 
             return cache.units;
         } catch (e) {
-            // 404 = rota não existe -> tenta próxima
             if (e?.status !== 404) {
-                console.warn("Falha ao carregar unidades (proxy):", url, e);
+                console.warn("Failed to load units:", url, e);
             }
         }
     }
 
-    // 2) fallback: chama API direta (se você quiser mesmo)
-    try {
-        // se sua API de units for em outro host, isso pode dar CORS
-        // e o formato pode ser { items: [...] } (paged)
-        const raw = await apiFetchJson(`${UNITS_API_BASE}/api/units`, { method: "GET" });
-        const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : []);
-
-        cache.units = arr
-            .map(u => ({
-                id: (u.id || u.Id || "").toString(),
-                code: u.code || u.Code || u.codigo || "",
-                name: u.name || u.Name || u.nome || ""
-            }))
-            .filter(x => x.name);
-
-        return cache.units;
-    } catch (e) {
-        console.warn("Falha ao carregar unidades (API direta). Se der CORS, use proxy no MVC.", e);
-        cache.units = [];
-        return [];
-    }
+    cache.units = [];
+    return [];
 }
+
 // ✅ SELECT COM GUID NO VALUE
 async function fillAreaSelect(selectedAreaId) {
     const select = document.querySelector("#deptArea");
@@ -1121,4 +1084,3 @@ function wireButtons() {
     wireFilters();
     wireButtons();
 })();
-

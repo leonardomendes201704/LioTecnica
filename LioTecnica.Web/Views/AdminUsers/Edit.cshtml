@@ -1,0 +1,72 @@
+@model LioTecnica.Web.ViewModels.Admin.UserEditViewModel
+@{
+    ViewData["Title"] = Model.IsNew ? "New User" : "Edit User";
+}
+@section Topbar {
+    <div class="d-flex align-items-center justify-content-between w-100">
+        <div>
+            <div class="h5 mb-0">@ViewData["Title"]</div>
+            <div class="text-muted small">User details and roles.</div>
+        </div>
+        <a class="btn btn-outline-secondary" href="/Admin/Users">Back</a>
+    </div>
+}
+
+<div class="container-fluid py-3">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post" action="@(Model.IsNew ? "/Admin/Users/New" : $"/Admin/Users/Edit/{Model.User.Id}")">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="Email">Email</label>
+                        <input class="form-control" id="Email" name="Email" value="@Model.User.Email" />
+                        <span class="text-danger small">@Html.ValidationMessage("Email")</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="FullName">Full name</label>
+                        <input class="form-control" id="FullName" name="FullName" value="@Model.User.FullName" />
+                        <span class="text-danger small">@Html.ValidationMessage("FullName")</span>
+                    </div>
+                    @if (Model.IsNew)
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label" for="Password">Password</label>
+                            <input class="form-control" id="Password" name="Password" type="password" />
+                            <span class="text-danger small">@Html.ValidationMessage("Password")</span>
+                        </div>
+                    }
+                    <div class="col-md-6">
+                        <label class="form-label" for="IsActive">Status</label>
+                        <select class="form-select" id="IsActive" name="IsActive">
+                            <option value="true" selected="@(Model.User.IsActive ? "selected" : null)">Active</option>
+                            <option value="false" selected="@(!Model.User.IsActive ? "selected" : null)">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Roles</label>
+                        <div class="row g-2">
+                            @foreach (var role in Model.Roles)
+                            {
+                                var isChecked = Model.User.RoleIds.Contains(role.Id);
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="RoleIds" value="@role.Id" @(isChecked ? "checked" : "") />
+                                        <label class="form-check-label">@role.Name</label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <a class="btn btn-outline-secondary ms-2" href="/Admin/Users">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Footer {
+    @await Html.PartialAsync("_Footer", new[] { new { Text = "Users", Class = "muted" } })
+}

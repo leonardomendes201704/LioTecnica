@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using System.Net;
 using System.Text.Json;
 
 namespace RhPortal.Web.Infrastructure.ApiClients;
@@ -24,6 +25,9 @@ public sealed class UnitsApiClient
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         using var resp = await _http.SendAsync(req, ct);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            return new UnitsPagedResponse();
+
         resp.EnsureSuccessStatusCode();
 
         var json = await resp.Content.ReadAsStringAsync(ct);

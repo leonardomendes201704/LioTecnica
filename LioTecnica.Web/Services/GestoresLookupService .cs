@@ -14,9 +14,6 @@ public interface IGestoresLookupService
 
 public sealed class GestoresLookupService : IGestoresLookupService
 {
-    private const string TenantHeaderName = "X-Tenant-Id";
-    private const string TenantId = "liotecnica";
-
     private readonly HttpClient _http;
 
     public GestoresLookupService(HttpClient http) => _http = http;
@@ -38,7 +35,6 @@ public sealed class GestoresLookupService : IGestoresLookupService
 
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        req.Headers.TryAddWithoutValidation(TenantHeaderName, TenantId);
 
         using var res = await _http.SendAsync(req, ct);
 

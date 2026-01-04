@@ -1,13 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using RhPortal.Api.Domain.Entities;
 using RhPortal.Api.Infrastructure.Tenancy;
 using RHPortal.Api.Domain.Entities;
-using System.Collections.Generic;
-using System.Reflection.Emit;
 
 namespace RhPortal.Api.Infrastructure.Data;
 
-public sealed class AppDbContext : DbContext
+public sealed class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid, IdentityUserClaim<Guid>, ApplicationUserRole, IdentityUserLogin<Guid>, IdentityRoleClaim<Guid>, IdentityUserToken<Guid>>
 {
     private readonly ITenantContext _tenantContext;
 
@@ -16,6 +16,10 @@ public sealed class AppDbContext : DbContext
     {
         _tenantContext = tenantContext;
     }
+
+    public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<Menu> Menus => Set<Menu>();
+    public DbSet<RoleMenu> RoleMenus => Set<RoleMenu>();
 
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Area> Areas => Set<Area>();
@@ -32,6 +36,105 @@ public sealed class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Tenant>(b =>
+        {
+            b.ToTable("Tenants");
+            b.HasKey(x => x.TenantId);
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            b.Property(x => x.IsActive).IsRequired();
+        });
+
+        modelBuilder.Entity<ApplicationUser>(b =>
+        {
+            b.ToTable("Users");
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+            b.Property(x => x.IsActive).IsRequired();
+
+            b.HasIndex(x => x.NormalizedUserName)
+                .HasDatabaseName("UserNameIndex")
+                .IsUnique(false);
+
+            b.HasIndex(x => x.NormalizedEmail)
+                .HasDatabaseName("EmailIndex")
+                .IsUnique(false);
+
+            b.HasIndex(x => new { x.TenantId, x.NormalizedUserName }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.NormalizedEmail }).IsUnique(false);
+
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ApplicationRole>(b =>
+        {
+            b.ToTable("Roles");
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(400);
+            b.Property(x => x.IsActive).IsRequired();
+
+            b.HasIndex(x => x.NormalizedName)
+                .HasDatabaseName("RoleNameIndex")
+                .IsUnique(false);
+
+            b.HasIndex(x => new { x.TenantId, x.NormalizedName }).IsUnique();
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<ApplicationUserRole>(b =>
+        {
+            b.ToTable("UserRoles");
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+
+            b.HasIndex(x => new { x.TenantId, x.UserId });
+            b.HasIndex(x => new { x.TenantId, x.RoleId });
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<Menu>(b =>
+        {
+            b.ToTable("Menus");
+            b.HasKey(x => x.Id);
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.DisplayName).HasMaxLength(160).IsRequired();
+            b.Property(x => x.Route).HasMaxLength(240).IsRequired();
+            b.Property(x => x.Icon).HasMaxLength(120);
+            b.Property(x => x.PermissionKey).HasMaxLength(160).IsRequired();
+            b.Property(x => x.IsActive).IsRequired();
+
+            b.HasIndex(x => new { x.TenantId, x.PermissionKey }).IsUnique();
+            b.HasIndex(x => new { x.TenantId, x.Route });
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<RoleMenu>(b =>
+        {
+            b.ToTable("RoleMenus");
+            b.HasKey(x => x.Id);
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.PermissionKey).HasMaxLength(160).IsRequired();
+
+            b.HasOne(x => x.Role)
+                .WithMany()
+                .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(x => x.Menu)
+                .WithMany()
+                .HasForeignKey(x => x.MenuId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasIndex(x => new { x.TenantId, x.RoleId, x.MenuId, x.PermissionKey }).IsUnique();
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
         modelBuilder.Entity<Area>(b =>
         {
             b.ToTable("Areas");
@@ -241,6 +344,38 @@ public sealed class AppDbContext : DbContext
             b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
         });
 
+        modelBuilder.Entity<VagaBeneficio>(b =>
+        {
+            b.ToTable("VagaBeneficios");
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.HasIndex(x => new { x.TenantId, x.VagaId });
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<VagaRequisito>(b =>
+        {
+            b.ToTable("VagaRequisitos");
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.HasIndex(x => new { x.TenantId, x.VagaId });
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<VagaEtapa>(b =>
+        {
+            b.ToTable("VagaEtapas");
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.HasIndex(x => new { x.TenantId, x.VagaId });
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<VagaPergunta>(b =>
+        {
+            b.ToTable("VagaPerguntas");
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.HasIndex(x => new { x.TenantId, x.VagaId });
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
 
     }
 
@@ -254,6 +389,51 @@ public sealed class AppDbContext : DbContext
             {
                 if (entry.State == EntityState.Added)
                     tenantEntity.TenantId = _tenantContext.TenantId;
+            }
+
+            if (entry.Entity is Tenant tenant)
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    tenant.CreatedAtUtc = now;
+                    tenant.UpdatedAtUtc = now;
+                }
+
+                if (entry.State == EntityState.Modified)
+                    tenant.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is ApplicationUser user)
+            {
+                if (entry.State == EntityState.Added)
+                    user.CreatedAtUtc = now;
+
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                    user.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is ApplicationRole role)
+            {
+                if (entry.State == EntityState.Added)
+                    role.CreatedAtUtc = now;
+
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                    role.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is Menu menu)
+            {
+                if (entry.State == EntityState.Added)
+                    menu.CreatedAtUtc = now;
+
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                    menu.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is RoleMenu roleMenu)
+            {
+                if (entry.State == EntityState.Added)
+                    roleMenu.CreatedAtUtc = now;
             }
 
             if (entry.Entity is Department dep)

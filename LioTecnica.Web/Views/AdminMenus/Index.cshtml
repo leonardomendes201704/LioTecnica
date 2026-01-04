@@ -1,0 +1,65 @@
+@model LioTecnica.Web.ViewModels.Admin.MenusPageViewModel
+@{
+    ViewData["Title"] = "Menus";
+}
+@section Topbar {
+    <div class="d-flex align-items-center justify-content-between w-100">
+        <div>
+            <div class="h5 mb-0">Menus</div>
+            <div class="text-muted small">Manage menu items and permissions.</div>
+        </div>
+        <a class="btn btn-primary" href="/Admin/Menus/New"><i class="bi bi-plus-lg"></i> New menu</a>
+    </div>
+}
+
+<div class="container-fluid py-3">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Display</th>
+                            <th>Route</th>
+                            <th>Permission</th>
+                            <th>Order</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var menu in Model.Menus)
+                        {
+                            <tr>
+                                <td>
+                                    <i class="bi @menu.Icon me-2"></i>@menu.DisplayName
+                                </td>
+                                <td>@menu.Route</td>
+                                <td><code>@menu.PermissionKey</code></td>
+                                <td>@menu.Order</td>
+                                <td>
+                                    <span class="badge @(menu.IsActive ? "bg-success" : "bg-secondary")">
+                                        @(menu.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-primary" href="/Admin/Menus/Edit/@menu.Id">Edit</a>
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Menus.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-muted text-center py-4">No menus found.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Footer {
+    @await Html.PartialAsync("_Footer", new[] { new { Text = "Menus", Class = "muted" } })
+}

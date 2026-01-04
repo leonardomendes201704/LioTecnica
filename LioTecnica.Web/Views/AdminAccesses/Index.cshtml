@@ -1,0 +1,80 @@
+@model LioTecnica.Web.ViewModels.Admin.AccessesPageViewModel
+@{
+    ViewData["Title"] = "Accesses";
+    var selectedPermissions = new HashSet<string>(
+        Model.RoleMenus.Select(x => x.PermissionKey),
+        StringComparer.OrdinalIgnoreCase);
+}
+@section Topbar {
+    <div class="d-flex align-items-center justify-content-between w-100">
+        <div>
+            <div class="h5 mb-0">Accesses</div>
+            <div class="text-muted small">Assign menus and permissions to a role.</div>
+        </div>
+    </div>
+}
+
+<div class="container-fluid py-3">
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" action="/Admin/Accesses" class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label">Role</label>
+                    <select class="form-select" name="roleId">
+                        <option value="">Select a role</option>
+                        @foreach (var role in Model.Roles)
+                        {
+                            <option value="@role.Id" selected="@(Model.SelectedRoleId == role.Id ? "selected" : null)">@role.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-outline-primary">Load</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.SelectedRoleId.HasValue)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post" action="/Admin/Accesses">
+                    <input type="hidden" name="RoleId" value="@Model.SelectedRoleId" />
+                    <div class="row g-3">
+                        @foreach (var menu in Model.Menus)
+                        {
+                            var isChecked = selectedPermissions.Contains(menu.PermissionKey);
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="@menu.PermissionKey" @(isChecked ? "checked" : "") />
+                                    <label class="form-check-label">
+                                        <i class="bi @menu.Icon me-2"></i>@menu.DisplayName
+                                        <span class="text-muted small ms-1">(@menu.PermissionKey)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            if (string.Equals(menu.PermissionKey, "users.read", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var canWrite = selectedPermissions.Contains("users.write");
+                                <div class="col-md-6">
+                                    <div class="form-check ms-4">
+                                        <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="users.write" @(canWrite ? "checked" : "") />
+                                        <label class="form-check-label">Users write (users.write)</label>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">Save access</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+
+@section Footer {
+    @await Html.PartialAsync("_Footer", new[] { new { Text = "Accesses", Class = "muted" } })
+}

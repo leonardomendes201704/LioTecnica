@@ -1,4 +1,5 @@
 using LioTecnica.Web.Infrastructure.ApiClients;
+using LioTecnica.Web.Infrastructure.Security;
 using LioTecnica.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,24 +13,26 @@ public sealed class LookupController : ControllerBase
     private readonly DepartmentsApiClient _departments;
     private readonly VagasApiClient _vagas;
     private readonly IGestoresLookupService _gestores;
+    private readonly PortalTenantContext _tenantContext;
 
     public LookupController(
         AreasApiClient areas,
         DepartmentsApiClient departments,
         VagasApiClient vagas,
-        IGestoresLookupService gestores)
+        IGestoresLookupService gestores,
+        PortalTenantContext tenantContext)
     {
         _areas = areas;
         _departments = departments;
         _vagas = vagas;
         _gestores = gestores;
+        _tenantContext = tenantContext;
     }
 
     [HttpGet("areas")]
     public async Task<IActionResult> Areas(CancellationToken ct)
     {
-        var tenantId = GetTenantId();
-        var areas = await _areas.GetAreasAsync(tenantId, ct);
+        var areas = await _areas.GetAreasAsync(_tenantContext.TenantId, ct);
 
         var result = areas
             .Where(a => a.IsActive)
@@ -42,18 +45,14 @@ public sealed class LookupController : ControllerBase
     [HttpGet("departments")]
     public async Task<IActionResult> Departments(CancellationToken ct)
     {
-        var tenantId = GetTenantId();
-        var list = await _departments.GetLookupOptionsAsync(tenantId, ct);
+        var list = await _departments.GetLookupOptionsAsync(_tenantContext.TenantId, ct);
         return Ok(list);
     }
 
     [HttpGet("vaga-enums")]
     public async Task<IActionResult> VagaEnums(CancellationToken ct)
     {
-        var tenantId = GetTenantId();
-        var auth = Request.Headers.Authorization.ToString();
-
-        var resp = await _vagas.GetVagaEnumsRawAsync(tenantId, auth, ct);
+        var resp = await _vagas.GetVagaEnumsRawAsync(_tenantContext.TenantId, ct);
         if (string.IsNullOrWhiteSpace(resp.Content))
             return new StatusCodeResult((int)resp.StatusCode);
 
@@ -81,9 +80,4 @@ public sealed class LookupController : ControllerBase
         return Ok(resp);
     }
 
-    private string GetTenantId()
-    {
-        var tenantId = Request.Headers["X-Tenant-Id"].ToString();
-        return string.IsNullOrWhiteSpace(tenantId) ? "liotecnica" : tenantId;
-    }
 }

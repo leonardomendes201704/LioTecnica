@@ -6,24 +6,25 @@ using LioTecnica.Web.Services;
 using LioTecnica.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using LioTecnica.Web.Infrastructure.ApiClients;
+using LioTecnica.Web.Infrastructure.Security;
 
 namespace LioTecnica.Web.Controllers;
 
 public sealed class DepartamentosController : Controller
 {
     private readonly DepartmentsApiClient _departmentsApi;
+    private readonly PortalTenantContext _tenantContext;
 
-    public DepartamentosController(DepartmentsApiClient departmentsApi)
+    public DepartamentosController(DepartmentsApiClient departmentsApi, PortalTenantContext tenantContext)
     {
         _departmentsApi = departmentsApi;
+        _tenantContext = tenantContext;
     }
 
     [HttpGet("/Departamentos")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var tenantId =
-            (Request.Headers.TryGetValue("X-Tenant-Id", out var h) ? h.ToString() : null)
-            ?? "liotecnica";
+        var tenantId = _tenantContext.TenantId;
 
         // 1) Seed base (demo/localStorage/dropdowns etc.)
         var baseSeed = MockDataService.BuildSeedBundle();
@@ -72,9 +73,7 @@ public sealed class DepartamentosController : Controller
         [FromQuery] int pageSize = 200,
         CancellationToken ct = default)
     {
-        var tenantId =
-            (Request.Headers.TryGetValue("X-Tenant-Id", out var h) ? h.ToString() : null)
-            ?? "liotecnica";
+        var tenantId = _tenantContext.TenantId;
 
         var apiStatus = status?.ToLowerInvariant() switch
         {
@@ -101,9 +100,7 @@ public sealed class DepartamentosController : Controller
     [HttpGet("/Departamentos/_api/{id:guid}")]
     public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
     {
-        var tenantId =
-            (Request.Headers.TryGetValue("X-Tenant-Id", out var h) ? h.ToString() : null)
-            ?? "liotecnica";
+        var tenantId = _tenantContext.TenantId;
 
         var item = await _departmentsApi.GetByIdAsync(tenantId, id, ct);
         return item is null ? NotFound() : Ok(item);
@@ -112,9 +109,7 @@ public sealed class DepartamentosController : Controller
     [HttpPost("/Departamentos/_api")]
     public async Task<IActionResult> Create([FromBody] DepartmentCreateRequest request, CancellationToken ct)
     {
-        var tenantId =
-            (Request.Headers.TryGetValue("X-Tenant-Id", out var h) ? h.ToString() : null)
-            ?? "liotecnica";
+        var tenantId = _tenantContext.TenantId;
 
         var created = await _departmentsApi.CreateAsync(tenantId, request, ct);
         return Ok(created);
@@ -123,9 +118,7 @@ public sealed class DepartamentosController : Controller
     [HttpPut("/Departamentos/_api/{id:guid}")]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] DepartmentUpdateRequest request, CancellationToken ct)
     {
-        var tenantId =
-            (Request.Headers.TryGetValue("X-Tenant-Id", out var h) ? h.ToString() : null)
-            ?? "liotecnica";
+        var tenantId = _tenantContext.TenantId;
 
         var updated = await _departmentsApi.UpdateAsync(tenantId, id, request, ct);
         return updated is null ? NotFound() : Ok(updated);
@@ -134,9 +127,7 @@ public sealed class DepartamentosController : Controller
     [HttpDelete("/Departamentos/_api/{id:guid}")]
     public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
     {
-        var tenantId =
-            (Request.Headers.TryGetValue("X-Tenant-Id", out var h) ? h.ToString() : null)
-            ?? "liotecnica";
+        var tenantId = _tenantContext.TenantId;
 
         var ok = await _departmentsApi.DeleteAsync(tenantId, id, ct);
         return ok ? NoContent() : NotFound();

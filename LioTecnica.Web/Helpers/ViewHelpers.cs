@@ -21,4 +21,23 @@ public static class ViewHelpers
     {
         return viewData["SidebarSubtitle"]?.ToString() ?? fallback;
     }
+
+    public static string NavActiveByPath(ViewContext viewContext, string route, string activeClass = "active")
+    {
+        var currentPath = viewContext.HttpContext.Request.Path.Value ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(route)) return string.Empty;
+
+        var normalizedRoute = route.TrimEnd('/').ToLowerInvariant();
+        var normalizedCurrent = currentPath.TrimEnd('/').ToLowerInvariant();
+
+        if (normalizedCurrent == normalizedRoute) return activeClass;
+
+        if (normalizedCurrent == string.Empty || normalizedCurrent == "/")
+        {
+            if (normalizedRoute == "/dashboard" || normalizedRoute == string.Empty || normalizedRoute == "/")
+                return activeClass;
+        }
+
+        return string.Empty;
+    }
 }

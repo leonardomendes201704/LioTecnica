@@ -8,10 +8,14 @@ public interface ITenantContext
 
 public sealed class TenantContext : ITenantContext
 {
-    public string TenantId { get; private set; } = "dev";
+    public string TenantId { get; private set; } = string.Empty;
 
     public void SetTenantId(string tenantId)
     {
-        TenantId = string.IsNullOrWhiteSpace(tenantId) ? "dev" : tenantId.Trim();
+        var value = tenantId?.Trim();
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException("Tenant identifier is required.");
+
+        TenantId = value;
     }
 }

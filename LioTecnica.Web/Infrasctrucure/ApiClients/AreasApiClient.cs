@@ -1,4 +1,5 @@
 ﻿// Infrastructure/ApiClients/AreasApiClient.cs
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -23,6 +24,9 @@ public sealed class AreasApiClient
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         using var resp = await _http.SendAsync(req, ct);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            return new();
+
         resp.EnsureSuccessStatusCode();
 
         var json = await resp.Content.ReadAsStringAsync(ct);

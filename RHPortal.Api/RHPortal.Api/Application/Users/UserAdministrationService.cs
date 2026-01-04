@@ -1,0 +1,212 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using RhPortal.Api.Contracts.Users;
+using RhPortal.Api.Domain.Entities;
+using RhPortal.Api.Infrastructure.Data;
+
+namespace RhPortal.Api.Application.Users;
+
+public sealed class UserAdministrationService
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly AppDbContext _db;
+
+    public UserAdministrationService(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<ApplicationRole> roleManager,
+        AppDbContext db)
+    {
+        _userManager = userManager;
+        _roleManager = roleManager;
+        _db = db;
+    }
+
+    public async Task<IReadOnlyList<UserListItemResponse>> ListAsync(CancellationToken ct)
+    {
+        var users = await _userManager.Users
+            .AsNoTracking()
+            .OrderBy(x => x.FullName)
+            .ToListAsync(ct);
+
+        var userIds = users.Select(x => x.Id).ToList();
+        var userRoles = await _db.UserRoles
+            .Where(x => userIds.Contains(x.UserId))
+            .ToListAsync(ct);
+
+        var roleIds = userRoles.Select(x => x.RoleId).Distinct().ToList();
+        var rolesById = await _roleManager.Roles
+            .Where(x => roleIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.Name ?? string.Empty, ct);
+
+        return users.Select(u =>
+        {
+            var names = userRoles
+                .Where(x => x.UserId == u.Id)
+                .Select(x => rolesById.TryGetValue(x.RoleId, out var name) ? name : string.Empty)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .ToList();
+
+            return new UserListItemResponse(
+                u.Id,
+                u.FullName,
+                u.Email ?? string.Empty,
+                u.IsActive,
+                names
+            );
+        }).ToList();
+    }
+
+    public async Task<UserResponse?> GetByIdAsync(Guid id, CancellationToken ct)
+    {
+        var user = await _userManager.Users.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (user is null) return null;
+
+        var userRoleIds = await _db.UserRoles
+            .Where(x => x.UserId == user.Id)
+            .Select(x => x.RoleId)
+            .ToListAsync(ct);
+
+        var roles = await _roleManager.Roles
+            .Where(x => userRoleIds.Contains(x.Id))
+            .Select(x => new RoleInfoResponse(x.Id, x.Name ?? string.Empty))
+            .ToListAsync(ct);
+
+        return new UserResponse(
+            user.Id,
+            user.FullName,
+            user.Email ?? string.Empty,
+            user.IsActive,
+            roles,
+            user.CreatedAtUtc,
+            user.UpdatedAtUtc
+        );
+    }
+
+    public async Task<UserResponse> CreateAsync(UserCreateRequest request, CancellationToken ct)
+    {
+        var email = request.Email.Trim();
+        if (string.IsNullOrWhiteSpace(email))
+            throw new InvalidOperationException("Email is required.");
+
+        var emailExists = await _userManager.Users.AnyAsync(x => x.Email == email, ct);
+        if (emailExists)
+            throw new InvalidOperationException("Email is already in use.");
+
+        var roles = await LoadRolesAsync(request.RoleIds, ct);
+
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Email = email,
+            UserName = email,
+            FullName = request.FullName.Trim(),
+            IsActive = request.IsActive
+        };
+
+        var createResult = await _userManager.CreateAsync(user, request.Password);
+        if (!createResult.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(x => x.Description)));
+
+        if (roles.Count > 0)
+        {
+            var roleNames = roles.Select(x => x.Name ?? string.Empty).Where(x => x.Length > 0).ToList();
+            var roleResult = await _userManager.AddToRolesAsync(user, roleNames);
+            if (!roleResult.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", roleResult.Errors.Select(x => x.Description)));
+        }
+
+        var created = await GetByIdAsync(user.Id, ct);
+        return created!;
+    }
+
+    public async Task<UserResponse?> UpdateAsync(Guid id, UserUpdateRequest request, CancellationToken ct)
+    {
+        var user = await _userManager.Users.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (user is null) return null;
+
+        var email = request.Email.Trim();
+        if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+        {
+            var emailExists = await _userManager.Users.AnyAsync(x => x.Email == email && x.Id != id, ct);
+            if (emailExists)
+                throw new InvalidOperationException("Email is already in use.");
+
+            user.Email = email;
+            user.UserName = email;
+        }
+
+        user.FullName = request.FullName.Trim();
+        user.IsActive = request.IsActive;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", result.Errors.Select(x => x.Description)));
+
+        return await GetByIdAsync(id, ct);
+    }
+
+    public async Task<UserResponse?> UpdateStatusAsync(Guid id, bool isActive, CancellationToken ct)
+    {
+        var user = await _userManager.Users.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (user is null) return null;
+
+        user.IsActive = isActive;
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", result.Errors.Select(x => x.Description)));
+
+        return await GetByIdAsync(id, ct);
+    }
+
+    public async Task<UserResponse?> UpdateRolesAsync(Guid id, IReadOnlyList<Guid> roleIds, CancellationToken ct)
+    {
+        var user = await _userManager.Users.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (user is null) return null;
+
+        var roles = await LoadRolesAsync(roleIds, ct);
+        var roleNames = roles.Select(x => x.Name ?? string.Empty).Where(x => x.Length > 0).ToList();
+
+        var currentRoleNames = await _userManager.GetRolesAsync(user);
+        var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoleNames);
+        if (!removeResult.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", removeResult.Errors.Select(x => x.Description)));
+
+        if (roleNames.Count > 0)
+        {
+            var addResult = await _userManager.AddToRolesAsync(user, roleNames);
+            if (!addResult.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", addResult.Errors.Select(x => x.Description)));
+        }
+
+        return await GetByIdAsync(id, ct);
+    }
+
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
+    {
+        var user = await _userManager.Users.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (user is null) return false;
+
+        var result = await _userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", result.Errors.Select(x => x.Description)));
+
+        return true;
+    }
+
+    private async Task<IReadOnlyList<ApplicationRole>> LoadRolesAsync(IReadOnlyList<Guid> roleIds, CancellationToken ct)
+    {
+        if (roleIds is null || roleIds.Count == 0)
+            return Array.Empty<ApplicationRole>();
+
+        var roles = await _roleManager.Roles
+            .Where(x => roleIds.Contains(x.Id))
+            .ToListAsync(ct);
+
+        if (roles.Count != roleIds.Count)
+            throw new InvalidOperationException("One or more roles were not found.");
+
+        return roles;
+    }
+}

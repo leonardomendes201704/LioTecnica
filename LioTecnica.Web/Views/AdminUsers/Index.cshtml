@@ -1,0 +1,61 @@
+@model LioTecnica.Web.ViewModels.Admin.UsersPageViewModel
+@{
+    ViewData["Title"] = "Users";
+}
+@section Topbar {
+    <div class="d-flex align-items-center justify-content-between w-100">
+        <div>
+            <div class="h5 mb-0">Users</div>
+            <div class="text-muted small">Manage users for this tenant.</div>
+        </div>
+        <a class="btn btn-primary" href="/Admin/Users/New"><i class="bi bi-plus-lg"></i> New user</a>
+    </div>
+}
+
+<div class="container-fluid py-3">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Roles</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model.Users)
+                        {
+                            <tr>
+                                <td>@user.FullName</td>
+                                <td>@user.Email</td>
+                                <td>@string.Join(", ", user.Roles)</td>
+                                <td>
+                                    <span class="badge @(user.IsActive ? "bg-success" : "bg-secondary")">
+                                        @(user.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-primary" href="/Admin/Users/Edit/@user.Id">Edit</a>
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Users.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="text-muted text-center py-4">No users found.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Footer {
+    @await Html.PartialAsync("_Footer", new[] { new { Text = "Users", Class = "muted" } })
+}

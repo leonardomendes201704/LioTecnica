@@ -1,0 +1,59 @@
+@model LioTecnica.Web.ViewModels.Admin.RolesPageViewModel
+@{
+    ViewData["Title"] = "Roles";
+}
+@section Topbar {
+    <div class="d-flex align-items-center justify-content-between w-100">
+        <div>
+            <div class="h5 mb-0">Roles</div>
+            <div class="text-muted small">Manage role definitions.</div>
+        </div>
+        <a class="btn btn-primary" href="/Admin/Roles/New"><i class="bi bi-plus-lg"></i> New role</a>
+    </div>
+}
+
+<div class="container-fluid py-3">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var role in Model.Roles)
+                        {
+                            <tr>
+                                <td>@role.Name</td>
+                                <td>@role.Description</td>
+                                <td>
+                                    <span class="badge @(role.IsActive ? "bg-success" : "bg-secondary")">
+                                        @(role.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-primary" href="/Admin/Roles/Edit/@role.Id">Edit</a>
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Roles.Any())
+                        {
+                            <tr>
+                                <td colspan="4" class="text-muted text-center py-4">No roles found.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Footer {
+    @await Html.PartialAsync("_Footer", new[] { new { Text = "Roles", Class = "muted" } })
+}

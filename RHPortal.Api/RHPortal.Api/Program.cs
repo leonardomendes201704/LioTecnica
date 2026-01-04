@@ -1,22 +1,38 @@
-﻿using Microsoft.EntityFrameworkCore;
+using System.Text;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using RhPortal.Api.Application.Authentication;
 using RhPortal.Api.Application.Departments;
 using RhPortal.Api.Application.Departments.Handlers;
-using RhPortal.Api.Application.Units.Handlers;
-using RhPortal.Api.Application.Units;
-using RhPortal.Api.Infrastructure.Data;
-using RhPortal.Api.Infrastructure.Tenancy;
-using RhPortal.Api.Swagger;
-using System.Text.Json.Serialization;
-using RhPortal.Api.Application.JobPositions.Handlers;
 using RhPortal.Api.Application.JobPositions;
+using RhPortal.Api.Application.JobPositions.Handlers;
 using RhPortal.Api.Application.Managers;
 using RhPortal.Api.Application.Managers.Handlers;
+using RhPortal.Api.Application.Menus;
+using RhPortal.Api.Application.Roles;
+using RhPortal.Api.Application.Units;
+using RhPortal.Api.Application.Units.Handlers;
+using RhPortal.Api.Application.Users;
 using RhPortal.Api.Application.Vagas;
 using RhPortal.Api.Application.Vagas.Handlers;
+using RhPortal.Api.Domain.Entities;
+using RhPortal.Api.Infrastructure.Data;
+using RhPortal.Api.Infrastructure.Security;
+using RhPortal.Api.Infrastructure.Tenancy;
+using RhPortal.Api.Swagger;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
+
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>
@@ -35,12 +51,89 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(conn);
 });
 
-// Application services + handlers
+// Identity
+builder.Services.AddIdentityCore<ApplicationUser>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.Password.RequireDigit = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequiredLength = 8;
+    })
+    .AddRoles<ApplicationRole>()
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddSignInManager();
+
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+
+var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
+if (jwtOptions is null || string.IsNullOrWhiteSpace(jwtOptions.SigningKey))
+    throw new InvalidOperationException("Jwt settings are required.");
+
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey));
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidAudience = jwtOptions.Audience,
+            IssuerSigningKey = signingKey,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                var tenantContext = context.HttpContext.RequestServices.GetRequiredService<ITenantContext>();
+                var tenantClaim = context.Principal?.FindFirst("tenant")?.Value;
+
+                if (string.IsNullOrWhiteSpace(tenantClaim))
+                {
+                    context.Fail("Tenant claim is required.");
+                    return Task.CompletedTask;
+                }
+
+                if (!string.Equals(tenantClaim, tenantContext.TenantId, StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Fail("Tenant does not match.");
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
+// Application services
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<IUnitService, UnitService>();
 builder.Services.AddScoped<IJobPositionService, JobPositionService>();
 builder.Services.AddScoped<IManagerService, ManagerService>();
 builder.Services.AddScoped<IVagaService, VagaService>();
+
+builder.Services.AddScoped<AuthenticationService>();
+builder.Services.AddScoped<UserAdministrationService>();
+builder.Services.AddScoped<RoleAdministrationService>();
+builder.Services.AddScoped<MenuAdministrationService>();
 
 // Departamentos
 builder.Services.AddScoped<IListDepartmentsHandler, ListDepartmentsHandler>();
@@ -77,16 +170,9 @@ builder.Services.AddScoped<ICreateVagaHandler, CreateVagaHandler>();
 builder.Services.AddScoped<IUpdateVagaHandler, UpdateVagaHandler>();
 builder.Services.AddScoped<IDeleteVagaHandler, DeleteVagaHandler>();
 
-builder.Services
-    .AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-
 var app = builder.Build();
 
-// garante pasta do banco
 Directory.CreateDirectory(Path.Combine(app.Environment.ContentRootPath, "App_Data"));
-
-// migrate + seed ao subir (otimo para DEV)
 await DbSeeder.MigrateAndSeedAsync(app.Services, app.Configuration, app.Environment);
 
 if (app.Environment.IsDevelopment())
@@ -95,10 +181,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseExceptionHandler();
+
 app.UseHttpsRedirection();
 
-// Tenant obrigatorio ANTES de Authorization
 app.UseMiddleware<TenantMiddleware>();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 app.Run();

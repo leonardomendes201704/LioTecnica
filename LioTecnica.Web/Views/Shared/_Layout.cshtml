@@ -34,35 +34,7 @@
 				</div>
 
 				<div class="sidebar-scroll">
-					<div class="nav-section">Operação</div>
-					<nav class="nav flex-column">
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Dashboard")" asp-controller="Dashboard" asp-action="Index"><i class="bi bi-speedometer2"></i>Dashboard</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Agendas")" asp-controller="Agendas" asp-action="Index"><i class="bi bi-calendar-event"></i>Agenda</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Vagas")" asp-controller="Vagas" asp-action="Index"><i class="bi bi-briefcase"></i>Vagas</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Candidatos")" asp-controller="Candidatos" asp-action="Index"><i class="bi bi-people"></i>Candidatos</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Triagem")" asp-controller="Triagem" asp-action="Index"><i class="bi bi-funnel"></i>Triagem</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Matching")" asp-controller="Matching" asp-action="Index"><i class="bi bi-stars"></i>Matching</a>
-					</nav>
-
-					<div class="nav-section mt-2">Integrações</div>
-					<nav class="nav flex-column">
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "EntradaEmailPasta")" asp-controller="EntradaEmailPasta" asp-action="Index"><i class="bi bi-inbox"></i>Entrada (Email/Pasta)</a>
-						<a class="nav-link" href="#"><i class="bi bi-diagram-3"></i>RM Labore</a>
-					</nav>
-
-					<div class="nav-section mt-2">Gestão</div>
-					<nav class="nav flex-column">
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Relatorios")" asp-controller="Relatorios" asp-action="Index"><i class="bi bi-graph-up"></i>Relatórios</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Departamentos")" asp-controller="Departamentos" asp-action="Index"><i class="bi bi-diagram-2"></i>Departamentos</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "CentrosCustos")" asp-controller="CentrosCustos" asp-action="Index"><i class="bi bi-cash-coin"></i>Centros de Custo</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Areas")" asp-controller="Areas" asp-action="Index"><i class="bi bi-diagram-3"></i>Areas</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Categorias")" asp-controller="Categorias" asp-action="Index"><i class="bi bi-tags"></i>Categorias</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Cargos")" asp-controller="Cargos" asp-action="Index"><i class="bi bi-briefcase"></i>Cargos</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Unidades")" asp-controller="Unidades" asp-action="Index"><i class="bi bi-building"></i>Unidades</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "Gestores")" asp-controller="Gestores" asp-action="Index"><i class="bi bi-person-badge"></i>Gestores</a>
-						<a class="nav-link @ViewHelpers.NavActive(ViewContext, "UsuariosPerfis")" asp-controller="UsuariosPerfis" asp-action="Index"><i class="bi bi-person-gear"></i>Usuários & Perfis</a>
-						<a class="nav-link" href="#"><i class="bi bi-gear"></i>Configurações</a>
-					</nav>
+					@await Component.InvokeAsync("MainMenu")
 				</div>
 
 				<div class="sidebar-footer">

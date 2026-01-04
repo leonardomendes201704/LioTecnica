@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -24,6 +25,9 @@ public sealed class DepartmentsApiClient
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         using var resp = await _http.SendAsync(req, ct);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            return new List<LookupOption>();
+
         resp.EnsureSuccessStatusCode();
 
         var json = await resp.Content.ReadAsStringAsync(ct);
@@ -59,6 +63,9 @@ public sealed class DepartmentsApiClient
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         using var resp = await _http.SendAsync(req, ct);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            return new DepartmentsPagedResponse();
+
         resp.EnsureSuccessStatusCode();
 
         var json = await resp.Content.ReadAsStringAsync(ct);
@@ -72,6 +79,9 @@ public sealed class DepartmentsApiClient
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         using var resp = await _http.SendAsync(req, ct);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            return new DepartmentResponse();
+
         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
 
         resp.EnsureSuccessStatusCode();
@@ -87,6 +97,9 @@ public sealed class DepartmentsApiClient
         req.Content = new StringContent(JsonSerializer.Serialize(request, JsonOpts), Encoding.UTF8, "application/json");
 
         using var resp = await _http.SendAsync(req, ct);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            return new DepartmentResponse();
+
         resp.EnsureSuccessStatusCode();
 
         var json = await resp.Content.ReadAsStringAsync(ct);
@@ -100,6 +113,9 @@ public sealed class DepartmentsApiClient
         req.Content = new StringContent(JsonSerializer.Serialize(request, JsonOpts), Encoding.UTF8, "application/json");
 
         using var resp = await _http.SendAsync(req, ct);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            return new DepartmentResponse();
+
         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
 
         resp.EnsureSuccessStatusCode();
@@ -114,6 +130,9 @@ public sealed class DepartmentsApiClient
         req.Headers.TryAddWithoutValidation("X-Tenant-Id", tenantId);
 
         using var resp = await _http.SendAsync(req, ct);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            return false;
+
         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
 
         resp.EnsureSuccessStatusCode();
