@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using LioTecnica.Web.Infrastructure.ApiClients;
+using LioTecnica.Web.Infrastructure.Security;
 using LioTecnica.Web.ViewModels.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -31,7 +32,14 @@ public sealed class AccountController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        var response = await _authApi.LoginAsync(model.TenantId.Trim(), model.Email.Trim(), model.Password, ct);
+        var tenantId = model.TenantId.Trim().ToLowerInvariant();
+        if (!TenantValidationMiddleware.IsValidTenantIdentifier(tenantId))
+        {
+            ModelState.AddModelError(nameof(model.TenantId), "Tenant inválido. Use apenas letras, números e hífen.");
+            return View(model);
+        }
+
+        var response = await _authApi.LoginAsync(tenantId, model.Email.Trim(), model.Password, ct);
         if (response is null)
         {
             ModelState.AddModelError(string.Empty, "Invalid credentials.");

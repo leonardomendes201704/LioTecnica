@@ -95,6 +95,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthentication();
+app.UseMiddleware<TenantValidationMiddleware>();
 app.UseAuthorization();
 app.UseMiddleware<ApiUnauthorizedMiddleware>();
 

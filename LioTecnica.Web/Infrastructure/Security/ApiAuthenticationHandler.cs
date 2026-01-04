@@ -19,7 +19,7 @@ public sealed class ApiAuthenticationHandler : DelegatingHandler
         if (httpContext?.User?.Identity?.IsAuthenticated == true)
         {
             var tenantId = httpContext.User.FindFirst("tenant")?.Value;
-            if (!string.IsNullOrWhiteSpace(tenantId))
+            if (!string.IsNullOrWhiteSpace(tenantId) && !request.Headers.Contains("X-Tenant-Id"))
                 request.Headers.TryAddWithoutValidation("X-Tenant-Id", tenantId);
 
             var token = httpContext.User.FindFirst("access_token")?.Value;
