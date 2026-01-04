@@ -31,6 +31,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<VagaRequisito> VagaRequisitos => Set<VagaRequisito>();
     public DbSet<VagaEtapa> VagaEtapas => Set<VagaEtapa>();
     public DbSet<VagaPergunta> VagaPerguntas => Set<VagaPergunta>();
+    public DbSet<Candidato> Candidatos => Set<Candidato>();
+    public DbSet<CandidatoDocumento> CandidatoDocumentos => Set<CandidatoDocumento>();
 
 
 
@@ -376,6 +378,48 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
         });
 
+        modelBuilder.Entity<Candidato>(b =>
+        {
+            b.ToTable("Candidatos");
+            b.HasKey(x => x.Id);
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Nome).HasMaxLength(160).IsRequired();
+            b.Property(x => x.Email).HasMaxLength(180).IsRequired();
+            b.Property(x => x.Fone).HasMaxLength(40);
+            b.Property(x => x.Cidade).HasMaxLength(120);
+            b.Property(x => x.Uf).HasMaxLength(2);
+            b.Property(x => x.Obs).HasMaxLength(2000);
+
+            b.HasIndex(x => new { x.TenantId, x.Email });
+            b.HasIndex(x => new { x.TenantId, x.VagaId });
+
+            b.HasOne(x => x.Vaga)
+                .WithMany()
+                .HasForeignKey(x => x.VagaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasMany(x => x.Documentos)
+                .WithOne(x => x.Candidato)
+                .HasForeignKey(x => x.CandidatoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<CandidatoDocumento>(b =>
+        {
+            b.ToTable("CandidatoDocumentos");
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.NomeArquivo).HasMaxLength(200).IsRequired();
+            b.Property(x => x.ContentType).HasMaxLength(120);
+            b.Property(x => x.Descricao).HasMaxLength(240);
+            b.Property(x => x.Url).HasMaxLength(400);
+
+            b.HasIndex(x => new { x.TenantId, x.CandidatoId });
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
 
     }
 
@@ -500,6 +544,18 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
             {
                 if (entry.State == EntityState.Added) vp.CreatedAtUtc = now;
                 if (entry.State is EntityState.Added or EntityState.Modified) vp.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is Candidato c)
+            {
+                if (entry.State == EntityState.Added) c.CreatedAtUtc = now;
+                if (entry.State is EntityState.Added or EntityState.Modified) c.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is CandidatoDocumento cd)
+            {
+                if (entry.State == EntityState.Added) cd.CreatedAtUtc = now;
+                if (entry.State is EntityState.Added or EntityState.Modified) cd.UpdatedAtUtc = now;
             }
         }
         return await base.SaveChangesAsync(cancellationToken);

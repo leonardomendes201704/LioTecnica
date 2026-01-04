@@ -1,6 +1,9 @@
 // ========= Logo (mesmo Data URI usado antes)
-    const seed = window.__seedData || {};
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
+
+    const CANDIDATOS_API_URL = window.__candidatosApiUrl || "/api/candidatos";
+    const VAGAS_API_URL = window.__vagasApiUrl || "/api/vagas";
+
     function enumFirstCode(key, fallback){
       const list = getEnumOptions(key);
       return list.length ? list[0].code : fallback;
@@ -13,6 +16,13 @@
     const EMPTY_TEXT = "\u2014";
     const BULLET = "\u2022";
 
+    const state = {
+      vagas: [],
+      candidatos: [],
+      selectedId: null,
+      filters: { q:"", status:"all", vagaId:"all" }
+    };
+
     function setText(root, role, value, fallback = EMPTY_TEXT){
       if(!root) return;
       const el = root.querySelector(`[data-role="${role}"]`);
@@ -20,16 +30,17 @@
       el.textContent = (value ?? fallback);
     }
 
-    function buildStatusTag(s){
+    function buildStatusTag(status){
+      const key = (status || "").toString().toLowerCase();
       const map = {
-        novo:      { cls:"" },
-        triagem:   { cls:"warn" },
-        aprovado:  { cls:"ok" },
+        novo: { cls:"" },
+        triagem: { cls:"warn" },
+        aprovado: { cls:"ok" },
         reprovado: { cls:"bad" },
-        pendente:  { cls:"warn" }
+        pendente: { cls:"warn" }
       };
-      const it = map[s] || { cls:"" };
-      const labelText = getEnumText("candidatoStatus", s, s);
+      const it = map[key] || { cls:"" };
+      const labelText = getEnumText("candidatoStatus", key, status);
       const tag = cloneTemplate("tpl-cand-status-tag");
       if(!tag) return document.createElement("span");
       tag.classList.toggle("ok", it.cls === "ok");
@@ -42,71 +53,167 @@
       return tag;
     }
 
-    // ========= Storage keys
-    // Vagas: reaproveita o mesmo key do arquivo anterior
-    const VAGAS_KEY = "lt_rh_vagas_v1";
-    const CANDS_KEY = "lt_rh_candidatos_v1";
+    async function apiFetchJson(url, options = {}){
+      const opts = { ...options };
+      opts.headers = { "Accept": "application/json", ...(opts.headers || {}) };
+      if(opts.body && !opts.headers["Content-Type"]){
+        opts.headers["Content-Type"] = "application/json";
+      }
 
-    const state = {
-      vagas: [],
-      candidatos: [],
-      selectedId: null,
-      filters: { q:"", status:"all", vagaId:"all" }
-    };
-
-    function loadVagas(){
-      try{
-        const raw = localStorage.getItem(VAGAS_KEY);
-        if(!raw) return [];
-        const data = JSON.parse(raw);
-        if(!data || !Array.isArray(data.vagas)) return [];
-        return data.vagas;
-      }catch{ return []; }
+      const res = await fetch(url, opts);
+      if(!res.ok){
+        const message = await res.text();
+        throw new Error(message || `Falha na API (${res.status}).`);
+      }
+      if(res.status === 204) return null;
+      return res.json();
     }
 
-    function loadCands(){
-      try{
-        const raw = localStorage.getItem(CANDS_KEY);
-        if(!raw) return false;
-        const data = JSON.parse(raw);
-        if(!data || !Array.isArray(data.candidatos)) return false;
-        state.candidatos = data.candidatos;
-        state.selectedId = data.selectedId ?? null;
-        return true;
-      }catch{ return false; }
+    function mapPesoToNumber(peso){
+      if(typeof peso === "number") return peso;
+      const text = (peso ?? "").toString();
+      const match = text.match(/\d+/);
+      return match ? parseInt(match[0], 10) : 0;
     }
 
-    function saveCands(){
-      localStorage.setItem(CANDS_KEY, JSON.stringify({
-        candidatos: state.candidatos,
-        selectedId: state.selectedId
+    function mapVagaFromList(api){
+      if(!api) return null;
+      return {
+        id: api.id,
+        codigo: api.codigo || "",
+        titulo: api.titulo || "",
+        threshold: api.matchMinimoPercentual ?? 0,
+        requisitos: []
+      };
+    }
+
+    function mapVagaFromDetail(api){
+      if(!api) return null;
+      const requisitos = Array.isArray(api.requisitos)
+        ? api.requisitos.map(r => ({
+            id: r.id,
+            termo: r.nome || "",
+            peso: mapPesoToNumber(r.peso),
+            obrigatorio: !!r.obrigatorio,
+            sinonimos: []
+          }))
+        : [];
+
+      return {
+        id: api.id,
+        codigo: api.codigo || "",
+        titulo: api.titulo || "",
+        threshold: api.matchMinimoPercentual ?? 0,
+        requisitos
+      };
+    }
+
+    function mapLastMatchFromApi(lastMatch){
+      if(!lastMatch) return null;
+      return {
+        score: lastMatch.score ?? null,
+        pass: lastMatch.pass ?? null,
+        at: lastMatch.atUtc ?? null,
+        vagaId: lastMatch.vagaId ?? null
+      };
+    }
+
+    function mapCandidateFromApi(api){
+      if(!api) return null;
+      const fonte = (api.fonte || DEFAULT_CAND_FONTE).toString().toLowerCase();
+      const status = (api.status || DEFAULT_CAND_STATUS).toString().toLowerCase();
+
+      return {
+        id: api.id,
+        nome: api.nome || "",
+        email: api.email || "",
+        fone: api.fone || "",
+        cidade: api.cidade || "",
+        uf: (api.uf || "").toString().toUpperCase(),
+        fonte,
+        status,
+        vagaId: api.vagaId,
+        obs: api.obs || "",
+        cvText: api.cvText || "",
+        createdAt: api.createdAtUtc || api.createdAt,
+        updatedAt: api.updatedAtUtc || api.updatedAt,
+        lastMatch: mapLastMatchFromApi(api.lastMatch),
+        documentos: Array.isArray(api.documentos) ? api.documentos.map(d => ({ ...d })) : null
+      };
+    }
+
+    function buildCandidatePayload(c){
+      const documentos = Array.isArray(c.documentos) ? c.documentos : null;
+      return {
+        nome: (c.nome || "").trim(),
+        email: (c.email || "").trim(),
+        fone: (c.fone || "").trim() || null,
+        cidade: (c.cidade || "").trim() || null,
+        uf: (c.uf || "").trim().toUpperCase().slice(0,2) || null,
+        fonte: (c.fonte || DEFAULT_CAND_FONTE).trim(),
+        status: (c.status || DEFAULT_CAND_STATUS).trim(),
+        vagaId: c.vagaId,
+        obs: (c.obs || "").trim() || null,
+        cvText: (c.cvText || "").trim() || null,
+        lastMatch: c.lastMatch ? {
+          score: c.lastMatch.score ?? null,
+          pass: c.lastMatch.pass ?? null,
+          atUtc: c.lastMatch.at ?? null,
+          vagaId: c.lastMatch.vagaId ?? null
+        } : null,
+        documentos: documentos ? documentos.map(d => ({
+          tipo: d.tipo,
+          nomeArquivo: d.nomeArquivo,
+          contentType: d.contentType || null,
+          descricao: d.descricao || null,
+          tamanhoBytes: d.tamanhoBytes || null,
+          url: d.url || null
+        })) : null
+      };
+    }
+
+    async function fetchVagaById(id){
+      return apiFetchJson(`${VAGAS_API_URL}/${id}`, { method: "GET" });
+    }
+
+    async function syncVagasSummary(){
+      const list = await apiFetchJson(VAGAS_API_URL, { method: "GET" });
+      state.vagas = Array.isArray(list)
+        ? list.map(mapVagaFromList).filter(Boolean)
+        : [];
+    }
+
+    async function syncVagaDetailsForCandidates(){
+      const ids = new Set(state.candidatos.map(c => c.vagaId).filter(Boolean));
+      const detailList = await Promise.all(Array.from(ids).map(async id => {
+        try{
+          return await fetchVagaById(id);
+        }catch{
+          return null;
+        }
       }));
+
+      detailList.filter(Boolean).forEach(detail => {
+        const mapped = mapVagaFromDetail(detail);
+        if(!mapped) return;
+        const idx = state.vagas.findIndex(v => v.id === mapped.id);
+        if(idx >= 0) state.vagas[idx] = { ...state.vagas[idx], ...mapped };
+        else state.vagas.push(mapped);
+      });
     }
 
-    function seedVagasIfEmpty(){
-      if(state.vagas.length) return;
-
-      const vagasSeed = Array.isArray(seed.vagas) ? seed.vagas : [];
-      if(!vagasSeed.length) return;
-
-      localStorage.setItem(VAGAS_KEY, JSON.stringify({ vagas: vagasSeed, selectedId: seed.selectedVagaId || null }));
-      state.vagas = vagasSeed;
-    }
-
-    function seedCandsIfEmpty(){
-      if(state.candidatos.length) return;
-
-      const candsSeed = Array.isArray(seed.candidatos) ? seed.candidatos : [];
-      if(!candsSeed.length) return;
-
-      state.candidatos = candsSeed;
-      state.selectedId = seed.selectedCandidatoId || candsSeed[0]?.id || null;
-      saveCands();
+    async function syncCandidatosFromApi(){
+      const list = await apiFetchJson(CANDIDATOS_API_URL, { method: "GET" });
+      state.candidatos = Array.isArray(list)
+        ? list.map(mapCandidateFromApi).filter(Boolean)
+        : [];
+      state.selectedId = state.candidatos[0]?.id || null;
     }
 
     function findVaga(id){
       return state.vagas.find(v => v.id === id) || null;
     }
+
     function findCand(id){
       return state.candidatos.find(c => c.id === id) || null;
     }
@@ -176,9 +283,9 @@
     // ========= KPIs
     function updateKpis(){
       const total = state.candidatos.length;
-      const triagem = state.candidatos.filter(c => c.status === "triagem").length;
-      const aprov = state.candidatos.filter(c => c.status === "aprovado").length;
-      const repro = state.candidatos.filter(c => c.status === "reprovado").length;
+      const triagem = state.candidatos.filter(c => (c.status || "").toLowerCase() === "triagem").length;
+      const aprov = state.candidatos.filter(c => (c.status || "").toLowerCase() === "aprovado").length;
+      const repro = state.candidatos.filter(c => (c.status || "").toLowerCase() === "reprovado").length;
 
       $("#kpiTotal").textContent = total;
       $("#kpiTriagem").textContent = triagem;
@@ -225,7 +332,8 @@
       const vid = state.filters.vagaId;
 
       return state.candidatos.filter(c => {
-        if(st !== "all" && c.status !== st) return false;
+        const statusKey = (c.status || "").toLowerCase();
+        if(st !== "all" && statusKey !== st) return false;
         if(vid !== "all" && c.vagaId !== vid) return false;
 
         if(!q) return true;
@@ -320,12 +428,11 @@
 
     function selectCand(id){
       state.selectedId = id;
-      saveCands();
       renderList();
       renderDetail();
     }
 
-function openDetailModal(id){
+    function openDetailModal(id){
       selectCand(id);
       const modal = bootstrap.Modal.getOrCreateInstance($("#modalCandDetalhes"));
       modal.show();
@@ -463,14 +570,12 @@ function openDetailModal(id){
       });
     }
 
-    
     // ========= CRUD: Candidatos
     function openCandModal(mode, id){
       const modal = bootstrap.Modal.getOrCreateInstance($("#modalCand"));
       const isEdit = mode === "edit";
       $("#modalCandTitle").textContent = isEdit ? "Editar candidato" : "Novo candidato";
 
-      // refresh vagas dropdown
       renderVagaFilters();
 
       if(isEdit){
@@ -502,7 +607,7 @@ function openDetailModal(id){
       modal.show();
     }
 
-    function upsertCandFromModal(){
+    async function upsertCandFromModal(){
       const id = $("#candId").value || null;
       const nome = ($("#candNome").value || "").trim();
       const email = ($("#candEmail").value || "").trim();
@@ -518,67 +623,77 @@ function openDetailModal(id){
       if(!email){ toast("Informe o email do candidato."); return; }
       if(!vagaId){ toast("Selecione uma vaga."); return; }
 
-      const now = new Date().toISOString();
+      const current = id ? findCand(id) : null;
+      const candidate = {
+        id: current?.id || null,
+        nome,
+        email,
+        fone,
+        cidade,
+        uf,
+        fonte,
+        status,
+        vagaId,
+        obs,
+        cvText: current?.cvText || "",
+        lastMatch: current?.lastMatch || null,
+        documentos: current?.documentos ?? null
+      };
 
-      if(id){
-        const c = findCand(id);
-        if(!c) return;
+      try{
+        const payload = buildCandidatePayload(candidate);
+        const url = id ? `${CANDIDATOS_API_URL}/${id}` : CANDIDATOS_API_URL;
+        const method = id ? "PUT" : "POST";
+        const saved = await apiFetchJson(url, { method, body: JSON.stringify(payload) });
+        const mapped = mapCandidateFromApi(saved);
+        if(!mapped) throw new Error("Resposta invalida da API.");
 
-        c.nome = nome;
-        c.email = email;
-        c.fone = fone;
-        c.cidade = cidade;
-        c.uf = uf;
-        c.fonte = fonte;
-        c.status = status;
-        c.vagaId = vagaId;
-        c.obs = obs;
-        c.updatedAt = now;
+        if(id){
+          state.candidatos = state.candidatos.map(c => c.id === id ? mapped : c);
+          state.selectedId = mapped.id;
+          toast("Candidato atualizado.");
+        }else{
+          state.candidatos.unshift(mapped);
+          state.selectedId = mapped.id;
+          toast("Candidato criado.");
+        }
 
-        toast("Candidato atualizado.");
-        state.selectedId = c.id;
-      }else{
-        const c = {
-          id: uid(),
-          nome, email, fone, cidade, uf,
-          fonte, status, vagaId, obs,
-          cvText: "",
-          createdAt: now,
-          updatedAt: now,
-          lastMatch: null
-        };
-        state.candidatos.unshift(c);
-        state.selectedId = c.id;
-        toast("Candidato criado.");
+        await syncVagaDetailsForCandidates();
+        updateKpis();
+        renderVagaFilters();
+        renderList();
+        renderDetail();
+        bootstrap.Modal.getOrCreateInstance($("#modalCand")).hide();
+      }catch(err){
+        console.error(err);
+        toast("Falha ao salvar candidato.");
       }
-
-      saveCands();
-      updateKpis();
-      renderVagaFilters();
-      renderList();
-      renderDetail();
-      bootstrap.Modal.getOrCreateInstance($("#modalCand")).hide();
     }
 
-    function deleteCand(id){
+    async function deleteCand(id){
       const c = findCand(id);
       if(!c) return;
 
       const ok = confirm(`Excluir o candidato "${c.nome}"?`);
       if(!ok) return;
 
-      state.candidatos = state.candidatos.filter(x => x.id !== id);
-      if(state.selectedId === id){
-        state.selectedId = state.candidatos[0]?.id || null;
+      try{
+        await apiFetchJson(`${CANDIDATOS_API_URL}/${id}`, { method: "DELETE" });
+        state.candidatos = state.candidatos.filter(x => x.id !== id);
+        if(state.selectedId === id){
+          state.selectedId = state.candidatos[0]?.id || null;
+        }
+        updateKpis();
+        renderList();
+        renderDetail();
+        toast("Candidato excluido.");
+      }catch(err){
+        console.error(err);
+        toast("Falha ao excluir candidato.");
       }
-      saveCands();
-      updateKpis();
-      renderList();
-      renderDetail();
-      toast("Candidato excluído.");
     }
 
-    function saveCvText(candId, fromMobile){
+    async function saveCvText(candId, fromMobile){
       const c = findCand(candId);
       if(!c) return;
 
@@ -586,13 +701,25 @@ function openDetailModal(id){
       const ta = root.querySelector("#detailCvText");
       c.cvText = (ta?.value || "");
       c.updatedAt = new Date().toISOString();
-      saveCands();
-      renderList();
-      renderDetail();
-      toast("Texto do CV salvo.");
+
+      try{
+        const payload = buildCandidatePayload(c);
+        const saved = await apiFetchJson(`${CANDIDATOS_API_URL}/${c.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+        const mapped = mapCandidateFromApi(saved);
+        if(mapped) state.candidatos = state.candidatos.map(x => x.id === mapped.id ? mapped : x);
+        renderList();
+        renderDetail();
+        toast("Texto do CV salvo.");
+      }catch(err){
+        console.error(err);
+        toast("Falha ao salvar texto do CV.");
+      }
     }
 
-    function saveMeta(candId, fromMobile){
+    async function saveMeta(candId, fromMobile){
       const c = findCand(candId);
       if(!c) return;
 
@@ -600,28 +727,56 @@ function openDetailModal(id){
       const st = root.querySelector("#detailStatus")?.value || c.status;
       const vid = root.querySelector("#detailVaga")?.value || c.vagaId;
 
+      if(!vid){
+        toast("Selecione uma vaga.");
+        return;
+      }
+
       c.status = st;
       c.vagaId = vid;
       c.updatedAt = new Date().toISOString();
-      saveCands();
-      updateKpis();
-      renderList();
-      renderDetail();
-      toast("Status/Vaga atualizados.");
+
+      try{
+        const payload = buildCandidatePayload(c);
+        const saved = await apiFetchJson(`${CANDIDATOS_API_URL}/${c.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+        const mapped = mapCandidateFromApi(saved);
+        if(mapped) state.candidatos = state.candidatos.map(x => x.id === mapped.id ? mapped : x);
+        updateKpis();
+        renderList();
+        renderDetail();
+        toast("Status/Vaga atualizados.");
+      }catch(err){
+        console.error(err);
+        toast("Falha ao atualizar status/vaga.");
+      }
     }
 
-    function recalcMatch(candId){
+    async function recalcMatch(candId){
       const c = findCand(candId);
       if(!c) return;
 
       const m = calcMatchForCand(c);
-      c.lastMatch = { score: m.score, pass: m.pass, at: new Date().toISOString() };
+      c.lastMatch = { score: m.score, pass: m.pass, at: new Date().toISOString(), vagaId: c.vagaId };
       c.updatedAt = new Date().toISOString();
 
-      saveCands();
-      renderList();
-      renderDetail();
-      toast("Match recalculado.");
+      try{
+        const payload = buildCandidatePayload(c);
+        const saved = await apiFetchJson(`${CANDIDATOS_API_URL}/${c.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+        const mapped = mapCandidateFromApi(saved);
+        if(mapped) state.candidatos = state.candidatos.map(x => x.id === mapped.id ? mapped : x);
+        renderList();
+        renderDetail();
+        toast("Match recalculado.");
+      }catch(err){
+        console.error(err);
+        toast("Falha ao recalcular match.");
+      }
     }
 
     // ========= Import/Export
@@ -632,60 +787,12 @@ function openDetailModal(id){
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "candidatos_mvp_liotecnica.json";
+      a.download = "candidatos_liotecnica.json";
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast("Exportação iniciada.");
-    }
-
-    function importJson(){
-      const inp = document.createElement("input");
-      inp.type = "file";
-      inp.accept = "application/json";
-      inp.onchange = () => {
-        const file = inp.files && inp.files[0];
-        if(!file) return;
-
-        const reader = new FileReader();
-        reader.onload = () => {
-          try{
-            const data = JSON.parse(reader.result);
-            if(!data || !Array.isArray(data.candidatos)) throw new Error("Formato inválido.");
-
-            state.candidatos = data.candidatos.map(c => ({
-              id: c.id || uid(),
-              nome: c.nome || "",
-              email: c.email || "",
-              fone: c.fone || "",
-              cidade: c.cidade || "",
-              uf: (c.uf || "").toUpperCase().slice(0,2),
-              fonte: c.fonte || DEFAULT_CAND_FONTE,
-              status: c.status || DEFAULT_CAND_STATUS,
-              vagaId: c.vagaId || "",
-              obs: c.obs || "",
-              cvText: c.cvText || "",
-              createdAt: c.createdAt || new Date().toISOString(),
-              updatedAt: c.updatedAt || new Date().toISOString(),
-              lastMatch: c.lastMatch || null
-            }));
-
-            state.selectedId = state.candidatos[0]?.id || null;
-            saveCands();
-            updateKpis();
-            renderVagaFilters();
-            renderList();
-            renderDetail();
-            toast("Importação concluída.");
-          }catch(e){
-            console.error(e);
-            alert("Falha ao importar JSON. Verifique o arquivo.");
-          }
-        };
-        reader.readAsText(file);
-      };
-      inp.click();
+      toast("Exportacao iniciada.");
     }
 
     // ========= UI wiring
@@ -722,23 +829,7 @@ function openDetailModal(id){
     function wireButtons(){
       $("#btnNewCand").addEventListener("click", () => openCandModal("new"));
       $("#btnSaveCand").addEventListener("click", upsertCandFromModal);
-
       $("#btnExportJson").addEventListener("click", exportJson);
-      $("#btnImportJson").addEventListener("click", importJson);
-
-      $("#btnSeedReset").addEventListener("click", () => {
-        const ok = confirm("Restaurar dados de exemplo? Isso substitui seus candidatos atuais no MVP.");
-        if(!ok) return;
-        state.candidatos = [];
-        state.selectedId = null;
-        saveCands();
-        seedCandsIfEmpty();
-        updateKpis();
-        renderVagaFilters();
-        renderList();
-        renderDetail();
-        toast("Demo restaurada.");
-      });
     }
 
     function initLogo(){
@@ -747,21 +838,18 @@ function openDetailModal(id){
     }
 
     // ========= Init
-    (function init(){
+    (async function init(){
       initLogo();
       wireClock();
 
-      state.vagas = loadVagas();
-      seedVagasIfEmpty();
-
-      // caso o usuário ainda não tenha aberto a tela de Vagas (sem dados)
-      if(!state.vagas.length){
-        toast("Nenhuma vaga encontrada no localStorage. Abra a tela de Vagas e crie/seed primeiro.");
+      try{
+        await syncVagasSummary();
+        await syncCandidatosFromApi();
+        await syncVagaDetailsForCandidates();
+      }catch(err){
+        console.error(err);
+        toast("Falha ao carregar candidatos/vagas.");
       }
-
-      const has = loadCands();
-      if(!has) seedCandsIfEmpty();
-      else seedCandsIfEmpty();
 
       renderVagaFilters();
       updateKpis();
@@ -773,7 +861,6 @@ function openDetailModal(id){
 
       if(!state.selectedId && state.candidatos.length){
         state.selectedId = state.candidatos[0].id;
-        saveCands();
         renderList();
         renderDetail();
       }

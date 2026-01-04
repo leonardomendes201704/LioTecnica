@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RhPortal.Api.Application.Authentication;
+using RhPortal.Api.Application.Candidatos;
+using RhPortal.Api.Application.Candidatos.Handlers;
 using RhPortal.Api.Application.Departments;
 using RhPortal.Api.Application.Departments.Handlers;
 using RhPortal.Api.Application.JobPositions;
@@ -129,6 +131,7 @@ builder.Services.AddScoped<IUnitService, UnitService>();
 builder.Services.AddScoped<IJobPositionService, JobPositionService>();
 builder.Services.AddScoped<IManagerService, ManagerService>();
 builder.Services.AddScoped<IVagaService, VagaService>();
+builder.Services.AddScoped<ICandidatoService, CandidatoService>();
 
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<UserAdministrationService>();
@@ -169,6 +172,13 @@ builder.Services.AddScoped<IGetVagaByIdHandler, GetVagaByIdHandler>();
 builder.Services.AddScoped<ICreateVagaHandler, CreateVagaHandler>();
 builder.Services.AddScoped<IUpdateVagaHandler, UpdateVagaHandler>();
 builder.Services.AddScoped<IDeleteVagaHandler, DeleteVagaHandler>();
+
+// Candidatos
+builder.Services.AddScoped<IListCandidatosHandler, ListCandidatosHandler>();
+builder.Services.AddScoped<IGetCandidatoByIdHandler, GetCandidatoByIdHandler>();
+builder.Services.AddScoped<ICreateCandidatoHandler, CreateCandidatoHandler>();
+builder.Services.AddScoped<IUpdateCandidatoHandler, UpdateCandidatoHandler>();
+builder.Services.AddScoped<IDeleteCandidatoHandler, DeleteCandidatoHandler>();
 
 var app = builder.Build();
 
