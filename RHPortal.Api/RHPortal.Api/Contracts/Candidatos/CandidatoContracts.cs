@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 using RhPortal.Api.Domain.Enums;
 
 namespace RhPortal.Api.Contracts.Candidatos;
@@ -93,6 +94,12 @@ public sealed record CandidatoDocumentoRequest(
     [MaxLength(240)] string? Descricao,
     long? TamanhoBytes,
     [MaxLength(400)] string? Url
+);
+
+public sealed record CandidatoDocumentoUploadRequest(
+    [Required] string Tipo,
+    [MaxLength(240)] string? Descricao,
+    [Required] IFormFile Arquivo
 );
 
 public sealed record CandidatoDocumentoResponse(

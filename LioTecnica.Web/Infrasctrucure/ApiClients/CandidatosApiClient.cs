@@ -1,5 +1,8 @@
+using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 
 namespace LioTecnica.Web.Infrastructure.ApiClients;
 
@@ -26,14 +29,16 @@ public sealed class CandidatosApiClient
     public Task<ApiRawResponse> CreateRawAsync(string tenantId, JsonElement payload, CancellationToken ct)
     {
         var json = JsonSerializer.Serialize(payload, JsonOpts);
-        var req = BuildRequest(HttpMethod.Post, "api/candidatos", tenantId, jsonBody: json);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var req = BuildRequest(HttpMethod.Post, "api/candidatos", tenantId, content);
         return SendAsync(req, ct);
     }
 
     public Task<ApiRawResponse> UpdateRawAsync(string tenantId, Guid id, JsonElement payload, CancellationToken ct)
     {
         var json = JsonSerializer.Serialize(payload, JsonOpts);
-        var req = BuildRequest(HttpMethod.Put, $"api/candidatos/{id}", tenantId, jsonBody: json);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var req = BuildRequest(HttpMethod.Put, $"api/candidatos/{id}", tenantId, content);
         return SendAsync(req, ct);
     }
 
@@ -43,14 +48,57 @@ public sealed class CandidatosApiClient
         return SendAsync(req, ct);
     }
 
-    private HttpRequestMessage BuildRequest(HttpMethod method, string url, string tenantId, string? jsonBody = null)
+    public Task<ApiRawResponse> UploadDocumentoRawAsync(
+        string tenantId,
+        Guid candidatoId,
+        IFormFile arquivo,
+        string tipo,
+        string? descricao,
+        CancellationToken ct)
+    {
+        var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(arquivo.OpenReadStream());
+        if (!string.IsNullOrWhiteSpace(arquivo.ContentType))
+        {
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(arquivo.ContentType);
+        }
+
+        content.Add(fileContent, "arquivo", arquivo.FileName);
+        content.Add(new StringContent(tipo), "tipo");
+
+        if (!string.IsNullOrWhiteSpace(descricao))
+            content.Add(new StringContent(descricao), "descricao");
+
+        var req = BuildRequest(HttpMethod.Post, $"api/candidatos/{candidatoId}/documentos", tenantId, content);
+        return SendAsync(req, ct);
+    }
+
+    public Task<ApiRawResponse> DeleteDocumentoRawAsync(string tenantId, Guid candidatoId, Guid documentoId, CancellationToken ct)
+    {
+        var req = BuildRequest(HttpMethod.Delete, $"api/candidatos/{candidatoId}/documentos/{documentoId}", tenantId);
+        return SendAsync(req, ct);
+    }
+
+    public async Task<ApiFileResponse> DownloadDocumentoAsync(string tenantId, Guid candidatoId, Guid documentoId, CancellationToken ct)
+    {
+        var req = BuildRequest(HttpMethod.Get, $"api/candidatos/{candidatoId}/documentos/{documentoId}/download", tenantId, accept: "*/*");
+        using var res = await _http.SendAsync(req, ct);
+        var content = await res.Content.ReadAsByteArrayAsync(ct);
+        var contentType = res.Content.Headers.ContentType?.ToString();
+        var fileName = res.Content.Headers.ContentDisposition?.FileNameStar
+            ?? res.Content.Headers.ContentDisposition?.FileName;
+        return new ApiFileResponse(res.StatusCode, content, contentType, fileName);
+    }
+
+    private HttpRequestMessage BuildRequest(HttpMethod method, string url, string tenantId, HttpContent? body = null, string? accept = "application/json")
     {
         var req = new HttpRequestMessage(method, url);
         req.Headers.TryAddWithoutValidation("X-Tenant-Id", tenantId);
-        req.Headers.TryAddWithoutValidation("Accept", "application/json");
+        if (!string.IsNullOrWhiteSpace(accept))
+            req.Headers.TryAddWithoutValidation("Accept", accept);
 
-        if (jsonBody != null)
-            req.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        if (body != null)
+            req.Content = body;
 
         return req;
     }
@@ -62,3 +110,5 @@ public sealed class CandidatosApiClient
         return new ApiRawResponse(res.StatusCode, content);
     }
 }
+
+public sealed record ApiFileResponse(HttpStatusCode StatusCode, byte[] Content, string? ContentType, string? FileName);

@@ -16,12 +16,36 @@
     const EMPTY_TEXT = "\u2014";
     const BULLET = "\u2022";
 
+    function toUiStatus(value){
+      const text = (value ?? "").toString().trim();
+      return text ? text.toLowerCase() : DEFAULT_CAND_STATUS;
+    }
+
+    function toApiStatus(value){
+      const text = (value ?? DEFAULT_CAND_STATUS).toString().trim().toLowerCase();
+      if(!text) return DEFAULT_CAND_STATUS;
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
     const state = {
       vagas: [],
       candidatos: [],
       selectedId: null,
       filters: { q:"", status:"all", vagaId:"all" }
     };
+    const detailLoads = new Set();
+
+    function formatFileSize(bytes){
+      if(bytes === null || bytes === undefined) return EMPTY_TEXT;
+      const value = Number(bytes);
+      if(Number.isNaN(value) || value <= 0) return "0 KB";
+      const kb = value / 1024;
+      if(kb < 1024) return `${kb.toFixed(1)} KB`;
+      const mb = kb / 1024;
+      if(mb < 1024) return `${mb.toFixed(1)} MB`;
+      const gb = mb / 1024;
+      return `${gb.toFixed(2)} GB`;
+    }
 
     function setText(root, role, value, fallback = EMPTY_TEXT){
       if(!root) return;
@@ -56,7 +80,8 @@
     async function apiFetchJson(url, options = {}){
       const opts = { ...options };
       opts.headers = { "Accept": "application/json", ...(opts.headers || {}) };
-      if(opts.body && !opts.headers["Content-Type"]){
+      const isFormData = typeof FormData !== "undefined" && opts.body instanceof FormData;
+      if(opts.body && !opts.headers["Content-Type"] && !isFormData){
         opts.headers["Content-Type"] = "application/json";
       }
 
@@ -120,8 +145,8 @@
 
     function mapCandidateFromApi(api){
       if(!api) return null;
-      const fonte = (api.fonte || DEFAULT_CAND_FONTE).toString().toLowerCase();
-      const status = (api.status || DEFAULT_CAND_STATUS).toString().toLowerCase();
+      const fonte = (api.fonte || DEFAULT_CAND_FONTE).toString().trim() || DEFAULT_CAND_FONTE;
+      const status = toUiStatus(api.status || DEFAULT_CAND_STATUS);
 
       return {
         id: api.id,
@@ -142,8 +167,8 @@
       };
     }
 
-    function buildCandidatePayload(c){
-      const documentos = Array.isArray(c.documentos) ? c.documentos : null;
+    function buildCandidatePayload(c, includeDocumentos = false){
+      const documentos = includeDocumentos && Array.isArray(c.documentos) ? c.documentos : null;
       return {
         nome: (c.nome || "").trim(),
         email: (c.email || "").trim(),
@@ -151,7 +176,7 @@
         cidade: (c.cidade || "").trim() || null,
         uf: (c.uf || "").trim().toUpperCase().slice(0,2) || null,
         fonte: (c.fonte || DEFAULT_CAND_FONTE).trim(),
-        status: (c.status || DEFAULT_CAND_STATUS).trim(),
+        status: toApiStatus(c.status || DEFAULT_CAND_STATUS),
         vagaId: c.vagaId,
         obs: (c.obs || "").trim() || null,
         cvText: (c.cvText || "").trim() || null,
@@ -216,6 +241,28 @@
 
     function findCand(id){
       return state.candidatos.find(c => c.id === id) || null;
+    }
+
+    async function ensureCandidateDetails(id){
+      const current = findCand(id);
+      if(!current || current.documentos !== null) return current;
+      if(detailLoads.has(id)) return current;
+
+      detailLoads.add(id);
+      try{
+        const detail = await apiFetchJson(`${CANDIDATOS_API_URL}/${id}`, { method: "GET" });
+        const mapped = mapCandidateFromApi(detail);
+        if(mapped){
+          state.candidatos = state.candidatos.map(c => c.id === id ? { ...c, ...mapped } : c);
+          return mapped;
+        }
+      }catch(err){
+        console.error(err);
+      }finally{
+        detailLoads.delete(id);
+      }
+
+      return findCand(id);
     }
 
     // ========= Matching (MVP keyword)
@@ -432,7 +479,8 @@
       renderDetail();
     }
 
-    function openDetailModal(id){
+    async function openDetailModal(id){
+      await ensureCandidateDetails(id);
       selectCand(id);
       const modal = bootstrap.Modal.getOrCreateInstance($("#modalCandDetalhes"));
       modal.show();
@@ -450,6 +498,54 @@
       }
       distinctVagas().forEach(v => {
         select.appendChild(buildOption(v.id, v.label, v.id === selectedId));
+      });
+    }
+
+    function renderDocumentList(root, c){
+      const host = root.querySelector("#docList");
+      if(!host) return;
+      host.replaceChildren();
+
+      const docs = Array.isArray(c.documentos) ? c.documentos : null;
+      if(docs === null){
+        const msg = document.createElement("div");
+        msg.className = "text-muted small";
+        msg.textContent = "Carregando documentos...";
+        host.appendChild(msg);
+        return;
+      }
+
+      if(!docs.length){
+        const empty = cloneTemplate("tpl-cand-doc-empty");
+        if(empty) host.appendChild(empty);
+        return;
+      }
+
+      docs.forEach(doc => {
+        const row = cloneTemplate("tpl-cand-doc-row");
+        if(!row) return;
+        const typeCode = (doc.tipo || "").toString().toLowerCase();
+        const typeText = getEnumText("candidatoDocumentoTipo", typeCode, doc.tipo || "");
+        setText(row, "doc-type", typeText || EMPTY_TEXT);
+        setText(row, "doc-name", doc.nomeArquivo || EMPTY_TEXT);
+        setText(row, "doc-desc", doc.descricao || "Sem descricao");
+
+        const hasSize = doc.tamanhoBytes !== null && doc.tamanhoBytes !== undefined;
+        setText(row, "doc-size", hasSize ? formatFileSize(doc.tamanhoBytes) : EMPTY_TEXT);
+        toggleRole(row, "doc-size-sep", hasSize);
+
+        const downloadBtn = row.querySelector('[data-doc-act="download"]');
+        if(downloadBtn){
+          downloadBtn.disabled = !doc.url;
+          downloadBtn.addEventListener("click", () => downloadDocumento(doc.url));
+        }
+
+        const deleteBtn = row.querySelector('[data-doc-act="delete"]');
+        if(deleteBtn){
+          deleteBtn.addEventListener("click", () => deleteDocumento(c.id, doc.id));
+        }
+
+        host.appendChild(row);
       });
     }
 
@@ -510,6 +606,11 @@
       const cvText = root.querySelector("#detailCvText");
       if(cvText) cvText.value = c.cvText || "";
 
+      const docTipo = root.querySelector("#docTipo");
+      fillSelectFromEnum(docTipo, "candidatoDocumentoTipo", getEnumOptions("candidatoDocumentoTipo")[0]?.code || "");
+
+      renderDocumentList(root, c);
+
       const m = calcMatchForCand(c);
       const thr = m.threshold ?? (v ? v.threshold : 0);
       const pass = !!m.pass;
@@ -552,6 +653,14 @@
 
       host.appendChild(root);
       bindDetailActions(c);
+
+      if(c.documentos === null){
+        ensureCandidateDetails(c.id).then(() => {
+          if(state.selectedId === c.id){
+            renderDetail();
+          }
+        });
+      }
     }
 
     function bindDetailActions(c){
@@ -565,9 +674,91 @@
           if(act === "saveCv") saveCvText(c.id, false);
           if(act === "recalc") recalcMatch(c.id);
           if(act === "saveMeta") saveMeta(c.id, false);
+          if(act === "uploadDoc") uploadDocumento(c.id);
           if(act === "openVaga") toast("Placeholder: aqui abriria a tela de Vagas filtrada na vaga.");
         });
       });
+    }
+
+    async function uploadDocumento(candId){
+      const c = findCand(candId);
+      if(!c) return;
+
+      const root = $("#detailHost");
+      const tipo = root.querySelector("#docTipo")?.value || "";
+      const descricaoInput = root.querySelector("#docDescricao");
+      const descricao = (descricaoInput?.value || "").trim();
+      const fileInput = root.querySelector("#docArquivo");
+      const file = fileInput?.files?.[0];
+
+      if(!tipo){
+        toast("Selecione o tipo do documento.");
+        return;
+      }
+
+      if(!file){
+        toast("Selecione um arquivo para enviar.");
+        return;
+      }
+
+      const form = new FormData();
+      form.append("arquivo", file);
+      form.append("tipo", tipo);
+      if(descricao) form.append("descricao", descricao);
+
+      try{
+        const saved = await apiFetchJson(`${CANDIDATOS_API_URL}/${candId}/documentos`, {
+          method: "POST",
+          body: form
+        });
+
+        if(saved){
+          if(!Array.isArray(c.documentos)) c.documentos = [];
+          c.documentos.unshift({ ...saved });
+          renderDocumentList(root, c);
+          toast("Documento enviado.");
+        }
+
+        if(fileInput) fileInput.value = "";
+        if(descricaoInput) descricaoInput.value = "";
+      }catch(err){
+        console.error(err);
+        toast("Falha ao enviar documento.");
+      }
+    }
+
+    function downloadDocumento(url){
+      if(!url){
+        toast("Documento sem download disponivel.");
+        return;
+      }
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    async function deleteDocumento(candId, docId){
+      const c = findCand(candId);
+      if(!c) return;
+
+      const ok = confirm("Excluir este documento?");
+      if(!ok) return;
+
+      try{
+        await apiFetchJson(`${CANDIDATOS_API_URL}/${candId}/documentos/${docId}`, { method: "DELETE" });
+        if(Array.isArray(c.documentos)){
+          c.documentos = c.documentos.filter(d => d.id !== docId);
+        }
+        renderDocumentList($("#detailHost"), c);
+        toast("Documento excluido.");
+      }catch(err){
+        console.error(err);
+        toast("Falha ao excluir documento.");
+      }
     }
 
     // ========= CRUD: Candidatos

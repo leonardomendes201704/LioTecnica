@@ -1,7 +1,11 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using RhPortal.Api.Contracts.Candidatos;
 using RhPortal.Api.Domain.Entities;
+using RhPortal.Api.Domain.Enums;
 using RhPortal.Api.Infrastructure.Data;
+using RhPortal.Api.Infrastructure.Tenancy;
 
 namespace RhPortal.Api.Application.Candidatos;
 
@@ -12,13 +16,25 @@ public interface ICandidatoService
     Task<CandidatoResponse> CreateAsync(CandidatoCreateRequest request, CancellationToken ct);
     Task<CandidatoResponse?> UpdateAsync(Guid id, CandidatoUpdateRequest request, CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, CancellationToken ct);
+    Task<CandidatoDocumentoResponse?> AddDocumentoAsync(Guid candidatoId, CandidatoDocumentoTipo tipo, string? descricao, IFormFile arquivo, CancellationToken ct);
+    Task<CandidatoDocumentoFileResult?> GetDocumentoFileAsync(Guid candidatoId, Guid documentoId, CancellationToken ct);
+    Task<bool> DeleteDocumentoAsync(Guid candidatoId, Guid documentoId, CancellationToken ct);
 }
+
+public sealed record CandidatoDocumentoFileResult(string FilePath, string? ContentType, string FileName);
 
 public sealed class CandidatoService : ICandidatoService
 {
     private readonly AppDbContext _db;
+    private readonly ITenantContext _tenantContext;
+    private readonly IHostEnvironment _hostEnvironment;
 
-    public CandidatoService(AppDbContext db) => _db = db;
+    public CandidatoService(AppDbContext db, ITenantContext tenantContext, IHostEnvironment hostEnvironment)
+    {
+        _db = db;
+        _tenantContext = tenantContext;
+        _hostEnvironment = hostEnvironment;
+    }
 
     public async Task<IReadOnlyList<CandidatoListItemResponse>> ListAsync(CandidatoListQuery query, CancellationToken ct)
     {
@@ -157,11 +173,111 @@ public sealed class CandidatoService : ICandidatoService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
     {
-        var entity = await _db.Candidatos.FirstOrDefaultAsync(x => x.Id == id, ct);
+        var entity = await _db.Candidatos
+            .Include(x => x.Documentos)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (entity is null) return false;
+
+        var files = entity.Documentos
+            .Where(d => !string.IsNullOrWhiteSpace(d.StorageFileName))
+            .Select(d => d.StorageFileName!)
+            .ToList();
+
+        var folder = GetCandidateFolder(id);
 
         _db.Candidatos.Remove(entity);
         await _db.SaveChangesAsync(ct);
+
+        DeleteStoredFiles(folder, files);
+        TryDeleteFolder(folder);
+        return true;
+    }
+
+    public async Task<CandidatoDocumentoResponse?> AddDocumentoAsync(Guid candidatoId, CandidatoDocumentoTipo tipo, string? descricao, IFormFile arquivo, CancellationToken ct)
+    {
+        if (arquivo is null || arquivo.Length == 0)
+            throw new InvalidOperationException("Arquivo invalido.");
+
+        var candidato = await _db.Candidatos
+            .Include(x => x.Documentos)
+            .FirstOrDefaultAsync(x => x.Id == candidatoId, ct);
+
+        if (candidato is null) return null;
+
+        var originalName = NormalizeFileName(arquivo.FileName);
+        var documentId = Guid.NewGuid();
+        var storageFileName = BuildStorageFileName(documentId, originalName);
+        var folder = GetCandidateFolder(candidatoId);
+        Directory.CreateDirectory(folder);
+        var filePath = Path.Combine(folder, storageFileName);
+
+        await using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            await arquivo.CopyToAsync(stream, ct);
+        }
+
+        var doc = new CandidatoDocumento
+        {
+            Id = documentId,
+            CandidatoId = candidatoId,
+            Tipo = tipo,
+            NomeArquivo = originalName,
+            ContentType = TrimOrNull(arquivo.ContentType),
+            Descricao = TrimOrNull(descricao),
+            TamanhoBytes = arquivo.Length,
+            StorageFileName = storageFileName,
+            Url = null
+        };
+
+        candidato.Documentos.Add(doc);
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            TryDeleteFile(filePath);
+            throw;
+        }
+
+        return MapDocumento(candidatoId, doc);
+    }
+
+    public async Task<CandidatoDocumentoFileResult?> GetDocumentoFileAsync(Guid candidatoId, Guid documentoId, CancellationToken ct)
+    {
+        var doc = await _db.CandidatoDocumentos
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == documentoId && x.CandidatoId == candidatoId, ct);
+
+        if (doc is null || string.IsNullOrWhiteSpace(doc.StorageFileName))
+            return null;
+
+        var folder = GetCandidateFolder(candidatoId);
+        var path = Path.Combine(folder, doc.StorageFileName);
+        if (!File.Exists(path))
+            return null;
+
+        return new CandidatoDocumentoFileResult(path, doc.ContentType, doc.NomeArquivo);
+    }
+
+    public async Task<bool> DeleteDocumentoAsync(Guid candidatoId, Guid documentoId, CancellationToken ct)
+    {
+        var doc = await _db.CandidatoDocumentos
+            .FirstOrDefaultAsync(x => x.Id == documentoId && x.CandidatoId == candidatoId, ct);
+
+        if (doc is null) return false;
+
+        var filePath = string.IsNullOrWhiteSpace(doc.StorageFileName)
+            ? null
+            : Path.Combine(GetCandidateFolder(candidatoId), doc.StorageFileName);
+
+        _db.CandidatoDocumentos.Remove(doc);
+        await _db.SaveChangesAsync(ct);
+
+        if (filePath is not null)
+            TryDeleteFile(filePath);
+
         return true;
     }
 
@@ -188,24 +304,30 @@ public sealed class CandidatoService : ICandidatoService
             c.Obs,
             c.CvText,
             MapMatch(c),
-            c.Documentos.OrderByDescending(x => x.CreatedAtUtc).Select(MapDocumento).ToList(),
+            c.Documentos.OrderByDescending(x => x.CreatedAtUtc).Select(doc => MapDocumento(c.Id, doc)).ToList(),
             c.CreatedAtUtc,
             c.UpdatedAtUtc
         );
     }
 
-    private static CandidatoDocumentoResponse MapDocumento(CandidatoDocumento d)
-        => new(
+    private static CandidatoDocumentoResponse MapDocumento(Guid candidatoId, CandidatoDocumento d)
+    {
+        var url = !string.IsNullOrWhiteSpace(d.StorageFileName)
+            ? BuildDownloadUrl(candidatoId, d.Id)
+            : TrimOrNull(d.Url);
+
+        return new CandidatoDocumentoResponse(
             d.Id,
             d.Tipo,
             d.NomeArquivo,
             d.ContentType,
             d.Descricao,
             d.TamanhoBytes,
-            d.Url,
+            url,
             d.CreatedAtUtc,
             d.UpdatedAtUtc
         );
+    }
 
     private static CandidatoMatchResponse? MapMatch(Candidato c)
     {
@@ -258,6 +380,87 @@ public sealed class CandidatoService : ICandidatoService
             });
         }
         return list;
+    }
+
+    private string GetCandidateFolder(Guid candidatoId)
+    {
+        return Path.Combine(
+            _hostEnvironment.ContentRootPath,
+            "App_Data",
+            "uploads",
+            _tenantContext.TenantId,
+            "candidatos",
+            candidatoId.ToString("N"));
+    }
+
+    private static string BuildStorageFileName(Guid documentId, string originalName)
+    {
+        var extension = Path.GetExtension(originalName);
+        if (!string.IsNullOrWhiteSpace(extension))
+        {
+            extension = new string(extension
+                .Where(c => char.IsLetterOrDigit(c) || c == '.')
+                .ToArray());
+
+            if (extension.Length > 12)
+                extension = extension[..12];
+        }
+        else
+        {
+            extension = string.Empty;
+        }
+
+        return $"{documentId:N}{extension}";
+    }
+
+    private static string NormalizeFileName(string? fileName)
+    {
+        var name = Path.GetFileName(fileName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            name = "documento";
+
+        if (name.Length > 200)
+            name = name[..200];
+
+        return name;
+    }
+
+    private static string BuildDownloadUrl(Guid candidatoId, Guid documentoId)
+        => $"/api/candidatos/{candidatoId}/documentos/{documentoId}/download";
+
+    private static void DeleteStoredFiles(string folder, IEnumerable<string> files)
+    {
+        foreach (var file in files)
+        {
+            var path = Path.Combine(folder, file);
+            TryDeleteFile(path);
+        }
+    }
+
+    private static void TryDeleteFolder(string folder)
+    {
+        try
+        {
+            if (Directory.Exists(folder))
+                Directory.Delete(folder, true);
+        }
+        catch
+        {
+            // Ignorar falhas de limpeza.
+        }
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // Ignorar falhas de limpeza.
+        }
     }
 
     private static string NormalizeEmail(string? email)

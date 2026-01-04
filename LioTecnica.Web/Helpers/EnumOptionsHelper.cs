@@ -42,6 +42,7 @@ public static class EnumOptionsHelper
             CandidatoStatus = GetOptions<CandidatoStatus>(),
             CandidatoStatusFilter = GetOptions<CandidatoStatusFilter>(),
             CandidatoFonte = GetOptions<CandidatoFonte>(),
+            CandidatoDocumentoTipo = GetOptions<CandidatoDocumentoTipo>(),
             VagaStatus = GetOptions<VagaStatus>(),
             VagaStatusFilter = GetOptions<VagaStatusFilter>(),
             VagaArea = GetOptions<VagaArea>(),

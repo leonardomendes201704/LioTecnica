@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using RhPortal.Api.Application.Candidatos;
 using RhPortal.Api.Application.Candidatos.Handlers;
 using RhPortal.Api.Contracts.Candidatos;
 using RhPortal.Api.Domain.Enums;
@@ -75,6 +76,63 @@ public sealed class CandidatosController : ControllerBase
         CancellationToken ct)
     {
         var deleted = await handler.HandleAsync(id, ct);
+        return deleted ? NoContent() : NotFound();
+    }
+
+    [HttpPost("{id:guid}/documentos")]
+    [Consumes("multipart/form-data")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<ActionResult<CandidatoDocumentoResponse>> UploadDocumento(
+        [FromRoute] Guid id,
+        [FromForm] CandidatoDocumentoUploadRequest request,
+        [FromServices] ICandidatoService service,
+        CancellationToken ct)
+    {
+        if (request.Arquivo is null || request.Arquivo.Length == 0)
+            return BadRequest(new { message = "Arquivo invalido." });
+
+        if (string.IsNullOrWhiteSpace(request.Tipo))
+            return BadRequest(new { message = "Tipo do documento e obrigatorio." });
+
+        if (!Enum.TryParse<CandidatoDocumentoTipo>(request.Tipo, true, out var tipo))
+            return BadRequest(new { message = "Tipo do documento invalido." });
+
+        try
+        {
+            var created = await service.AddDocumentoAsync(id, tipo, request.Descricao, request.Arquivo, ct);
+            return created is null ? NotFound() : Ok(created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("{id:guid}/documentos/{documentoId:guid}/download")]
+    public async Task<IActionResult> DownloadDocumento(
+        [FromRoute] Guid id,
+        [FromRoute] Guid documentoId,
+        [FromServices] ICandidatoService service,
+        CancellationToken ct)
+    {
+        var file = await service.GetDocumentoFileAsync(id, documentoId, ct);
+        if (file is null) return NotFound();
+
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType)
+            ? "application/octet-stream"
+            : file.ContentType;
+
+        return PhysicalFile(file.FilePath, contentType, file.FileName);
+    }
+
+    [HttpDelete("{id:guid}/documentos/{documentoId:guid}")]
+    public async Task<IActionResult> DeleteDocumento(
+        [FromRoute] Guid id,
+        [FromRoute] Guid documentoId,
+        [FromServices] ICandidatoService service,
+        CancellationToken ct)
+    {
+        var deleted = await service.DeleteDocumentoAsync(id, documentoId, ct);
         return deleted ? NoContent() : NotFound();
     }
 }

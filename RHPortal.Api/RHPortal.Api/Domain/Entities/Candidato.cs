@@ -64,6 +64,9 @@ public sealed class CandidatoDocumento : ITenantEntity
     [StringLength(240)]
     public string? Descricao { get; set; }
 
+    [StringLength(260)]
+    public string? StorageFileName { get; set; }
+
     public long? TamanhoBytes { get; set; }
 
     [StringLength(400)]

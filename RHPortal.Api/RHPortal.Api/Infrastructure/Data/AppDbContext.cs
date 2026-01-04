@@ -414,6 +414,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.Property(x => x.NomeArquivo).HasMaxLength(200).IsRequired();
             b.Property(x => x.ContentType).HasMaxLength(120);
             b.Property(x => x.Descricao).HasMaxLength(240);
+            b.Property(x => x.StorageFileName).HasMaxLength(260);
             b.Property(x => x.Url).HasMaxLength(400);
 
             b.HasIndex(x => new { x.TenantId, x.CandidatoId });

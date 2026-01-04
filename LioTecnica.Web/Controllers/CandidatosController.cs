@@ -1,7 +1,9 @@
+using System.Net;
 using System.Text.Json;
 using LioTecnica.Web.Infrastructure.ApiClients;
 using LioTecnica.Web.Infrastructure.Security;
 using LioTecnica.Web.ViewModels;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LioTecnica.Web.Controllers;
@@ -60,6 +62,50 @@ public class CandidatosController : Controller
     {
         var tenantId = _tenantContext.TenantId;
         var resp = await _candidatosApi.DeleteRawAsync(tenantId, id, ct);
+        return ToContentResult(resp);
+    }
+
+    [HttpPost("/api/candidatos/{id:guid}/documentos")]
+    public async Task<IActionResult> UploadDocumento(
+        Guid id,
+        [FromForm] IFormFile? arquivo,
+        [FromForm] string? tipo,
+        [FromForm] string? descricao,
+        CancellationToken ct)
+    {
+        if (arquivo is null || arquivo.Length == 0)
+            return BadRequest(new { message = "Arquivo invalido." });
+
+        if (string.IsNullOrWhiteSpace(tipo))
+            return BadRequest(new { message = "Tipo do documento e obrigatorio." });
+
+        var tenantId = _tenantContext.TenantId;
+        var resp = await _candidatosApi.UploadDocumentoRawAsync(tenantId, id, arquivo, tipo, descricao, ct);
+        return ToContentResult(resp);
+    }
+
+    [HttpGet("/api/candidatos/{id:guid}/documentos/{documentoId:guid}/download")]
+    public async Task<IActionResult> DownloadDocumento(Guid id, Guid documentoId, CancellationToken ct)
+    {
+        var tenantId = _tenantContext.TenantId;
+        var resp = await _candidatosApi.DownloadDocumentoAsync(tenantId, id, documentoId, ct);
+
+        if (resp.StatusCode != HttpStatusCode.OK)
+            return new StatusCodeResult((int)resp.StatusCode);
+
+        var contentType = string.IsNullOrWhiteSpace(resp.ContentType)
+            ? "application/octet-stream"
+            : resp.ContentType;
+
+        var fileName = string.IsNullOrWhiteSpace(resp.FileName) ? "documento" : resp.FileName;
+        return File(resp.Content, contentType, fileName);
+    }
+
+    [HttpDelete("/api/candidatos/{id:guid}/documentos/{documentoId:guid}")]
+    public async Task<IActionResult> DeleteDocumento(Guid id, Guid documentoId, CancellationToken ct)
+    {
+        var tenantId = _tenantContext.TenantId;
+        var resp = await _candidatosApi.DeleteDocumentoRawAsync(tenantId, id, documentoId, ct);
         return ToContentResult(resp);
     }
 

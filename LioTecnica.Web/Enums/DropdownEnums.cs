@@ -52,6 +52,18 @@ public enum CandidatoFonte
     Site
 }
 
+public enum CandidatoDocumentoTipo
+{
+    [Display(Name = "Curriculo", ShortName = "curriculo")]
+    Curriculo,
+    [Display(Name = "Documento", ShortName = "documento")]
+    Documento,
+    [Display(Name = "Certificado", ShortName = "certificado")]
+    Certificado,
+    [Display(Name = "Portfolio", ShortName = "portfolio")]
+    Portfolio
+}
+
 public enum VagaStatus
 {
     [Display(Name = "Aberta", ShortName = "aberta")]

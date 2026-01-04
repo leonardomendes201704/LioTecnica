@@ -9,6 +9,7 @@ public sealed class EnumBundle
     public IReadOnlyList<EnumOption> CandidatoStatus { get; init; } = Array.Empty<EnumOption>();
     public IReadOnlyList<EnumOption> CandidatoStatusFilter { get; init; } = Array.Empty<EnumOption>();
     public IReadOnlyList<EnumOption> CandidatoFonte { get; init; } = Array.Empty<EnumOption>();
+    public IReadOnlyList<EnumOption> CandidatoDocumentoTipo { get; init; } = Array.Empty<EnumOption>();
 
     public IReadOnlyList<EnumOption> VagaStatus { get; init; } = Array.Empty<EnumOption>();
     public IReadOnlyList<EnumOption> VagaStatusFilter { get; init; } = Array.Empty<EnumOption>();
