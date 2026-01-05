@@ -57,69 +57,67 @@
         }
         @await Html.PartialAsync("_KpiMiniRow", kpis)
 
-        <div class="grid2">
-          <!-- LEFT: Queue -->
-          <div class="panel">
-            <div class="card-soft p-3 mb-3">
-              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <div>
-                  <div class="fw-bold">Fila de entrada</div>
-                  <div class="text-muted small">Selecione um item para ver detalhes e executar ações.</div>
-                </div>
-                <div class="d-flex gap-2 flex-wrap justify-content-end">
-                  <div class="input-group" style="min-width: 240px;">
-                    <span class="input-group-text" style="border-color:var(--lt-border); background: rgba(255,255,255,.65);">
-                      <i class="bi bi-search"></i>
-                    </span>
-                    <input class="form-control" id="fSearch" placeholder="Remetente, assunto, arquivo..." style="border-color:var(--lt-border);">
-                  </div>
-                  <select class="form-select" id="fOrigem" data-enum="origemFilter" style="min-width: 180px; border-color:var(--lt-border);"></select>
-                  <select class="form-select" id="fStatus" data-enum="inboxStatusFilter" style="min-width: 180px; border-color:var(--lt-border);"></select>
-                </div>
+                <div class="d-grid gap-3">
+          <!-- Upload / Dropzone -->
+          <div class="card-soft p-3">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div>
+                <div class="fw-bold">Upload manual</div>
+                <div class="text-muted small">Arraste PDFs/DOCs aqui (demo salva apenas o nome do arquivo).</div>
               </div>
-
-              <hr class="my-3" style="border-color: rgba(16,82,144,.14);">
-
-              <lt-list class="d-grid gap-2" id="queueList"></lt-list>
-              <div class="text-muted small mt-2" id="queueHint"></div>
+              <button class="btn btn-ghost btn-sm" id="btnAddUpload">
+                <i class="bi bi-paperclip me-1"></i>Selecionar arquivo
+              </button>
             </div>
 
-            <!-- Upload / Dropzone -->
-            <div class="card-soft p-3">
-              <div class="d-flex align-items-start justify-content-between gap-2">
-                <div>
-                  <div class="fw-bold">Upload manual</div>
-                  <div class="text-muted small">Arraste PDFs/DOCs aqui (demo salva apenas o nome do arquivo).</div>
-                </div>
-                <button class="btn btn-ghost btn-sm" id="btnAddUpload">
-                  <i class="bi bi-paperclip me-1"></i>Selecionar arquivo
-                </button>
-              </div>
-
-              <div class="dropzone mt-3" id="dropzone">
-                <div class="d-flex align-items-start gap-2">
-                  <i class="bi bi-cloud-arrow-up mt-1"></i>
-                  <div class="flex-grow-1">
-                    <div class="fw-semibold">Solte seus arquivos aqui</div>
-                    <div class="text-muted small">Tipos comuns: .pdf, .doc, .docx</div>
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                      <span class="chip"><i class="bi bi-file-earmark-pdf"></i>PDF</span>
-                      <span class="chip"><i class="bi bi-file-earmark-word"></i>Word</span>
-                      <span class="chip"><i class="bi bi-file-earmark-text"></i>TXT</span>
-                      <span class="chip"><i class="bi bi-shield-check"></i>LGPD</span>
-                    </div>
+            <div class="dropzone mt-3" id="dropzone">
+              <div class="d-flex align-items-start gap-2">
+                <i class="bi bi-cloud-arrow-up mt-1"></i>
+                <div class="flex-grow-1">
+                  <div class="fw-semibold">Solte seus arquivos aqui</div>
+                  <div class="text-muted small">Tipos comuns: .pdf, .doc, .docx</div>
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    <span class="chip"><i class="bi bi-file-earmark-pdf"></i>PDF</span>
+                    <span class="chip"><i class="bi bi-file-earmark-word"></i>Word</span>
+                    <span class="chip"><i class="bi bi-file-earmark-text"></i>TXT</span>
+                    <span class="chip"><i class="bi bi-shield-check"></i>LGPD</span>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div class="text-muted small mt-2">
-                <i class="bi bi-info-circle me-1"></i>
-                No produto real: upload â†’ armazenamento (S3/FS) â†’ fila â†’ extração de texto (PDF/Word) â†’ candidato/triagem.
-              </div>
+            <div class="text-muted small mt-2">
+              <i class="bi bi-info-circle me-1"></i>
+              No produto real: upload â†’ armazenamento (S3/FS) â†’ fila â†’ extração de texto (PDF/Word) â†’ candidato/triagem.
             </div>
           </div>
 
-          <!-- RIGHT: Details -->
+          <!-- Queue -->
+          <div class="card-soft p-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <div>
+                <div class="fw-bold">Fila de entrada</div>
+                <div class="text-muted small">Selecione um item para ver detalhes e executar ações.</div>
+              </div>
+              <div class="d-flex gap-2 flex-wrap justify-content-end">
+                <div class="input-group" style="min-width: 240px;">
+                  <span class="input-group-text" style="border-color:var(--lt-border); background: rgba(255,255,255,.65);">
+                    <i class="bi bi-search"></i>
+                  </span>
+                  <input class="form-control" id="fSearch" placeholder="Remetente, assunto, arquivo..." style="border-color:var(--lt-border);">
+                </div>
+                <select class="form-select" id="fOrigem" data-enum="origemFilter" style="min-width: 180px; border-color:var(--lt-border);"></select>
+                <select class="form-select" id="fStatus" data-enum="inboxStatusFilter" style="min-width: 180px; border-color:var(--lt-border);"></select>
+              </div>
+            </div>
+
+            <hr class="my-3" style="border-color: rgba(16,82,144,.14);">
+
+            <lt-list class="d-grid gap-2" id="queueList"></lt-list>
+            <div class="text-muted small mt-2" id="queueHint"></div>
+          </div>
+
+          <!-- Details -->
           <div class="panel" id="detailHost">
             <div class="empty">
               <div class="d-flex align-items-start gap-2">
