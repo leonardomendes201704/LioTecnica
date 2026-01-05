@@ -1,4 +1,3 @@
-@model PageSeedViewModel
 @{
     ViewData["Title"] = "Portal RH • Devcraft Studio • Matching";
     ViewData["SidebarSubtitle"] = "Matching";
@@ -15,24 +14,12 @@
       @section Topbar {
 @await Html.PartialAsync("_TopbarBrand", "Tela: Matching (pontuação por requisitos)")
 
-          <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-ghost" type="button" id="btnSeedReset" title="Restaurar demo">
-              <i class="bi bi-arrow-counterclockwise"></i><span class="d-none d-sm-inline ms-1">Reset demo</span>
-            </button>
-
-            <button class="btn btn-ghost" type="button" id="btnExport" title="Exportar (JSON)">
-              <i class="bi bi-download"></i><span class="d-none d-sm-inline ms-1">Exportar</span>
-            </button>
-
-            <button class="btn btn-ghost" type="button" id="btnImport" title="Importar (JSON)">
-              <i class="bi bi-upload"></i><span class="d-none d-sm-inline ms-1">Importar</span>
-            </button>
-
+                    <div class="d-flex align-items-center gap-2">
             <button class="btn btn-brand" type="button" id="btnRecalcAll">
               <i class="bi bi-lightning-charge"></i><span class="d-none d-sm-inline ms-1">Recalcular tudo</span>
             </button>
 
-                        @await Html.PartialAsync("_TopbarUserMenu", "RH")
+            @await Html.PartialAsync("_TopbarUserMenu", "RH")
           </div>
 }
 
@@ -78,7 +65,7 @@
     new { ColClass = "col-6 col-lg-3", ValueId = "kpiTotal", Value = "0", Label = "Candidatos filtrados", Icon = "bi-people" },
     new { ColClass = "col-6 col-lg-3", ValueId = "kpiInside", Value = "0", Label = "Dentro do mí­nimo", Icon = "bi-check2-circle" },
     new { ColClass = "col-6 col-lg-3", ValueId = "kpiMandatoryFail", Value = "0", Label = "Falha obrigatória", Icon = "bi-exclamation-triangle" },
-    new { ColClass = "col-6 col-lg-3", ValueId = "kpiAvg", Value = "0%", Label = "MÃ©dia de match", Icon = "bi-stars" }
+    new { ColClass = "col-6 col-lg-3", ValueId = "kpiAvg", Value = "0%", Label = "Média de match", Icon = "bi-stars" }
   };
 }
 @await Html.PartialAsync("_KpiSimpleRow", kpis)
@@ -334,10 +321,10 @@
   <!-- Bootstrap JS (CDN) -->
 
 @section Scripts {
-  <script>
-    window.__seedData = @Html.Raw(Model.SeedJson);
-  </script>
-<script src="~/js/views/matching.js" asp-append-version="true"></script>
+  <script src="~/js/views/matching.js" asp-append-version="true"></script>
 }
+
+
+
 
 

@@ -235,6 +235,9 @@ namespace RHPortal.Api.Domain.Entities
         public VagaRequisitoNivel? Nivel { get; set; }      // req-level
         public VagaRequisitoAvaliacao? Avaliacao { get; set; } // req-eval
 
+        [StringLength(400)]
+        public string? SinonimosRaw { get; set; }           // req-synonyms
+
         [StringLength(240)]
         public string? Observacoes { get; set; }            // req-obs
         public DateTimeOffset CreatedAtUtc { get; set; }

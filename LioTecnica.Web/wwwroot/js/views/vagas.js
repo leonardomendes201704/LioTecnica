@@ -331,6 +331,7 @@ function mapApiVagaToState(v) {
       anos: r.anosMinimos ?? "",
       nivel: r.nivel ?? DEFAULT_REQ_NIVEL,
       avaliacao: r.avaliacao ?? DEFAULT_REQ_AVALIACAO,
+      sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
       obs: r.observacoes ?? ""
     }));
 
@@ -379,7 +380,7 @@ function mapApiVagaToState(v) {
           termo: r.nome ?? "",
           peso: r.peso ?? DEFAULT_PESO,
           obrigatorio: !!r.obrigatorio,
-          sinonimos: [],
+          sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
           obs: r.observacoes ?? ""
         })),
 
@@ -1412,6 +1413,7 @@ function fmtStatus(s){
           anosMinimos: parseIntOrNull(r.anos),
           nivel: emptyToNull(r.nivel),
           avaliacao: emptyToNull(r.avaliacao),
+          sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
           observacoes: emptyToNull(r.obs)
         }));
 
@@ -1644,6 +1646,7 @@ function fmtStatus(s){
           anosMinimos: parseIntOrNull(r.anos),
           nivel: emptyToNull(r.nivel),
           avaliacao: emptyToNull(r.avaliacao),
+          sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
           observacoes: emptyToNull(r.obs)
         })),
         etapas: (processo.etapas || []).map((e, idx) => ({

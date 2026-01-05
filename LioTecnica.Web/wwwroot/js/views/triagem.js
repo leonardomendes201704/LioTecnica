@@ -627,7 +627,7 @@ function enumFirstCode(key, fallback){
         note: obs || ""
       });
 
-      // tambÃ©m grava observação no candidato (append)
+      // também grava observação no candidato (append)
       if(reason || obs){
         const lines = [];
         if(reason) lines.push(reasonLabel || reason);
@@ -677,7 +677,7 @@ function enumFirstCode(key, fallback){
         const sug = suggestDecision(c, v, m);
 
         // não aprovar automaticamente se for "pendente"
-        // (mantÃ©m pendente como pendente quando sugerido, mas aqui move para pendente)
+        // (mantém pendente como pendente quando sugerido, mas aqui move para pendente)
         if(sug.action && sug.action !== "triagem"){
           moveStage(c.id, sug.action, { reason: "Auto-triagem", note: formatDecisionReason(sug.reason) || "" });
           moved++;

@@ -435,6 +435,7 @@ public sealed class VagaService : IVagaService
             r.AnosMinimos,
             r.Nivel,
             r.Avaliacao,
+            SplitSinonimos(r.SinonimosRaw),
             r.Observacoes,
             r.CreatedAtUtc,
             r.UpdatedAtUtc
@@ -505,6 +506,7 @@ public sealed class VagaService : IVagaService
                 AnosMinimos = item.AnosMinimos,
                 Nivel = item.Nivel,
                 Avaliacao = item.Avaliacao,
+                SinonimosRaw = JoinSinonimos(item.Sinonimos),
                 Observacoes = TrimOrNull(item.Observacoes)
             });
         }
@@ -591,4 +593,26 @@ public sealed class VagaService : IVagaService
 
     private static string? TrimOrNull(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? JoinSinonimos(IReadOnlyList<string>? sinonimos)
+    {
+        if (sinonimos is null || sinonimos.Count == 0) return null;
+        var cleaned = sinonimos
+            .Select(s => (s ?? string.Empty).Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return cleaned.Length == 0 ? null : string.Join(";", cleaned);
+    }
+
+    private static IReadOnlyList<string> SplitSinonimos(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return Array.Empty<string>();
+        var items = raw
+            .Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return items.Length == 0 ? Array.Empty<string>() : items;
+    }
 }

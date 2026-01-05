@@ -618,6 +618,7 @@ public static class DbSeeder
                     AnosMinimos = r.AnosMinimos,
                     Nivel = r.Nivel,
                     Avaliacao = r.Avaliacao,
+                    SinonimosRaw = JoinSinonimos(r.Sinonimos),
                     Observacoes = r.Obs,
                     CreatedAtUtc = now,
                     UpdatedAtUtc = now
@@ -640,7 +641,7 @@ public static class DbSeeder
     }
 
 
-    private static List<(string Nome, VagaPeso Peso, bool Obrigatorio, int? AnosMinimos, VagaRequisitoNivel? Nivel, VagaRequisitoAvaliacao? Avaliacao, string? Obs)>
+    private static List<(string Nome, VagaPeso Peso, bool Obrigatorio, int? AnosMinimos, VagaRequisitoNivel? Nivel, VagaRequisitoAvaliacao? Avaliacao, string? Obs, IReadOnlyList<string>? Sinonimos)>
 BuildDemoRequisitos(string areaCode)
     {
         areaCode = (areaCode ?? "").Trim().ToUpperInvariant();
@@ -650,25 +651,36 @@ BuildDemoRequisitos(string areaCode)
         {
             "TEC" => new()
         {
-            ("Windows/Office 365", (VagaPeso)4, true, 1, null, null, null),
-            ("Atendimento ao usuário", (VagaPeso)4, true, 1, null, null, null),
-            ("ITIL (desejável)", (VagaPeso)2, false, null, null, null, null),
-            ("Redes básicas", (VagaPeso)3, false, 1, null, null, null),
+            ("Windows/Office 365", (VagaPeso)4, true, 1, null, null, null, new[] { "Office", "Pacote Office", "Microsoft 365" }),
+            ("Atendimento ao usuário", (VagaPeso)4, true, 1, null, null, null, new[] { "Suporte ao usuario", "Help desk" }),
+            ("ITIL (desejável)", (VagaPeso)2, false, null, null, null, null, new[] { "ITIL Foundation" }),
+            ("Redes básicas", (VagaPeso)3, false, 1, null, null, null, new[] { "TCP/IP", "LAN", "WAN" }),
         },
 
             "FIN" => new()
         {
-            ("Excel intermediário/avançado", (VagaPeso)4, true, 2, null, null, null),
-            ("Contas a receber", (VagaPeso)4, true, 2, null, null, null),
-            ("Conciliação bancária", (VagaPeso)3, false, 1, null, null, null),
+            ("Excel intermediário/avançado", (VagaPeso)4, true, 2, null, null, null, new[] { "Excel avancado", "Planilhas" }),
+            ("Contas a receber", (VagaPeso)4, true, 2, null, null, null, new[] { "CR", "Recebiveis" }),
+            ("Conciliação bancária", (VagaPeso)3, false, 1, null, null, null, new[] { "Conciliacao", "Extrato" }),
         },
 
             _ => new()
         {
-            ("Comunicação", (VagaPeso)3, true, null, null, null, null),
-            ("Trabalho em equipe", (VagaPeso)3, false, null, null, null, null),
+            ("Comunicação", (VagaPeso)3, true, null, null, null, null, new[] { "Comunicacao", "Boa comunicacao" }),
+            ("Trabalho em equipe", (VagaPeso)3, false, null, null, null, null, new[] { "Teamwork", "Colaboracao" }),
         }
         };
+    }
+
+    private static string? JoinSinonimos(IReadOnlyList<string>? sinonimos)
+    {
+        if (sinonimos is null || sinonimos.Count == 0) return null;
+        var cleaned = sinonimos
+            .Select(s => (s ?? string.Empty).Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return cleaned.Length == 0 ? null : string.Join(";", cleaned);
     }
 
 

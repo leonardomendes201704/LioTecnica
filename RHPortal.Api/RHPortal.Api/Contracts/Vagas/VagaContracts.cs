@@ -279,6 +279,7 @@ public sealed record VagaRequisitoRequest(
     int? AnosMinimos,
     VagaRequisitoNivel? Nivel,
     VagaRequisitoAvaliacao? Avaliacao,
+    IReadOnlyList<string>? Sinonimos,
     [MaxLength(240)] string? Observacoes
 );
 
@@ -322,6 +323,7 @@ public sealed record VagaRequisitoResponse(
     int? AnosMinimos,
     VagaRequisitoNivel? Nivel,
     VagaRequisitoAvaliacao? Avaliacao,
+    IReadOnlyList<string> Sinonimos,
     string? Observacoes,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc
