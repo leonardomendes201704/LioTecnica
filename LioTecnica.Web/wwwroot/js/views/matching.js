@@ -500,6 +500,20 @@ function updateCandidateState(updated){
   }
 }
 
+async function persistLastMatch(c, vaga, matchResult){
+  const payload = {
+    lastMatch: {
+      score: matchResult.score ?? null,
+      pass: matchResult.pass ?? null,
+      atUtc: matchResult.at ?? new Date().toISOString(),
+      vagaId: vaga.id
+    }
+  };
+  const updated = await updateCandidatoFromState(c, payload);
+  updateCandidateState(updated);
+  return updated;
+}
+
 // ========= Detail
 function renderDetail(c, host){
   if(!host) return;
@@ -581,12 +595,20 @@ function renderDetail(c, host){
 
   const get = (id) => root.querySelector("#" + id);
 
-  bind("btnRecalcOne", () => {
+  bind("btnRecalcOne", async () => {
     clearCacheFor(c.id, v.id);
-    calcMatch(c, v);
-    toast("Recalculado.");
-    renderList();
-    renderDetail(c, host);
+    const result = calcMatch(c, v);
+    try{
+      const updated = await persistLastMatch(c, v, result);
+      toast("Recalculado e salvo.");
+      renderList();
+      renderDetail(updated, host);
+    }catch(err){
+      console.error(err);
+      toast("Falha ao salvar o match.");
+      renderList();
+      renderDetail(c, host);
+    }
   });
   bind("btnClearCacheOne", () => {
     clearCacheFor(c.id, v.id);
@@ -702,17 +724,22 @@ function wireFilters(){
 function wireButtons(){
   const recalc = $("#btnRecalcAll");
   if(recalc){
-    recalc.addEventListener("click", () => {
+    recalc.addEventListener("click", async () => {
       const list = getFiltered();
       let n = 0;
-      list.forEach(c => {
+      for(const c of list){
         const v = state.filters.vagaId === "all" ? findVaga(c.vagaId) : findVaga(state.filters.vagaId);
-        if(!v) return;
+        if(!v) continue;
         clearCacheFor(c.id, v.id);
-        calcMatch(c, v);
-        n++;
-      });
-      toast(`Recalculado: ${n} candidato(s).`);
+        const result = calcMatch(c, v);
+        try{
+          await persistLastMatch(c, v, result);
+          n++;
+        }catch(err){
+          console.error(err);
+        }
+      }
+      toast(`Recalculado e salvo: ${n} candidato(s).`);
       renderList();
     });
   }
