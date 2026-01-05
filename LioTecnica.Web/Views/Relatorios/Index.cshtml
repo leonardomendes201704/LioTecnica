@@ -36,22 +36,57 @@
 		</div>
 	</div>
 
-	<!-- KPI row -->
-	@{
-		var kpis = new[]
-		{
-	new { ColClass = "col-6 col-lg-3", Title = "Vagas", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiVagas", Value = "0", PillIcon = "bi-briefcase", PillText = "ativas", Hint = "Total no cadastro (demo)." },
-	new { ColClass = "col-6 col-lg-3", Title = "Candidatos", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiCands", Value = "0", PillIcon = "bi-people", PillText = "base", Hint = "Recebidos/triados (demo)." },
-	new { ColClass = "col-6 col-lg-3", Title = "Entrada", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiInbox", Value = "0", PillIcon = "bi-inbox", PillText = "itens", Hint = "Fila (novo/processando)." },
-	new { ColClass = "col-6 col-lg-3", Title = "Convers„o", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiConv", Value = "0%", PillIcon = "bi-arrow-right-circle", PillText = "triagem", Hint = "Processado ‚Üí candidato." }
-	};
-	}
-	@await Html.PartialAsync("_KpiMiniRow", kpis)
+		<div class="card-soft p-3 mb-3">
+		<div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+			<div>
+				<div class="fw-bold">Filtros</div>
+				<div class="text-muted small">Os filtros alteram a tabela/gr·fico do relatÛrio selecionado.</div>
+			</div>
+			<div class="d-flex flex-wrap gap-2">
+				<button class="btn btn-brand btn-sm" id="btnApply"><i class="bi bi-filter-circle me-1"></i>Aplicar</button>
+				<button class="btn btn-ghost btn-sm" id="btnClear"><i class="bi bi-x-circle me-1"></i>Limpar</button>
+			</div>
+		</div>
 
-	<div class="grid2">
-		<!-- LEFT: cat·logo de relatÛrios + filtros -->
+		<div class="row g-2 mt-2 align-items-end">
+			<div class="col-12 col-lg-2">
+				<label class="form-label small">PerÌ≠odo</label>
+				<select class="form-select" id="fPeriod" data-enum="relatorioPeriodo" data-selected="30d" style="min-width: 200px; border-color:var(--lt-border);"></select>
+			</div>
+
+			<div class="col-12 col-lg-3">
+				<label class="form-label small">Vaga</label>
+				<select class="form-select" id="fVaga" style="min-width: 240px; border-color:var(--lt-border);"></select>
+			</div>
+
+			<div class="col-12 col-lg-2">
+				<label class="form-label small">Origem</label>
+				<select class="form-select" id="fOrigem" data-enum="origemFilterSimple" style="min-width: 180px; border-color:var(--lt-border);"></select>
+			</div>
+
+			<div class="col-12 col-lg-2">
+				<label class="form-label small">Status</label>
+				<select class="form-select" id="fStatus" data-enum="inboxStatusFilterSimple" style="min-width: 180px; border-color:var(--lt-border);"></select>
+			</div>
+
+			<div class="col-12 col-lg-3">
+				<label class="form-label small">Buscar</label>
+				<div class="input-group">
+					<span class="input-group-text" style="background:rgba(255,255,255,.65)"><i class="bi bi-search"></i></span>
+					<input class="form-control" id="fSearch" placeholder="Nome, email, assunto, arquivo...">
+				</div>
+			</div>
+		</div>
+
+		<div class="text-muted small mt-2">
+			<i class="bi bi-info-circle me-1"></i>
+			No produto real: filtros viram par‚metros de query e agregaÁıes no Postgres.
+		</div>
+	</div>
+<div class="grid2">
+				<!-- LEFT: cat·logo de relatÛrios -->
 		<div>
-			<div class="card-soft p-3 mb-3">
+			<div class="card-soft p-3">
 				<div class="d-flex align-items-start justify-content-between gap-2">
 					<div>
 						<div class="fw-bold">Cat·logo de relatÛrios</div>
@@ -63,54 +98,8 @@
 
 				<lt-list class="d-grid gap-2" id="reportList"></lt-list>
 			</div>
-
-			<div class="card-soft p-3">
-				<div class="fw-bold">Filtros</div>
-				<div class="text-muted small">Os filtros alteram a tabela/gr·ficoù do relatÛrio selecionado.</div>
-
-				<div class="row g-2 mt-2">
-					<div class="col-12">
-						<label class="form-label small">PerÌ≠odo</label>
-						<select class="form-select" id="fPeriod" data-enum="relatorioPeriodo" data-selected="30d" style="min-width: 200px; border-color:var(--lt-border);"></select>
-					</div>
-
-					<div class="col-12">
-						<label class="form-label small">Vaga</label>
-						<select class="form-select" id="fVaga" style="min-width: 240px; border-color:var(--lt-border);"></select>
-					</div>
-
-					<div class="col-12">
-						<label class="form-label small">Origem</label>
-						<select class="form-select" id="fOrigem" data-enum="origemFilterSimple" style="min-width: 180px; border-color:var(--lt-border);"></select>
-					</div>
-
-					<div class="col-12">
-						<label class="form-label small">Status</label>
-						<select class="form-select" id="fStatus" data-enum="inboxStatusFilterSimple" style="min-width: 180px; border-color:var(--lt-border);"></select>
-					</div>
-
-					<div class="col-12">
-						<label class="form-label small">Buscar</label>
-						<div class="input-group">
-							<span class="input-group-text" style="background:rgba(255,255,255,.65)"><i class="bi bi-search"></i></span>
-							<input class="form-control" id="fSearch" placeholder="Nome, email, assunto, arquivo...">
-						</div>
-					</div>
-				</div>
-
-				<div class="d-flex flex-wrap gap-2 mt-3">
-					<button class="btn btn-brand btn-sm" id="btnApply"><i class="bi bi-filter-circle me-1"></i>Aplicar</button>
-					<button class="btn btn-ghost btn-sm" id="btnClear"><i class="bi bi-x-circle me-1"></i>Limpar</button>
-				</div>
-
-				<div class="text-muted small mt-3">
-					<i class="bi bi-info-circle me-1"></i>
-					No produto real: filtros viram par√¢metros de query e agregaÁıes no Postgres.
-				</div>
-			</div>
 		</div>
-
-		<!-- RIGHT: relatÛrio selecionado -->
+<!-- RIGHT: relatÛrio selecionado -->
 		<div>
 			<div class="card-soft p-3 mb-3">
 				<div class="d-flex flex-wrap align-items-start justify-content-between gap-2">

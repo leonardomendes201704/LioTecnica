@@ -185,10 +185,16 @@ function loadAll(){
       const processed = state.inbox.filter(x => x.status === "processado" && inPeriod(x.recebidoEm)).length;
       const conv = processed ? Math.round((cands / processed) * 100) : 0;
 
-      $("#kpiVagas").textContent = vagas;
-      $("#kpiCands").textContent = cands;
-      $("#kpiInbox").textContent = inbox;
-      $("#kpiConv").textContent = clamp(conv,0,100) + "%";
+      const kpiVagas = $("#kpiVagas");
+      const kpiCands = $("#kpiCands");
+      const kpiInbox = $("#kpiInbox");
+      const kpiConv = $("#kpiConv");
+      if(!kpiVagas && !kpiCands && !kpiInbox && !kpiConv) return;
+
+      if(kpiVagas) kpiVagas.textContent = vagas;
+      if(kpiCands) kpiCands.textContent = cands;
+      if(kpiInbox) kpiInbox.textContent = inbox;
+      if(kpiConv) kpiConv.textContent = clamp(conv,0,100) + "%";
     }
 
     // ========= Chart (canvas simples sem libs)
