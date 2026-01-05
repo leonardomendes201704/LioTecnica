@@ -767,6 +767,25 @@
   z-index: 1010;
   background: var(--lt-card, #fff) !important;
 }
+.footer-health{
+  font-size: .8rem;
+  color: var(--lt-muted);
+}
+.footer-health .health-label{
+  font-weight: 600;
+  letter-spacing: .2px;
+}
+.footer-health .health-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(12,58,100,.12);
+}
+.footer-health .status-ok{ background: #1db954; }
+.footer-health .status-warn{ background: #f5a524; }
+.footer-health .status-down{ background: #e23b3b; }
+.footer-health .status-unknown{ background: #cbd5e1; }
 
 @media (max-width: 1399.98px){
   .matching-grid{ grid-template-columns: repeat(3, minmax(0,1fr)); }

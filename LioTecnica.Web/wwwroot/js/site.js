@@ -67,8 +67,13 @@
     if (g.__enumDataLoaded && g.__enumData) return g.__enumData;
     if (g.__enumDataPromise) return g.__enumDataPromise;
     const url = g.__enumsUrl || "/api/lookup/enums";
-    g.__enumDataPromise = fetch(url, { headers: { "Accept": "application/json" } })
+    g.__enumDataPromise = fetch(url, { headers: { "Accept": "application/json" }, credentials: "same-origin" })
       .then(res => {
+        if (res.status === 401) {
+          const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/Account/Login?returnUrl=${returnUrl}`;
+          throw new Error("Unauthorized");
+        }
         if (!res.ok) throw new Error(`Falha ao buscar enums: ${res.status}`);
         return res.json();
       })
@@ -187,6 +192,11 @@
   let activeCount = 0;
   let shownAt = 0;
   let hideTimer = null;
+  const shouldTrack = (input) => {
+    const url = typeof input === "string" ? input : input?.url;
+    if (!url) return true;
+    return !url.includes("/api/health");
+  };
 
   const setActive = (on) => {
     overlay.classList.toggle("active", on);
@@ -245,12 +255,13 @@
   if (window.fetch) {
     const originalFetch = window.fetch.bind(window);
     window.fetch = (...args) => {
-      begin();
+      const track = shouldTrack(args[0]);
+      if (track) begin();
       return originalFetch(...args).then((res) => {
-        end();
+        if (track) end();
         return res;
       }).catch((err) => {
-        end();
+        if (track) end();
         throw err;
       });
     };
@@ -259,7 +270,8 @@
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function(...args) {
-    this._ltTrack = true;
+    const url = args[1];
+    this._ltTrack = shouldTrack(url);
     return originalOpen.apply(this, args);
   };
   XMLHttpRequest.prototype.send = function(...args) {
@@ -271,4 +283,51 @@
   };
 
   window.LioTecnicaLoading = { begin, end };
+})();
+
+(() => {
+  const root = document.getElementById("footerHealth");
+  if (!root) return;
+
+  const apiDot = root.querySelector('[data-health="api"]');
+  const dbDot = root.querySelector('[data-health="db"]');
+  const url = window.__healthUrl || "/api/health";
+  const statusClasses = ["status-ok", "status-warn", "status-down", "status-unknown"];
+
+  const normalize = (value) => (value ?? "").toString().trim().toLowerCase();
+  const mapStatus = (value) => {
+    const text = normalize(value);
+    if (text === "healthy") return "status-ok";
+    if (text === "degraded") return "status-warn";
+    if (text === "unhealthy") return "status-down";
+    return "status-unknown";
+  };
+
+  const setDot = (dot, status, label) => {
+    if (!dot) return;
+    statusClasses.forEach(cls => dot.classList.remove(cls));
+    dot.classList.add(status);
+    if (label) dot.title = label;
+  };
+
+  const update = async () => {
+    try {
+      const res = await fetch(url, { headers: { "Accept": "application/json" }, credentials: "same-origin" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok && !data) throw new Error(`health ${res.status}`);
+      const apiStatus = data?.status ?? "unknown";
+      setDot(apiDot, mapStatus(apiStatus), `API: ${apiStatus}`);
+
+      const checks = Array.isArray(data?.checks) ? data.checks : [];
+      const dbCheck = checks.find(c => normalize(c?.name) === "database");
+      const dbStatus = dbCheck?.status ?? "unknown";
+      setDot(dbDot, mapStatus(dbStatus), `DB: ${dbStatus}`);
+    } catch (err) {
+      setDot(apiDot, "status-down", "API: down");
+      setDot(dbDot, "status-down", "DB: down");
+    }
+  };
+
+  update();
+  setInterval(update, 30000);
 })();

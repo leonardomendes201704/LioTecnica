@@ -205,19 +205,6 @@ public sealed class DepartmentService : IDepartmentService
             })
             .ToListAsync(ct);
 
-        // Monta label no C# (sem dor de tradução do provider)
-        static string BuildUnitLabel(string code, string name, string? city, string? uf)
-        {
-            city ??= "";
-            uf = (uf ?? "").ToUpperInvariant();
-
-            var suffix = (!string.IsNullOrWhiteSpace(city) || !string.IsNullOrWhiteSpace(uf))
-                ? $" — {city}{(string.IsNullOrWhiteSpace(uf) ? "" : $" - {uf}")}"
-                : "";
-
-            return $"{code} — {name}{suffix}";
-        }
-
         var items = pageRows.Select(r =>
         {
             var location = !string.IsNullOrWhiteSpace(r.UnitName)

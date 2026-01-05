@@ -12,6 +12,18 @@
     <style>
         body { background: #f5f7fb; }
         .login-card { max-width: 420px; }
+        .health-row { font-size: .8rem; color: #6c757d; }
+        .health-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            display: inline-block;
+            box-shadow: 0 0 0 2px rgba(12,58,100,.12);
+        }
+        .status-ok { background: #1db954; }
+        .status-warn { background: #f5a524; }
+        .status-down { background: #e23b3b; }
+        .status-unknown { background: #cbd5e1; }
     </style>
 </head>
 <body class="d-flex align-items-center justify-content-center min-vh-100">
@@ -41,8 +53,60 @@
                 }
                 <button type="submit" class="btn btn-primary w-100">Sign in</button>
             </form>
+            <div class="d-flex align-items-center gap-2 mt-3 health-row" id="loginHealth" aria-live="polite">
+                <span class="fw-semibold">API</span>
+                <span class="health-dot status-unknown" data-health="api" title="API: unknown"></span>
+                <span class="fw-semibold">DB</span>
+                <span class="health-dot status-unknown" data-health="db" title="DB: unknown"></span>
+            </div>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (() => {
+            const root = document.getElementById("loginHealth");
+            if (!root) return;
+            const apiDot = root.querySelector('[data-health="api"]');
+            const dbDot = root.querySelector('[data-health="db"]');
+            const statusClasses = ["status-ok", "status-warn", "status-down", "status-unknown"];
+
+            const normalize = (value) => (value ?? "").toString().trim().toLowerCase();
+            const mapStatus = (value) => {
+                const text = normalize(value);
+                if (text === "healthy") return "status-ok";
+                if (text === "degraded") return "status-warn";
+                if (text === "unhealthy") return "status-down";
+                return "status-unknown";
+            };
+
+            const setDot = (dot, status, label) => {
+                if (!dot) return;
+                statusClasses.forEach(cls => dot.classList.remove(cls));
+                dot.classList.add(status);
+                if (label) dot.title = label;
+            };
+
+            const update = async () => {
+                try {
+                    const res = await fetch("/api/health", { headers: { "Accept": "application/json" }, credentials: "same-origin" });
+                    const data = await res.json().catch(() => null);
+                    if (!res.ok && !data) throw new Error(`health ${res.status}`);
+                    const apiStatus = data?.status ?? "unknown";
+                    setDot(apiDot, mapStatus(apiStatus), `API: ${apiStatus}`);
+
+                    const checks = Array.isArray(data?.checks) ? data.checks : [];
+                    const dbCheck = checks.find(c => normalize(c?.name) === "database");
+                    const dbStatus = dbCheck?.status ?? "unknown";
+                    setDot(dbDot, mapStatus(dbStatus), `DB: ${dbStatus}`);
+                } catch (err) {
+                    setDot(apiDot, "status-down", "API: down");
+                    setDot(dbDot, "status-down", "DB: down");
+                }
+            };
+
+            update();
+            setInterval(update, 30000);
+        })();
+    </script>
 </body>
 </html>

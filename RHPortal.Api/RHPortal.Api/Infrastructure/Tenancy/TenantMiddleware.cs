@@ -22,6 +22,12 @@ public sealed class TenantMiddleware : IMiddleware
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
+        if (context.Request.Path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase))
+        {
+            await next(context);
+            return;
+        }
+
         if (!context.Request.Headers.TryGetValue(TenantHeaderName, out var tenantValues))
         {
             await WriteProblemAsync(

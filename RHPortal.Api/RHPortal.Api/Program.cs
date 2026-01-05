@@ -1,5 +1,7 @@
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -41,6 +43,9 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.OperationFilter<TenantHeaderOperationFilter>();
 });
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database");
 
 // Tenancy
 builder.Services.AddScoped<ITenantContext, TenantContext>();
@@ -199,6 +204,25 @@ app.UseMiddleware<TenantMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var payload = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(entry => new
+            {
+                name = entry.Key,
+                status = entry.Value.Status.ToString(),
+                description = entry.Value.Description
+            })
+        };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+    }
+}).AllowAnonymous();
 
 app.MapControllers();
 app.Run();
