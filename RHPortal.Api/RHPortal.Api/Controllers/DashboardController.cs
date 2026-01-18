@@ -1,0 +1,229 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using RhPortal.Api.Contracts.Dashboard;
+using RhPortal.Api.Domain.Enums;
+using RHPortal.Api.Domain.Enums;
+using RhPortal.Api.Infrastructure.Data;
+
+namespace RhPortal.Api.Controllers;
+
+[ApiController]
+[Route("api/dashboard")]
+public sealed class DashboardController : ControllerBase
+{
+    [HttpGet("kpis")]
+    public async Task<ActionResult<DashboardKpisResponse>> GetKpis(
+        [FromServices] AppDbContext db,
+        CancellationToken ct)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var todayStart = new DateTimeOffset(now.Date, TimeSpan.Zero);
+        var weekStart = now.AddDays(-7);
+
+        var openVagasTask = db.Vagas.AsNoTracking()
+            .CountAsync(v => v.Status == VagaStatus.Aberta, ct);
+
+        var cvsHojeTask = db.Candidatos.AsNoTracking()
+            .CountAsync(c => c.CreatedAtUtc >= todayStart, ct);
+
+        var pendentesTask = db.Candidatos.AsNoTracking()
+            .CountAsync(c => c.LastMatchAtUtc == null && c.LastMatchScore == null, ct);
+
+        var aprovadosTask = db.Candidatos.AsNoTracking()
+            .CountAsync(c => c.Status == CandidatoStatus.Aprovado && c.UpdatedAtUtc >= weekStart, ct);
+
+        await Task.WhenAll(openVagasTask, cvsHojeTask, pendentesTask, aprovadosTask);
+
+        return Ok(new DashboardKpisResponse(
+            openVagasTask.Result,
+            cvsHojeTask.Result,
+            pendentesTask.Result,
+            aprovadosTask.Result
+        ));
+    }
+
+    [HttpGet("recebidos-series")]
+    public async Task<ActionResult<DashboardSeriesResponse>> GetRecebidosSeries(
+        [FromQuery] int days,
+        [FromServices] AppDbContext db,
+        CancellationToken ct)
+    {
+        var safeDays = Math.Clamp(days <= 0 ? 14 : days, 1, 60);
+        var today = DateTimeOffset.UtcNow;
+        var startDate = new DateTimeOffset(today.Date.AddDays(-(safeDays - 1)), TimeSpan.Zero);
+
+        var createdDates = await db.Candidatos.AsNoTracking()
+            .Where(c => c.CreatedAtUtc >= startDate)
+            .Select(c => c.CreatedAtUtc.Date)
+            .ToListAsync(ct);
+
+        var grouped = createdDates
+            .GroupBy(d => d)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var labels = new List<string>(safeDays);
+        var values = new List<int>(safeDays);
+
+        for (var i = 0; i < safeDays; i++)
+        {
+            var day = startDate.Date.AddDays(i);
+            labels.Add(day.ToString("dd/MM"));
+            values.Add(grouped.TryGetValue(day, out var count) ? count : 0);
+        }
+
+        return Ok(new DashboardSeriesResponse(labels, values));
+    }
+
+    [HttpGet("funil")]
+    public async Task<ActionResult<DashboardFunnelResponse>> GetFunnel(
+        [FromServices] AppDbContext db,
+        CancellationToken ct)
+    {
+        var totalTask = db.Candidatos.AsNoTracking().CountAsync(ct);
+        var triagemTask = db.Candidatos.AsNoTracking()
+            .CountAsync(c => c.Status == CandidatoStatus.Triagem, ct);
+        var pendenteTask = db.Candidatos.AsNoTracking()
+            .CountAsync(c => c.Status == CandidatoStatus.Pendente, ct);
+        var aprovadoTask = db.Candidatos.AsNoTracking()
+            .CountAsync(c => c.Status == CandidatoStatus.Aprovado, ct);
+
+        await Task.WhenAll(totalTask, triagemTask, pendenteTask, aprovadoTask);
+
+        return Ok(new DashboardFunnelResponse(
+            totalTask.Result,
+            triagemTask.Result,
+            pendenteTask.Result,
+            aprovadoTask.Result
+        ));
+    }
+
+    [HttpGet("top-matches")]
+    public async Task<ActionResult<IReadOnlyList<DashboardTopMatchResponse>>> GetTopMatches(
+        [FromQuery] int minMatch,
+        [FromQuery] Guid? vagaId,
+        [FromQuery] DateTimeOffset? from,
+        [FromQuery] DateTimeOffset? to,
+        [FromQuery] int take,
+        [FromServices] AppDbContext db,
+        CancellationToken ct)
+    {
+        var safeTake = Math.Clamp(take <= 0 ? 12 : take, 1, 100);
+        var safeMin = Math.Clamp(minMatch, 0, 100);
+
+        var query = db.Candidatos
+            .AsNoTracking()
+            .Include(c => c.Vaga)
+            .Where(c => c.LastMatchScore != null);
+
+        if (safeMin > 0)
+            query = query.Where(c => c.LastMatchScore >= safeMin);
+
+        if (vagaId.HasValue)
+            query = query.Where(c => c.VagaId == vagaId.Value);
+
+        if (from.HasValue)
+            query = query.Where(c => c.LastMatchAtUtc >= from.Value);
+
+        if (to.HasValue)
+            query = query.Where(c => c.LastMatchAtUtc <= to.Value);
+
+        var items = await query
+            .OrderByDescending(c => c.LastMatchScore)
+            .ThenByDescending(c => c.UpdatedAtUtc)
+            .Take(safeTake)
+            .Select(c => new DashboardTopMatchResponse(
+                c.VagaId,
+                c.Vaga != null ? c.Vaga.Titulo : null,
+                c.Vaga != null ? c.Vaga.Codigo : null,
+                c.Id,
+                c.Nome,
+                MapOrigem(c.Fonte),
+                c.LastMatchScore ?? 0,
+                MapEtapa(c.Status)
+            ))
+            .ToListAsync(ct);
+
+        return Ok(items);
+    }
+
+    [HttpGet("open-vagas")]
+    public async Task<ActionResult<IReadOnlyList<DashboardOpenVagaResponse>>> GetOpenVagas(
+        [FromQuery] int take,
+        [FromServices] AppDbContext db,
+        CancellationToken ct)
+    {
+        var safeTake = Math.Clamp(take <= 0 ? 100 : take, 1, 300);
+
+        var items = await db.Vagas.AsNoTracking()
+            .Include(v => v.Area)
+            .Where(v => v.Status == VagaStatus.Aberta)
+            .OrderBy(v => v.Titulo)
+            .Take(safeTake)
+            .Select(v => new DashboardOpenVagaResponse(
+                v.Id,
+                v.Codigo,
+                v.Titulo,
+                v.Area != null ? v.Area.Name : null,
+                v.Modalidade != null ? v.Modalidade.ToString() : null,
+                v.Cidade,
+                v.Uf,
+                v.Senioridade != null ? v.Senioridade.ToString() : null,
+                v.UpdatedAtUtc
+            ))
+            .ToListAsync(ct);
+
+        return Ok(items);
+    }
+
+    [HttpGet("vagas")]
+    public async Task<ActionResult<IReadOnlyList<DashboardVagaLookupResponse>>> GetVagasLookup(
+        [FromServices] AppDbContext db,
+        CancellationToken ct)
+    {
+        var items = await db.Vagas.AsNoTracking()
+            .OrderBy(v => v.Titulo)
+            .Select(v => new DashboardVagaLookupResponse(v.Id, v.Codigo, v.Titulo))
+            .ToListAsync(ct);
+
+        return Ok(items);
+    }
+
+    [HttpGet("areas")]
+    public async Task<ActionResult<IReadOnlyList<DashboardAreaLookupResponse>>> GetAreasLookup(
+        [FromServices] AppDbContext db,
+        CancellationToken ct)
+    {
+        var items = await db.Areas.AsNoTracking()
+            .OrderBy(a => a.Name)
+            .Select(a => new DashboardAreaLookupResponse(a.Id, a.Name))
+            .ToListAsync(ct);
+
+        return Ok(items);
+    }
+
+    private static string MapOrigem(CandidatoFonte fonte)
+    {
+        return fonte switch
+        {
+            CandidatoFonte.Email => "Email",
+            CandidatoFonte.Pasta => "Pasta",
+            CandidatoFonte.LinkedIn => "LinkedIn",
+            CandidatoFonte.Indicacao => "Indicacao",
+            CandidatoFonte.Site => "Site",
+            _ => "Outro"
+        };
+    }
+
+    private static string MapEtapa(CandidatoStatus status)
+    {
+        return status switch
+        {
+            CandidatoStatus.Novo => "Recebido",
+            CandidatoStatus.Triagem => "Triagem",
+            CandidatoStatus.Pendente => "Entrevista",
+            CandidatoStatus.Aprovado => "Aprovado",
+            CandidatoStatus.Reprovado => "Reprovado",
+            _ => "Triagem"
+        };
+    }
+}

@@ -80,30 +80,30 @@
               <div class="d-flex flex-column gap-3 mt-2">
                 <div>
                   <div class="d-flex justify-content-between small">
-                    <span class="text-muted">Recebidos</span><span class="fw-semibold">220</span>
+                    <span class="text-muted">Recebidos</span><span class="fw-semibold" id="funnelRecebidos">0</span>
                   </div>
-                  <div class="progress"><div class="progress-bar" style="width: 100%"></div></div>
+                  <div class="progress"><div class="progress-bar" id="funnelRecebidosBar" style="width: 0%"></div></div>
                 </div>
 
                 <div>
                   <div class="d-flex justify-content-between small">
-                    <span class="text-muted">Triagem</span><span class="fw-semibold">140</span>
+                    <span class="text-muted">Triagem</span><span class="fw-semibold" id="funnelTriagem">0</span>
                   </div>
-                  <div class="progress"><div class="progress-bar" style="width: 64%"></div></div>
+                  <div class="progress"><div class="progress-bar" id="funnelTriagemBar" style="width: 0%"></div></div>
                 </div>
 
                 <div>
                   <div class="d-flex justify-content-between small">
-                    <span class="text-muted">Entrevista</span><span class="fw-semibold">58</span>
+                    <span class="text-muted">Entrevista</span><span class="fw-semibold" id="funnelEntrevista">0</span>
                   </div>
-                  <div class="progress"><div class="progress-bar" style="width: 26%"></div></div>
+                  <div class="progress"><div class="progress-bar" id="funnelEntrevistaBar" style="width: 0%"></div></div>
                 </div>
 
                 <div>
                   <div class="d-flex justify-content-between small">
-                    <span class="text-muted">Aprovados</span><span class="fw-semibold">18</span>
+                    <span class="text-muted">Aprovados</span><span class="fw-semibold" id="funnelAprovados">0</span>
                   </div>
-                  <div class="progress"><div class="progress-bar" style="width: 8%"></div></div>
+                  <div class="progress"><div class="progress-bar" id="funnelAprovadosBar" style="width: 0%"></div></div>
                 </div>
               </div>
 
@@ -226,9 +226,6 @@
   <!-- Bootstrap JS -->
 
 @section Scripts {
-  <script>
-    window.__seedData = @Html.Raw(Model.SeedJson);
-  </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="~/js/views/dashboard.js" asp-append-version="true"></script>
 }

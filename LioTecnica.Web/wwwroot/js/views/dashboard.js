@@ -1,6 +1,5 @@
-﻿const seed = window.__seedData || {};
-const EMPTY_TEXT = "-";
-const AREAS_STORE_KEY = "lt_rh_areas_v1";
+﻿const EMPTY_TEXT = "-";
+const DASHBOARD_API_BASE = "/Dashboard/_api";
 
     function setText(root, role, value){
       if(!root) return;
@@ -8,6 +7,31 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
       if(!el) return;
       el.textContent = (value ?? EMPTY_TEXT);
     }
+
+    async function apiFetchJson(url, options = {}){
+      const opts = { ...options };
+      opts.headers = { "Accept": "application/json", ...(opts.headers || {}) };
+      const res = await fetch(url, opts);
+      if(!res.ok){
+        const message = await res.text();
+        throw new Error(message || `Falha na API (${res.status}).`);
+      }
+      if(res.status === 204) return null;
+      return res.json();
+    }
+
+    function enumFirstCode(key, fallback){
+      const list = getEnumOptions(key);
+      return list.length ? list[0].code : fallback;
+    }
+
+    let VAGA_ALL = enumFirstCode("vagaFilterSimple", "all");
+
+    const state = {
+      vagas: [],
+      areas: [],
+      chart: null
+    };
 
     function formatLocal(vaga){
       const parts = [vaga?.cidade, vaga?.uf].filter(Boolean);
@@ -20,47 +44,10 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
       return Number.isNaN(d.getTime()) ? EMPTY_TEXT : d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
     }
 
-    function loadAreas(){
-      try{
-        const raw = localStorage.getItem(AREAS_STORE_KEY);
-        if(!raw) return Array.isArray(seed.areas) ? seed.areas : [];
-        const data = JSON.parse(raw);
-        if(data && Array.isArray(data.areas)) return data.areas;
-        return Array.isArray(seed.areas) ? seed.areas : [];
-      }catch{
-        return Array.isArray(seed.areas) ? seed.areas : [];
-      }
-    }
-
-    function getAreaOptions(){
-      const areas = loadAreas();
-      const set = new Set(areas.map(a => a.nome).filter(Boolean));
-      return Array.from(set).sort((a,b)=>a.localeCompare(b, "pt-BR"));
-    }
-
-    function renderQuickAreaOptions(){
-      const sel = $("#quickArea");
-      if(!sel) return;
-      sel.replaceChildren();
-      sel.appendChild(buildOption("", "Selecionar area"));
-      getAreaOptions().forEach(a => sel.appendChild(buildOption(a, a)));
-    }
-
-// ========= Top matches
-    const mockRows = Array.isArray(seed.dashboardRows) ? seed.dashboardRows : [];
-
-    function enumFirstCode(key, fallback){
-      const list = getEnumOptions(key);
-      return list.length ? list[0].code : fallback;
-    }
-
-    let VAGA_ALL = enumFirstCode("vagaFilterSimple", "all");
-
     function badgeEtapa(etapa){
       const map = {
         "Recebido": "secondary",
         "Triagem": "primary",
-        "Em anÃ¡lise": "info",
         "Entrevista": "warning",
         "Aprovado": "success",
         "Reprovado": "danger"
@@ -69,164 +56,93 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
       return `<span class="badge text-bg-${bs} rounded-pill">${etapa}</span>`;
     }
 
+    function renderQuickAreaOptions(){
+      const sel = $("#quickArea");
+      if(!sel) return;
+      sel.replaceChildren();
+      sel.appendChild(buildOption("", "Selecionar area"));
+      state.areas.forEach(a => sel.appendChild(buildOption(a.id, a.nome)));
+    }
+
     function renderVagaFilterOptions(){
       const sel = $("#fVaga");
       if(!sel) return;
-      const vagas = Array.isArray(seed.vagas) ? seed.vagas : [];
       const current = sel.value || VAGA_ALL;
 
       sel.replaceChildren();
       getEnumOptions("vagaFilterSimple").forEach(opt => {
         sel.appendChild(buildOption(opt.code, opt.text, opt.code === current));
       });
-      vagas
+      state.vagas
         .slice()
         .sort((a,b)=> (a.titulo||"").localeCompare(b.titulo||""))
         .forEach(v => {
           sel.appendChild(buildOption(v.id, `${v.titulo || "-"} (${v.codigo || "-"})`, v.id === current));
         });
 
-      sel.value = (current === VAGA_ALL || vagas.some(v => v.id === current)) ? current : VAGA_ALL;
+      sel.value = (current === VAGA_ALL || state.vagas.some(v => v.id === current)) ? current : VAGA_ALL;
     }
 
-    function refreshEnumDefaults(){
-      VAGA_ALL = enumFirstCode("vagaFilterSimple", "all");
+    async function loadAreas(){
+      state.areas = await apiFetchJson(`${DASHBOARD_API_BASE}/areas`, { method: "GET" }) || [];
+      renderQuickAreaOptions();
     }
 
-    function renderTable(minMatch=0){
-      const body = $("#tblBody");
-      body.innerHTML = "";
-
-      mockRows
-        .filter(x => x.match >= minMatch)
-        .forEach(x => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>
-              <div class="fw-semibold">${x.vaga}</div>
-              <div class="text-muted small">Requisitos: palavras-chave + pesos</div>
-            </td>
-            <td>
-              <div class="fw-semibold">${x.cand}</div>
-              <div class="text-muted small">CV: PDF • 2 páginas</div>
-            </td>
-            <td>
-              <span class="badge-soft"><i class="bi ${x.origem === "Email" ? "bi-envelope" : "bi-folder2"} me-1"></i>${x.origem}</span>
-            </td>
-            <td>
-              <div class="d-flex align-items-center gap-2">
-                <div class="progress flex-grow-1"><div class="progress-bar" style="width:${x.match}%"></div></div>
-                <div class="fw-bold" style="min-width:44px;text-align:right;">${x.match}%</div>
-              </div>
-              <div class="text-muted small mt-1">Encontrou: 9 termos • Faltou: 1 obrigatório</div>
-            </td>
-            <td>${badgeEtapa(x.etapa)}</td>
-            <td class="text-end">
-              <button class="btn btn-ghost btn-sm" type="button"><i class="bi bi-eye me-1"></i>Ver</button>
-              <button class="btn btn-brand btn-sm" type="button"><i class="bi bi-check2 me-1"></i>Triar</button>
-            </td>
-          `;
-          body.appendChild(tr);
-        });
-
-      if(!body.children.length){
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="6" class="text-center text-muted py-4">Nenhum registro atende o filtro atual.</td>`;
-        body.appendChild(tr);
-      }
+    async function loadVagasLookup(){
+      state.vagas = await apiFetchJson(`${DASHBOARD_API_BASE}/vagas`, { method: "GET" }) || [];
+      renderVagaFilterOptions();
     }
 
-
-
-    function getOpenVagas(){
-      const vagas = Array.isArray(seed.vagas) ? seed.vagas : [];
-      return vagas.filter(v => String(v.status || "").toLowerCase() === "aberta");
+    async function updateDashboardKpis(){
+      const data = await apiFetchJson(`${DASHBOARD_API_BASE}/kpis`, { method: "GET" });
+      if(!data) return;
+      const elVagas = $("#kpiVagas");
+      const elCvs = $("#kpiCvsHoje");
+      const elPend = $("#kpiPendentes");
+      const elApr = $("#kpiAprovados");
+      if(elVagas) elVagas.textContent = data.openVagas ?? 0;
+      if(elCvs) elCvs.textContent = data.cvsHoje ?? 0;
+      if(elPend) elPend.textContent = data.pendentesMatch ?? 0;
+      if(elApr) elApr.textContent = data.aprovados7Dias ?? 0;
     }
 
-    function goToVagaDetail(vagaId){
-      if(!vagaId) return;
-      const url = new URL("/Vagas", window.location.origin);
-      url.searchParams.set("vagaId", vagaId);
-      url.searchParams.set("open", "detail");
-      window.location.href = url.toString();
+    async function updateFunnel(){
+      const data = await apiFetchJson(`${DASHBOARD_API_BASE}/funil`, { method: "GET" });
+      if(!data) return;
+
+      const recebidos = data.recebidos ?? 0;
+      const triagem = data.triagem ?? 0;
+      const entrevista = data.entrevista ?? 0;
+      const aprovados = data.aprovados ?? 0;
+
+      $("#funnelRecebidos").textContent = recebidos;
+      $("#funnelTriagem").textContent = triagem;
+      $("#funnelEntrevista").textContent = entrevista;
+      $("#funnelAprovados").textContent = aprovados;
+
+      const base = recebidos > 0 ? recebidos : 1;
+      $("#funnelRecebidosBar").style.width = "100%";
+      $("#funnelTriagemBar").style.width = `${Math.round((triagem/base) * 100)}%`;
+      $("#funnelEntrevistaBar").style.width = `${Math.round((entrevista/base) * 100)}%`;
+      $("#funnelAprovadosBar").style.width = `${Math.round((aprovados/base) * 100)}%`;
     }
 
-    function renderOpenVagasModal(){
-      const tbody = $("#tblVagasAbertas");
-      const count = $("#openVagaCount");
-      if(!tbody) return;
-      tbody.replaceChildren();
-      const rows = getOpenVagas();
-      if(count) count.textContent = rows.length;
-
-      if(!rows.length){
-        const empty = cloneTemplate("tpl-vaga-aberta-empty-row");
-        if(empty) tbody.appendChild(empty);
+    function buildChart(labels, values){
+      const ctx = $("#chartRecebidos");
+      if(state.chart){
+        state.chart.data.labels = labels;
+        state.chart.data.datasets[0].data = values;
+        state.chart.update();
         return;
       }
 
-      rows
-        .slice()
-        .sort((a,b)=> (a.titulo||"").localeCompare(b.titulo||""))
-        .forEach(v => {
-          const tr = cloneTemplate("tpl-vaga-aberta-row");
-          if(!tr) return;
-          setText(tr, "vaga-code", v.codigo || EMPTY_TEXT);
-          setText(tr, "vaga-title", v.titulo || EMPTY_TEXT);
-          setText(tr, "vaga-desc", v.senioridade || EMPTY_TEXT);
-          setText(tr, "vaga-area", v.area || EMPTY_TEXT);
-          setText(tr, "vaga-modalidade", v.modalidade || EMPTY_TEXT);
-          setText(tr, "vaga-local", formatLocal(v));
-          setText(tr, "vaga-updated", formatDate(v.updatedAt));
-          const btn = tr.querySelector('[data-act="open-vaga"]');
-          if(btn) btn.addEventListener("click", () => goToVagaDetail(v.id));
-          tbody.appendChild(tr);
-        });
-    }
-
-
-    function updateDashboardKpis(){
-      const openCount = getOpenVagas().length;
-      const el = $("#kpiVagas");
-      if(el) el.textContent = openCount;
-    }
-
-    function wireOpenVagasModal(){
-      const modal = $("#modalVagasAbertas");
-      if(!modal) return;
-      modal.addEventListener("show.bs.modal", renderOpenVagasModal);
-    }
-
-    function wireKpiAccessibility(){
-      document.addEventListener("keydown", (ev) => {
-        if(ev.key !== "Enter" && ev.key !== " ") return;
-        const card = ev.target.closest("[data-modal-target]");
-        if(!card) return;
-        const target = card.dataset.modalTarget;
-        if(!target) return;
-        ev.preventDefault();
-        const modal = document.querySelector(target);
-        if(modal) bootstrap.Modal.getOrCreateInstance(modal).show();
-      });
-    }
-
-    // ========= Chart
-    function buildChart(){
-      const ctx = $("#chartRecebidos");
-      const labels = Array.from({length: 14}, (_,i)=> {
-        const d = new Date(); d.setDate(d.getDate() - (13-i));
-        return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" });
-      });
-
-      const data = Array.isArray(seed.dashboardSeries) && seed.dashboardSeries.length ? seed.dashboardSeries : [8,12,10,14,18,20,16,22,25,19,21,28,24,30];
-
-      new Chart(ctx, {
+      state.chart = new Chart(ctx, {
         type: "line",
         data: {
           labels,
           datasets: [{
             label: "CVs recebidos",
-            data,
+            data: values,
             tension: 0.35,
             fill: true
           }]
@@ -245,18 +161,149 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
       });
     }
 
+    async function updateSeries(days){
+      const data = await apiFetchJson(`${DASHBOARD_API_BASE}/recebidos-series?days=${days}`, { method: "GET" });
+      const labels = Array.isArray(data?.labels) ? data.labels : [];
+      const values = Array.isArray(data?.values) ? data.values : [];
+      buildChart(labels, values);
+    }
+
+    async function renderTable(){
+      const body = $("#tblBody");
+      body.innerHTML = "";
+
+      const minMatch = parseInt($("#fMatchMin").value, 10) || 0;
+      const vagaId = $("#fVaga").value;
+      const fromRaw = $("#fDe").value;
+      const toRaw = $("#fAte").value;
+
+      const params = new URLSearchParams();
+      params.set("minMatch", minMatch.toString());
+      params.set("take", "15");
+      if(vagaId && vagaId !== VAGA_ALL) params.set("vagaId", vagaId);
+      if(fromRaw){
+        const from = new Date(`${fromRaw}T00:00:00Z`);
+        if(!Number.isNaN(from.getTime())) params.set("from", from.toISOString());
+      }
+      if(toRaw){
+        const to = new Date(`${toRaw}T23:59:59Z`);
+        if(!Number.isNaN(to.getTime())) params.set("to", to.toISOString());
+      }
+
+      const rows = await apiFetchJson(`${DASHBOARD_API_BASE}/top-matches?${params.toString()}`, { method: "GET" });
+
+      (Array.isArray(rows) ? rows : []).forEach(x => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>
+            <div class="fw-semibold">${x.vagaTitulo || "-"}</div>
+            <div class="text-muted small">Codigo: ${x.vagaCodigo || "-"}</div>
+          </td>
+          <td>
+            <div class="fw-semibold">${x.candidatoNome || "-"}</div>
+            <div class="text-muted small">ID: ${x.candidatoId || "-"}</div>
+          </td>
+          <td>
+            <span class="badge-soft"><i class="bi ${x.origem === "Email" ? "bi-envelope" : "bi-folder2"} me-1"></i>${x.origem || "-"}</span>
+          </td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1"><div class="progress-bar" style="width:${x.matchScore || 0}%"></div></div>
+              <div class="fw-bold" style="min-width:44px;text-align:right;">${x.matchScore || 0}%</div>
+            </div>
+            <div class="text-muted small mt-1">Match calculado pela API.</div>
+          </td>
+          <td>${badgeEtapa(x.etapa || "Triagem")}</td>
+          <td class="text-end">
+            <button class="btn btn-ghost btn-sm" type="button" data-act="open-vaga" data-id="${x.vagaId}"><i class="bi bi-box-arrow-up-right me-1"></i>Ver vaga</button>
+          </td>
+        `;
+        const btn = tr.querySelector('[data-act="open-vaga"]');
+        if(btn) btn.addEventListener("click", () => goToVagaDetail(x.vagaId));
+        body.appendChild(tr);
+      });
+
+      if(!body.children.length){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="6" class="text-center text-muted py-4">Nenhum registro atende o filtro atual.</td>`;
+        body.appendChild(tr);
+      }
+    }
+
+    async function renderOpenVagasModal(){
+      const tbody = $("#tblVagasAbertas");
+      const count = $("#openVagaCount");
+      if(!tbody) return;
+      tbody.replaceChildren();
+
+      const rows = await apiFetchJson(`${DASHBOARD_API_BASE}/open-vagas?take=200`, { method: "GET" });
+      const list = Array.isArray(rows) ? rows : [];
+      if(count) count.textContent = list.length;
+
+      if(!list.length){
+        const empty = cloneTemplate("tpl-vaga-aberta-empty-row");
+        if(empty) tbody.appendChild(empty);
+        return;
+      }
+
+      list
+        .slice()
+        .sort((a,b)=> (a.titulo||"").localeCompare(b.titulo||""))
+        .forEach(v => {
+          const tr = cloneTemplate("tpl-vaga-aberta-row");
+          if(!tr) return;
+          setText(tr, "vaga-code", v.codigo || EMPTY_TEXT);
+          setText(tr, "vaga-title", v.titulo || EMPTY_TEXT);
+          setText(tr, "vaga-desc", v.senioridade || EMPTY_TEXT);
+          setText(tr, "vaga-area", v.area || EMPTY_TEXT);
+          setText(tr, "vaga-modalidade", v.modalidade || EMPTY_TEXT);
+          setText(tr, "vaga-local", formatLocal(v));
+          setText(tr, "vaga-updated", formatDate(v.updatedAtUtc));
+          const btn = tr.querySelector('[data-act="open-vaga"]');
+          if(btn) btn.addEventListener("click", () => goToVagaDetail(v.id));
+          tbody.appendChild(tr);
+        });
+    }
+
+    function goToVagaDetail(vagaId){
+      if(!vagaId) return;
+      const url = new URL("/Vagas", window.location.origin);
+      url.searchParams.set("vagaId", vagaId);
+      url.searchParams.set("open", "detail");
+      window.location.href = url.toString();
+    }
+
+    function wireOpenVagasModal(){
+      const modal = $("#modalVagasAbertas");
+      if(!modal) return;
+      modal.addEventListener("show.bs.modal", () => { void renderOpenVagasModal(); });
+    }
+
+    function wireKpiAccessibility(){
+      document.addEventListener("keydown", (ev) => {
+        if(ev.key !== "Enter" && ev.key !== " ") return;
+        const card = ev.target.closest("[data-modal-target]");
+        if(!card) return;
+        const target = card.dataset.modalTarget;
+        if(!target) return;
+        ev.preventDefault();
+        const modal = document.querySelector(target);
+        if(modal) bootstrap.Modal.getOrCreateInstance(modal).show();
+      });
+    }
+
     // ========= Menu behavior (mock navigation)
     const menuMeta = {
-      dashboard: { title: "Dashboard", sub: "Visão geral do dia: vagas, recebimentos e triagem." },
-      vagas: { title: "Vagas", sub: "Criação, requisitos, pesos e controle total do funil." },
-      candidatos: { title: "Candidatos", sub: "Base de currí­culos e histórico por candidato." },
+      dashboard: { title: "Dashboard", sub: "Visao geral do dia: vagas, recebimentos e triagem." },
+      vagas: { title: "Vagas", sub: "Criacao, requisitos, pesos e controle total do funil." },
+      candidatos: { title: "Candidatos", sub: "Base de curriculos e historico por candidato." },
       triagem: { title: "Triagem", sub: "Aprovar/reprovar e mover etapas com auditoria." },
-      matching: { title: "Matching", sub: "Ajustes de palavras-chave, pesos e critérios obrigatórios." },
-      entrada: { title: "Entrada (Email/Pasta)", sub: "Monitoramento de anexos e ingestão automática." },
-      rm: { title: "RM Labore", sub: "Integração (fase 2): sincronizar vagas e requisitos." },
-      relatorios: { title: "Relatórios", sub: "KPIs, produtividade do RH e exportações." },
-      usuarios: { title: "Usuários & Perfis", sub: "Perfis (Admin/RH/Gestor) e permissões." },
-      config: { title: "Configurações", sub: "Parâmetros do sistema, retention LGPD e integrações." }
+      matching: { title: "Matching", sub: "Ajustes de palavras-chave, pesos e criterios obrigatorios." },
+      entrada: { title: "Entrada (Email/Pasta)", sub: "Monitoramento de anexos e ingestao automatica." },
+      rm: { title: "RM Labore", sub: "Integracao (fase 2): sincronizar vagas e requisitos." },
+      relatorios: { title: "Relatorios", sub: "KPIs, produtividade do RH e exportacoes." },
+      usuarios: { title: "Usuarios & Perfis", sub: "Perfis (Admin/RH/Gestor) e permissoes." },
+      config: { title: "Configuracoes", sub: "Parametros do sistema, retention LGPD e integracoes." }
     };
 
     function setActiveMenu(key){
@@ -265,7 +312,6 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
       $("#pageSub").textContent = meta.sub;
 
       $$(".sidebar .nav-link").forEach(a => a.classList.toggle("active", a.dataset.menu === key));
-      // mobile list
       $$("#offcanvasSidebar [data-menu]").forEach(a => {
         a.classList.toggle("fw-semibold", a.dataset.menu === key);
       });
@@ -280,7 +326,6 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
         ev.preventDefault();
         setActiveMenu(a.dataset.menu);
 
-        // auto-close mobile sidebar
         const off = bootstrap.Offcanvas.getInstance($("#offcanvasSidebar"));
         if(off) off.hide();
       };
@@ -298,30 +343,32 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
         label.textContent = range.value + "%";
       });
 
-      $("#btnApplyFilters").addEventListener("click", () => {
-        const min = parseInt(range.value, 10) || 0;
-        renderTable(min);
+      $("#btnApplyFilters").addEventListener("click", async () => {
+        await renderTable();
         bootstrap.Offcanvas.getOrCreateInstance($("#drawerFilters")).hide();
       });
 
-      $("#btnResetFilters").addEventListener("click", () => {
+      $("#btnResetFilters").addEventListener("click", async () => {
         range.value = 70;
         label.textContent = "70%";
         $("#fVaga").value = VAGA_ALL;
         $("#fDe").value = "";
         $("#fAte").value = "";
-        renderTable(0);
+        await renderTable();
       });
     }
 
     // ========= Quick actions
     function wireQuickActions(){
       $("#btnMockCreateVaga").addEventListener("click", () => {
-        // mock feedback
-        alert("Vaga salva. No backend: POST /vagas + requisitos.");
+        alert("Use a tela de Vagas para criar uma nova vaga.");
       });
       const drawer = $("#drawerQuick");
       if(drawer) drawer.addEventListener("show.bs.offcanvas", renderQuickAreaOptions);
+    }
+
+    function refreshEnumDefaults(){
+      VAGA_ALL = enumFirstCode("vagaFilterSimple", "all");
     }
 
     // ========= Init
@@ -330,19 +377,26 @@ const AREAS_STORE_KEY = "lt_rh_areas_v1";
       refreshEnumDefaults();
       applyEnumSelects();
 
-      renderVagaFilterOptions();
-      renderQuickAreaOptions();
       wireMenus();
       wireFilters();
       wireQuickActions();
       wireOpenVagasModal();
       wireKpiAccessibility();
-      updateDashboardKpis();
 
-      renderTable(0);
-      buildChart();
+      try{
+        await Promise.all([
+          loadAreas(),
+          loadVagasLookup(),
+          updateDashboardKpis(),
+          updateFunnel(),
+          updateSeries(14)
+        ]);
+        await renderTable();
+      }catch(err){
+        console.error(err);
+        toast("Falha ao carregar dados do dashboard.");
+      }
 
       const saved = localStorage.getItem("rh_active_menu") || "dashboard";
       setActiveMenu(saved);
     })();
-
