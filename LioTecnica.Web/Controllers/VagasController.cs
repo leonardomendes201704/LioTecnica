@@ -2,7 +2,6 @@ using System.Text.Json;
 using LioTecnica.Web.Helpers;
 using LioTecnica.Web.Infrastructure.ApiClients;
 using LioTecnica.Web.Infrastructure.Security;
-using LioTecnica.Web.Services;
 using LioTecnica.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,10 +20,9 @@ public class VagasController : Controller
 
     public IActionResult Index()
     {
-        var seed = MockDataService.BuildSeedBundle();
         var model = new PageSeedViewModel
         {
-            SeedJson = SeedJsonHelper.ToJson(seed)
+            SeedJson = "{}"
         };
         return View(model);
     }

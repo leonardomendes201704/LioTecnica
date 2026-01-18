@@ -260,23 +260,32 @@ function enumFirstCode(key, fallback){
     }
 
     function loadReqCategorias(){
-      const seed = window.__seedData || {};
-      return Array.isArray(seed.requisitoCategorias) ? seed.requisitoCategorias : [];
+      return getEnumOptions("requisitoCategoria");
     }
 
     function listReqCategorias(){
-      const list = loadReqCategorias().map(c => c.nome).filter(Boolean);
+      const base = loadReqCategorias();
+      const map = new Map(base.map(opt => [NORMALIZE_ENUM(opt.code), opt]));
       const fromVagas = state.vagas
         .flatMap(v => (v.requisitos || []).map(r => r.categoria))
         .filter(Boolean);
-      const set = new Set([...list, ...fromVagas]);
-      return Array.from(set).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+      fromVagas.forEach(cat => {
+        const key = NORMALIZE_ENUM(cat);
+        if(!map.has(key)){
+          map.set(key, { code: cat, text: cat });
+        }
+      });
+      return Array.from(map.values()).sort((a,b)=>a.text.localeCompare(b.text,"pt-BR"));
     }
 
     function getDefaultCategoria(){
       const list = listReqCategorias();
-      if(list.includes("Competencia")) return "Competencia";
-      return list.length ? list[0] : "Competencia";
+      const preferred = list.find(c => NORMALIZE_ENUM(c.code) === "competencia");
+      return preferred ? preferred.code : (list[0]?.code || "competencia");
+    }
+
+    function getCategoriaText(code){
+      return getEnumText("requisitoCategoria", code, code || EMPTY_TEXT);
     }
 
     function renderReqCategoriaOptions(selected){
@@ -285,8 +294,8 @@ function enumFirstCode(key, fallback){
       select.replaceChildren();
       select.appendChild(buildOption("", "Selecionar categoria", !selected));
       const list = listReqCategorias();
-      list.forEach(c => select.appendChild(buildOption(c, c, c === selected)));
-      if(selected && !list.includes(selected)){
+      list.forEach(c => select.appendChild(buildOption(c.code, c.text, c.code === selected)));
+      if(selected && !list.some(c => c.code === selected)){
         select.appendChild(buildOption(selected, selected, true));
       }
       if(selected) select.value = selected;
@@ -323,17 +332,18 @@ function mapApiVagaToState(v) {
     const hasDetail = Array.isArray(v.requisitos) || Array.isArray(v.beneficios) || Array.isArray(v.etapas) || Array.isArray(v.perguntasTriagem);
     const matchMinimo = Number.isFinite(+v.matchMinimoPercentual) ? +v.matchMinimoPercentual : 0;
 
-    const requisitosDetalhados = requisitosRaw.map(r => ({
-      id: r.id,
-      nome: r.nome ?? "",
-      peso: r.peso ?? DEFAULT_PESO,
-      obrigatorio: !!r.obrigatorio,
-      anos: r.anosMinimos ?? "",
-      nivel: r.nivel ?? DEFAULT_REQ_NIVEL,
-      avaliacao: r.avaliacao ?? DEFAULT_REQ_AVALIACAO,
-      sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
-      obs: r.observacoes ?? ""
-    }));
+      const requisitosDetalhados = requisitosRaw.map(r => ({
+        id: r.id,
+        categoria: r.categoria ?? getDefaultCategoria(),
+        nome: r.nome ?? "",
+        peso: r.peso ?? DEFAULT_PESO,
+        obrigatorio: !!r.obrigatorio,
+        anos: r.anosMinimos ?? "",
+        nivel: r.nivel ?? DEFAULT_REQ_NIVEL,
+        avaliacao: r.avaliacao ?? DEFAULT_REQ_AVALIACAO,
+        sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
+        obs: r.observacoes ?? ""
+      }));
 
     return {
         id: v.id,
@@ -374,15 +384,15 @@ function mapApiVagaToState(v) {
 
         requisitosTotal: Number.isFinite(+v.requisitosTotal) ? +v.requisitosTotal : requisitosRaw.length,
         requisitosObrigatorios: Number.isFinite(+v.requisitosObrigatorios) ? +v.requisitosObrigatorios : requisitosRaw.filter(r => r.obrigatorio).length,
-        requisitos: requisitosRaw.map(r => ({
-          id: r.id,
-          categoria: "",
-          termo: r.nome ?? "",
-          peso: r.peso ?? DEFAULT_PESO,
-          obrigatorio: !!r.obrigatorio,
-          sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
-          obs: r.observacoes ?? ""
-        })),
+          requisitos: requisitosRaw.map(r => ({
+            id: r.id,
+            categoria: r.categoria ?? getDefaultCategoria(),
+            termo: r.nome ?? "",
+            peso: r.peso ?? DEFAULT_PESO,
+            obrigatorio: !!r.obrigatorio,
+            sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
+            obs: r.observacoes ?? ""
+          })),
 
         weights: v.weights || { competencia:40, experiencia:30, formacao:15, localidade:15 },
         meta: {
@@ -844,7 +854,8 @@ function fmtStatus(s){
 
       const q = ($("#detailHost #reqSearch")?.value || "").trim().toLowerCase();
       const filtered = !q ? reqs : reqs.filter(r => {
-        const blob = [r.categoria, r.termo, (r.sinonimos||[]).join(" "), r.obs].join(" ").toLowerCase();
+        const categoriaText = getCategoriaText(r.categoria);
+        const blob = [categoriaText, r.termo, (r.sinonimos||[]).join(" "), r.obs].join(" ").toLowerCase();
         return blob.includes(q);
       });
 
@@ -864,7 +875,7 @@ function fmtStatus(s){
           toggleInput.dataset.rid = r.id;
         }
 
-        setText(tr, "req-categoria", r.categoria);
+        setText(tr, "req-categoria", getCategoriaText(r.categoria));
         setText(tr, "req-termo", r.termo);
         setText(tr, "req-obs", r.obs || EMPTY_TEXT);
         setText(tr, "req-peso", formatPeso(r.peso));
@@ -1407,6 +1418,7 @@ function fmtStatus(s){
         .filter(r => (r.nome || "").trim())
         .map((r, idx) => ({
           ordem: idx + 1,
+          categoria: emptyToNull(r.categoria) || getDefaultCategoria(),
           nome: r.nome.trim(),
           peso: emptyToNull(r.peso) || DEFAULT_PESO,
           obrigatorio: !!r.obrigatorio,
@@ -1440,6 +1452,10 @@ function fmtStatus(s){
           opcoesRaw: isMultipleChoiceQuestion(p.tipo) ? joinTagsRaw(p.opcoes) : null
         }));
 
+      const currentId = $("#vagaId").value || null;
+      const current = currentId ? findVaga(currentId) : null;
+      const weights = current?.weights || { competencia:40, experiencia:30, formacao:15, localidade:15 };
+
       const payload = {
         titulo,
         departmentId,
@@ -1452,6 +1468,7 @@ function fmtStatus(s){
         quantidadeVagas,
         tipoContratacao: emptyToNull(getValue("vagaTipoContratacao")),
         matchMinimoPercentual,
+        weights,
         descricaoInterna: emptyToNull(getValue("vagaDescricao")),
         codigoInterno: emptyToNull(getValue("vagaCodigoInterno")),
         codigoCbo: emptyToNull(getValue("vagaCbo")),
@@ -1552,19 +1569,20 @@ function fmtStatus(s){
       const uf = emptyToNull(local.uf || v.uf);
       const ufCode = uf ? uf.toUpperCase().slice(0, 2) : null;
 
-      return {
-        titulo: v.titulo,
-        departmentId,
-        areaId,
-        status,
+        return {
+          titulo: v.titulo,
+          departmentId,
+          areaId,
+          status,
         codigo: emptyToNull(v.codigo),
         areaTime: emptyToNull(meta.areaTime),
         modalidade: emptyToNull(v.modalidade),
         senioridade: emptyToNull(v.senioridade),
         quantidadeVagas: parseIntOrNull(meta.quantidade) ?? v.quantidadeVagas ?? 1,
         tipoContratacao: emptyToNull(meta.tipoContratacao),
-        matchMinimoPercentual: Number.isFinite(+v.threshold) ? +v.threshold : (v.matchMinimoPercentual ?? 0),
-        descricaoInterna: emptyToNull(v.descricao),
+          matchMinimoPercentual: Number.isFinite(+v.threshold) ? +v.threshold : (v.matchMinimoPercentual ?? 0),
+          weights: v.weights || { competencia:40, experiencia:30, formacao:15, localidade:15 },
+          descricaoInterna: emptyToNull(v.descricao),
         codigoInterno: emptyToNull(meta.codigoInterno),
         codigoCbo: emptyToNull(meta.cbo),
         motivoAbertura: emptyToNull(meta.motivoAbertura),
@@ -1638,17 +1656,18 @@ function fmtStatus(s){
           obrigatorio: !!b.obrigatorio,
           observacoes: emptyToNull(b.obs)
         })),
-        requisitos: (requisitosExtras.requisitosDetalhados || []).map((r, idx) => ({
-          ordem: idx + 1,
-          nome: (r.nome || "").trim(),
-          peso: emptyToNull(r.peso) || DEFAULT_PESO,
-          obrigatorio: !!r.obrigatorio,
-          anosMinimos: parseIntOrNull(r.anos),
-          nivel: emptyToNull(r.nivel),
-          avaliacao: emptyToNull(r.avaliacao),
-          sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
-          observacoes: emptyToNull(r.obs)
-        })),
+          requisitos: (v.requisitos || []).map((r, idx) => ({
+            ordem: idx + 1,
+            categoria: emptyToNull(r.categoria) || getDefaultCategoria(),
+            nome: (r.termo || r.nome || "").trim(),
+            peso: emptyToNull(r.peso) || DEFAULT_PESO,
+            obrigatorio: !!r.obrigatorio,
+            anosMinimos: parseIntOrNull(r.anos),
+            nivel: emptyToNull(r.nivel),
+            avaliacao: emptyToNull(r.avaliacao),
+            sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : [],
+            observacoes: emptyToNull(r.obs)
+          })),
         etapas: (processo.etapas || []).map((e, idx) => ({
           ordem: idx + 1,
           nome: (e.nome || "").trim(),
@@ -1704,6 +1723,32 @@ function fmtStatus(s){
         throw new Error(msg || `Falha ao atualizar vaga (${res.status}).`);
       }
       return await readJsonSafe(res);
+    }
+
+    async function persistVagaChange(v, successMessage){
+      const payload = buildVagaPayloadFromState(v);
+      if(!payload){
+        toast("Nao foi possivel salvar as alteracoes.");
+        return;
+      }
+
+      try{
+        const data = await updateVaga(v.id, payload);
+        if(data){
+          const mapped = mapApiVagaToState(data);
+          upsertVagaInState(mapped);
+          state.selectedId = mapped.id;
+        }
+        if(successMessage) toast(successMessage);
+      }catch(e){
+        console.error("Falha ao persistir vaga:", e);
+        toast("Falha ao salvar alteracoes.");
+        await syncVagasFromApi();
+        renderAreaFilter();
+        updateKpis();
+        renderList();
+        renderDetail();
+      }
     }
 
     async function upsertVagaFromModal(){
@@ -1850,7 +1895,7 @@ Isso remove tambem os requisitos.`);
       modal.show();
     }
 
-    function saveReqFromModal(){
+    async function saveReqFromModal(){
       const vagaId = $("#btnSaveReq").dataset.vagaId;
       const v = findVaga(vagaId);
       if(!v) return;
@@ -1871,6 +1916,7 @@ Isso remove tambem os requisitos.`);
         return;
       }
 
+      let message = "Requisito atualizado.";
       if(rid){
         const r = (v.requisitos || []).find(x => x.id === rid);
         if(!r) return;
@@ -1881,7 +1927,6 @@ Isso remove tambem os requisitos.`);
         r.termo = termo;
         r.sinonimos = sinonimos;
         r.obs = obs;
-        toast("Requisito atualizado.");
       }else{
         v.requisitos = v.requisitos || [];
         v.requisitos.push({
@@ -1893,16 +1938,17 @@ Isso remove tambem os requisitos.`);
           sinonimos,
           obs
         });
-        toast("Requisito adicionado.");
+        message = "Requisito adicionado.";
       }
 
       v.updatedAt = new Date().toISOString();
       renderList();
       renderDetail();
       bootstrap.Modal.getOrCreateInstance($("#modalReq")).hide();
+      await persistVagaChange(v, message);
     }
 
-    function deleteReq(vagaId, reqId){
+    async function deleteReq(vagaId, reqId){
       const v = findVaga(vagaId);
       if(!v) return;
 
@@ -1916,10 +1962,10 @@ Isso remove tambem os requisitos.`);
       v.updatedAt = new Date().toISOString();
       renderList();
       renderDetail();
-      toast("Requisito removido.");
+      await persistVagaChange(v, "Requisito removido.");
     }
 
-    function toggleReqMandatory(vagaId, reqId){
+    async function toggleReqMandatory(vagaId, reqId){
       const v = findVaga(vagaId);
       if(!v) return;
       const r = (v.requisitos || []).find(x => x.id === reqId);
@@ -1929,11 +1975,11 @@ Isso remove tambem os requisitos.`);
       v.updatedAt = new Date().toISOString();
       renderList();
       renderDetail();
-      toast(r.obrigatorio ? "Requisito marcado como obrigatório." : "Requisito marcado como não obrigatório.");
+      await persistVagaChange(v, r.obrigatorio ? "Requisito marcado como obrigatorio." : "Requisito marcado como nao obrigatorio.");
     }
 
     // ========= Pesos/Threshold
-    function saveWeightsFromDetail(vagaId, fromMobile=false){
+    async function saveWeightsFromDetail(vagaId, fromMobile=false){
       const v = findVaga(vagaId);
       if(!v) return;
 
@@ -1953,7 +1999,7 @@ Isso remove tambem os requisitos.`);
 
       renderList();
       renderDetail();
-      toast("Pesos e match mí­nimo salvos.");
+      await persistVagaChange(v, "Pesos e match minimo salvos.");
     }
 
     // ========= Simulador (keyword match)
@@ -2184,6 +2230,7 @@ function simulateMatch(vagaId, fromMobile=false){
                   tagsIdiomas: Array.isArray(requisitosExtras.tagsIdiomas) ? requisitosExtras.tagsIdiomas : [],
                   diferenciais: requisitosExtras.diferenciais || "",
                   requisitosDetalhados: Array.isArray(requisitosExtras.requisitosDetalhados) ? requisitosExtras.requisitosDetalhados.map(r => ({
+                    categoria: r.categoria || getDefaultCategoria(),
                     nome: r.nome || "",
                     peso: parseInt(r.peso ?? DEFAULT_PESO, 10) || parseInt(DEFAULT_PESO, 10),
                     obrigatorio: !!r.obrigatorio,

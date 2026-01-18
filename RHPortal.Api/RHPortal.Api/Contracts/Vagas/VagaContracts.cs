@@ -15,6 +15,7 @@ public sealed record VagaCreateRequest(
     int QuantidadeVagas,
     VagaTipoContratacao? TipoContratacao,
     int MatchMinimoPercentual,
+    VagaWeightsRequest? Weights,
     string? DescricaoInterna,
     [MaxLength(40)] string? CodigoInterno,
     [MaxLength(20)] string? CodigoCbo,
@@ -99,6 +100,7 @@ public sealed record VagaUpdateRequest(
     int QuantidadeVagas,
     VagaTipoContratacao? TipoContratacao,
     int MatchMinimoPercentual,
+    VagaWeightsRequest? Weights,
     string? DescricaoInterna,
     [MaxLength(40)] string? CodigoInterno,
     [MaxLength(20)] string? CodigoCbo,
@@ -188,6 +190,7 @@ public sealed record VagaResponse(
     int QuantidadeVagas,
     VagaTipoContratacao? TipoContratacao,
     int MatchMinimoPercentual,
+    VagaWeightsResponse Weights,
     string? DescricaoInterna,
     string? CodigoInterno,
     string? CodigoCbo,
@@ -273,6 +276,7 @@ public sealed record VagaBeneficioRequest(
 
 public sealed record VagaRequisitoRequest(
     int Ordem,
+    [MaxLength(80)] string? Categoria,
     [Required, MaxLength(180)] string Nome,
     VagaPeso Peso,
     bool Obrigatorio,
@@ -317,6 +321,7 @@ public sealed record VagaBeneficioResponse(
 public sealed record VagaRequisitoResponse(
     Guid Id,
     int Ordem,
+    string? Categoria,
     string Nome,
     VagaPeso Peso,
     bool Obrigatorio,
@@ -327,6 +332,20 @@ public sealed record VagaRequisitoResponse(
     string? Observacoes,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc
+);
+
+public sealed record VagaWeightsRequest(
+    int Competencia,
+    int Experiencia,
+    int Formacao,
+    int Localidade
+);
+
+public sealed record VagaWeightsResponse(
+    int Competencia,
+    int Experiencia,
+    int Formacao,
+    int Localidade
 );
 
 public sealed record VagaEtapaResponse(

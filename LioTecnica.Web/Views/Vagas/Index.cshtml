@@ -460,7 +460,6 @@
 <!-- Bootstrap JS (CDN) -->
 @section Scripts {
 	<script>
-		window.__seedData = @Html.Raw(Model.SeedJson);
 		window.__vagasApiUrl = "@Url.Content("~/api/vagas")";
 		window.__areasApiUrl = "@Url.Content("~/api/lookup/areas")";
 		window.__departmentsApiUrl = "@Url.Content("~/api/lookup/departments")";

@@ -39,6 +39,12 @@ namespace RHPortal.Api.Domain.Entities
         /// <summary>Match mínimo em % (0..100). Ex.: 70</summary>
         public int MatchMinimoPercentual { get; set; } = 70; // vagaThreshold
 
+        // Pesos por categoria (soma ideal = 100)
+        public int PesoCompetencia { get; set; } = 40;
+        public int PesoExperiencia { get; set; } = 30;
+        public int PesoFormacao { get; set; } = 15;
+        public int PesoLocalidade { get; set; } = 15;
+
         public string? DescricaoInterna { get; set; }        // vagaDescricao
 
         [StringLength(40)]
@@ -226,6 +232,9 @@ namespace RHPortal.Api.Domain.Entities
 
         [Required, StringLength(180)]
         public string Nome { get; set; } = string.Empty;    // req-name
+
+        [StringLength(80)]
+        public string? Categoria { get; set; }              // req-category
 
         public VagaPeso Peso { get; set; }                  // req-weight (1..5)
         public bool Obrigatorio { get; set; }               // req-required

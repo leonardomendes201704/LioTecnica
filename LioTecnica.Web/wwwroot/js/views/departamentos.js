@@ -43,18 +43,7 @@ async function loadManagersLookup(force = false) {
         }
     }
 
-    // 2) fallback: seed (se existir)
-    const seedArr = Array.isArray(seed.gestores)
-        ? seed.gestores
-        : (Array.isArray(seed.managers) ? seed.managers : []);
-
-    const fromSeed = seedArr.map(normalizeManager).filter(x => x.name);
-    if (fromSeed.length) {
-        cache.managers = fromSeed;
-        return fromSeed;
-    }
-
-    // 3) fallback final: deriva de departamentos
+    // 2) fallback final: deriva de departamentos
     const derived = deriveManagersFromDepartments();
     cache.managers = derived;
     return derived;
@@ -142,7 +131,7 @@ function looksLikeGuid(s) {
 
 
 const DEPT_API_BASE = "/Departamentos/_api"; // proxy do seu MVC (recomendado)
-
+const VAGAS_API_URL = window.__vagasApiUrl || "/api/vagas";
 
 function fromApiStatus(apiStatus) {
     // API: "Active"/"Inactive" | UI: "ativo"/"inativo"
@@ -274,14 +263,17 @@ async function loadDepartmentsFromApi() {
     state.departamentos = items.map(normalizeDeptRow);
 }
 
-const seed = window.__seedData || {};
-const STORE_KEY = "lt_rh_departamentos_v1";
-const VAGAS_STORE_KEY = "lt_rh_vagas_v1";
-const AREAS_STORE_KEY = "lt_rh_areas_v1";
+async function loadVagasFromApi() {
+    const data = await apiFetchJson(VAGAS_API_URL, { method: "GET" });
+    const list = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+    state.vagas = list;
+}
+
 const EMPTY_TEXT = "-";
 
 const state = {
     departamentos: [],
+    vagas: [],
     filters: { q: "", status: "all" }
 };
 
@@ -290,44 +282,6 @@ function setText(root, role, value, fallback = EMPTY_TEXT) {
     const el = root.querySelector(`[data-role="${role}"]`);
     if (!el) return;
     el.textContent = value ?? fallback;
-}
-
-function loadState() {
-    try {
-        const raw = localStorage.getItem(STORE_KEY);
-        if (!raw) return false;
-        const data = JSON.parse(raw);
-        if (!data || !Array.isArray(data.departamentos)) return false;
-        state.departamentos = data.departamentos;
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-function saveState() {
-    localStorage.setItem(STORE_KEY, JSON.stringify({
-        departamentos: state.departamentos
-    }));
-}
-
-function seedIfEmpty() {
-    if (state.departamentos.length) return;
-    const list = Array.isArray(seed.departamentos) ? seed.departamentos : [];
-    state.departamentos = list;
-    saveState();
-}
-
-function loadVagas() {
-    try {
-        const raw = localStorage.getItem(VAGAS_STORE_KEY);
-        if (!raw) return Array.isArray(seed.vagas) ? seed.vagas : [];
-        const data = JSON.parse(raw);
-        if (data && Array.isArray(data.vagas)) return data.vagas;
-        return Array.isArray(seed.vagas) ? seed.vagas : [];
-    } catch {
-        return Array.isArray(seed.vagas) ? seed.vagas : [];
-    }
 }
 
 async function apiFetchJson(url, opts) {
@@ -598,9 +552,13 @@ function formatDate(iso) {
 }
 
 function getDeptVagas(dept) {
+    const deptId = dept?.id || dept?.departmentId || "";
+    const vagas = state.vagas || [];
+    if (deptId) {
+        return vagas.filter(v => String(v.departmentId || "").toLowerCase() === String(deptId).toLowerCase());
+    }
     const key = normalizeText(dept?.area || dept?.nome || "");
-    const vagas = loadVagas();
-    return vagas.filter(v => normalizeText(v.area) === key);
+    return vagas.filter(v => normalizeText(v.area || v.areaName || "") === key);
 }
 
 function getDeptOpenCount(dept) {
@@ -618,7 +576,7 @@ function updateKpis() {
     const anyHasApiVagas = list.some(d => d.vagasOpen != null);
     const openVagas = anyHasApiVagas
         ? list.reduce((acc, d) => acc + (parseInt(d.vagasOpen, 10) || 0), 0)
-        : loadVagas().filter(v => v.status === "aberta").length;
+        : (state.vagas || []).filter(v => (v.status || "").toLowerCase() === "aberta").length;
 
     $("#kpiDeptTotal").textContent = total;
     $("#kpiDeptActive").textContent = ativos;
@@ -1054,6 +1012,7 @@ function wireButtons() {
         if (!ok) return;
         try {
             await loadDepartmentsFromApi();
+            await loadVagasFromApi();
             updateKpis();
             renderTable();
             toast("Dados recarregados.");
@@ -1071,11 +1030,12 @@ function wireButtons() {
 (async function init() {
     try {
         await loadDepartmentsFromApi();
+        await loadVagasFromApi();
     } catch (err) {
         console.error(err);
-        // fallback: mantém seu seed/demo se API falhar
-        state.departamentos = Array.isArray(seed.departamentos) ? seed.departamentos : [];
-        toast("API indisponível. Exibindo dados de demo.");
+        toast("Falha ao carregar dados da API.");
+        state.departamentos = [];
+        state.vagas = [];
     }
 
     updateKpis();

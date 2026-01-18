@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using RhPortal.Api.Contracts.Vagas;
 using RhPortal.Api.Infrastructure.Data;
 using RHPortal.Api.Domain.Entities;
+using RhPortal.Api.Infrastructure.Tenancy;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.Extensions.Logging;
 
 namespace RhPortal.Api.Application.Vagas;
 
@@ -17,8 +20,15 @@ public interface IVagaService
 public sealed class VagaService : IVagaService
 {
     private readonly AppDbContext _db;
+    private readonly ITenantContext _tenantContext;
+    private readonly ILogger<VagaService> _logger;
 
-    public VagaService(AppDbContext db) => _db = db;
+    public VagaService(AppDbContext db, ITenantContext tenantContext, ILogger<VagaService> logger)
+    {
+        _db = db;
+        _tenantContext = tenantContext;
+        _logger = logger;
+    }
 
     public async Task<IReadOnlyList<VagaListItemResponse>> ListAsync(VagaListQuery query, CancellationToken ct)
     {
@@ -118,6 +128,7 @@ public sealed class VagaService : IVagaService
         await EnsureAreaAsync(request.AreaId, ct);
         await EnsureDepartmentAsync(request.DepartmentId, ct);
 
+        var weights = NormalizeWeights(request.Weights, null);
         var entity = new Vaga
         {
             Id = Guid.NewGuid(),
@@ -132,6 +143,10 @@ public sealed class VagaService : IVagaService
             QuantidadeVagas = request.QuantidadeVagas < 1 ? 1 : request.QuantidadeVagas,
             TipoContratacao = request.TipoContratacao,
             MatchMinimoPercentual = ClampPercent(request.MatchMinimoPercentual),
+            PesoCompetencia = weights.Competencia,
+            PesoExperiencia = weights.Experiencia,
+            PesoFormacao = weights.Formacao,
+            PesoLocalidade = weights.Localidade,
             DescricaoInterna = TrimOrNull(request.DescricaoInterna),
             CodigoInterno = TrimOrNull(request.CodigoInterno),
             CodigoCbo = TrimOrNull(request.CodigoCbo),
@@ -212,7 +227,7 @@ public sealed class VagaService : IVagaService
 
     public async Task<VagaResponse?> UpdateAsync(Guid id, VagaUpdateRequest request, CancellationToken ct)
     {
-        var entity = await _db.Vagas
+        var entity = await _db.Vagas.IgnoreQueryFilters()
             .Include(x => x.Beneficios)
             .Include(x => x.Requisitos)
             .Include(x => x.Etapas)
@@ -220,91 +235,45 @@ public sealed class VagaService : IVagaService
             .FirstOrDefaultAsync(x => x.Id == id, ct);
 
         if (entity is null) return null;
+        EnsureTenantOwnership(entity);
 
         await EnsureAreaAsync(request.AreaId, ct);
         await EnsureDepartmentAsync(request.DepartmentId, ct);
 
-        entity.Codigo = TrimOrNull(request.Codigo);
-        entity.Titulo = (request.Titulo ?? string.Empty).Trim();
-        entity.DepartmentId = request.DepartmentId;
-        entity.AreaTime = request.AreaTime;
-        entity.AreaId = request.AreaId;
-        entity.Modalidade = request.Modalidade;
-        entity.Status = request.Status;
-        entity.Senioridade = request.Senioridade;
-        entity.QuantidadeVagas = request.QuantidadeVagas < 1 ? 1 : request.QuantidadeVagas;
-        entity.TipoContratacao = request.TipoContratacao;
-        entity.MatchMinimoPercentual = ClampPercent(request.MatchMinimoPercentual);
-        entity.DescricaoInterna = TrimOrNull(request.DescricaoInterna);
-        entity.CodigoInterno = TrimOrNull(request.CodigoInterno);
-        entity.CodigoCbo = TrimOrNull(request.CodigoCbo);
-        entity.MotivoAbertura = request.MotivoAbertura;
-        entity.OrcamentoAprovado = request.OrcamentoAprovado;
-        entity.GestorRequisitante = TrimOrNull(request.GestorRequisitante);
-        entity.RecrutadorResponsavel = TrimOrNull(request.RecrutadorResponsavel);
-        entity.Prioridade = request.Prioridade;
-        entity.ResumoPitch = TrimOrNull(request.ResumoPitch);
-        entity.TagsResponsabilidadesRaw = TrimOrNull(request.TagsResponsabilidadesRaw);
-        entity.TagsKeywordsRaw = TrimOrNull(request.TagsKeywordsRaw);
-        entity.Confidencial = request.Confidencial;
-        entity.AceitaPcd = request.AceitaPcd;
-        entity.Urgente = request.Urgente;
-        entity.GeneroPreferencia = request.GeneroPreferencia;
-        entity.VagaAfirmativa = request.VagaAfirmativa;
-        entity.LinguagemInclusiva = request.LinguagemInclusiva;
-        entity.PublicoAfirmativo = TrimOrNull(request.PublicoAfirmativo);
-        entity.ObservacoesPcd = TrimOrNull(request.ObservacoesPcd);
-        entity.ProjetoNome = TrimOrNull(request.ProjetoNome);
-        entity.ProjetoClienteAreaImpactada = TrimOrNull(request.ProjetoClienteAreaImpactada);
-        entity.ProjetoPrazoPrevisto = TrimOrNull(request.ProjetoPrazoPrevisto);
-        entity.ProjetoDescricao = TrimOrNull(request.ProjetoDescricao);
-        entity.Regime = request.Regime;
-        entity.CargaSemanalHoras = request.CargaSemanalHoras;
-        entity.Escala = request.Escala;
-        entity.HoraEntrada = request.HoraEntrada;
-        entity.HoraSaida = request.HoraSaida;
-        entity.Intervalo = request.Intervalo;
-        entity.Cep = TrimOrNull(request.Cep);
-        entity.Logradouro = TrimOrNull(request.Logradouro);
-        entity.Numero = TrimOrNull(request.Numero);
-        entity.Bairro = TrimOrNull(request.Bairro);
-        entity.Cidade = TrimOrNull(request.Cidade);
-        entity.Uf = TrimOrNull(request.Uf);
-        entity.PoliticaTrabalho = TrimOrNull(request.PoliticaTrabalho);
-        entity.ObservacoesDeslocamento = TrimOrNull(request.ObservacoesDeslocamento);
-        entity.Moeda = request.Moeda;
-        entity.SalarioMinimo = request.SalarioMinimo;
-        entity.SalarioMaximo = request.SalarioMaximo;
-        entity.Periodicidade = request.Periodicidade;
-        entity.BonusTipo = request.BonusTipo;
-        entity.BonusPercentual = request.BonusPercentual;
-        entity.ObservacoesRemuneracao = TrimOrNull(request.ObservacoesRemuneracao);
-        entity.Escolaridade = request.Escolaridade;
-        entity.FormacaoArea = request.FormacaoArea;
-        entity.ExperienciaMinimaAnos = request.ExperienciaMinimaAnos;
-        entity.TagsStackRaw = TrimOrNull(request.TagsStackRaw);
-        entity.TagsIdiomasRaw = TrimOrNull(request.TagsIdiomasRaw);
-        entity.Diferenciais = TrimOrNull(request.Diferenciais);
-        entity.ObservacoesProcesso = TrimOrNull(request.ObservacoesProcesso);
-        entity.Visibilidade = request.Visibilidade;
-        entity.DataInicio = request.DataInicio;
-        entity.DataEncerramento = request.DataEncerramento;
-        entity.CanalLinkedIn = request.CanalLinkedIn;
-        entity.CanalSiteCarreiras = request.CanalSiteCarreiras;
-        entity.CanalIndicacao = request.CanalIndicacao;
-        entity.CanalPortaisEmprego = request.CanalPortaisEmprego;
-        entity.DescricaoPublica = TrimOrNull(request.DescricaoPublica);
-        entity.LgpdSolicitarConsentimentoExplicito = request.LgpdSolicitarConsentimentoExplicito;
-        entity.LgpdCompartilharCurriculoInternamente = request.LgpdCompartilharCurriculoInternamente;
-        entity.LgpdRetencaoAtiva = request.LgpdRetencaoAtiva;
-        entity.LgpdRetencaoMeses = request.LgpdRetencaoMeses;
-        entity.ExigeCnh = request.ExigeCnh;
-        entity.DisponibilidadeParaViagens = request.DisponibilidadeParaViagens;
-        entity.ChecagemAntecedentes = request.ChecagemAntecedentes;
-
+        ApplyUpdate(entity, request);
         ReplaceChildren(entity, request);
 
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            LogConcurrency("first attempt", entity);
+            _db.ChangeTracker.Clear();
+            var refreshed = await _db.Vagas.IgnoreQueryFilters()
+                .Include(x => x.Beneficios)
+                .Include(x => x.Requisitos)
+                .Include(x => x.Etapas)
+                .Include(x => x.PerguntasTriagem)
+                .FirstOrDefaultAsync(x => x.Id == id, ct);
+
+            if (refreshed is null) return null;
+            EnsureTenantOwnership(refreshed);
+
+            ApplyUpdate(refreshed, request);
+            ReplaceChildren(refreshed, request);
+            try
+            {
+                await _db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                LogConcurrency("retry", refreshed);
+                throw;
+            }
+        }
+
         return await GetByIdAsync(id, ct);
     }
 
@@ -337,6 +306,7 @@ public sealed class VagaService : IVagaService
             v.QuantidadeVagas,
             v.TipoContratacao,
             v.MatchMinimoPercentual,
+            MapWeights(v),
             v.DescricaoInterna,
             v.CodigoInterno,
             v.CodigoCbo,
@@ -429,6 +399,7 @@ public sealed class VagaService : IVagaService
         => new(
             r.Id,
             r.Ordem,
+            r.Categoria,
             r.Nome,
             r.Peso,
             r.Obrigatorio,
@@ -501,6 +472,7 @@ public sealed class VagaService : IVagaService
                 Id = Guid.NewGuid(),
                 Ordem = NormalizeOrder(item.Ordem, i),
                 Nome = (item.Nome ?? string.Empty).Trim(),
+                Categoria = TrimOrNull(item.Categoria),
                 Peso = item.Peso,
                 Obrigatorio = item.Obrigatorio,
                 AnosMinimos = item.AnosMinimos,
@@ -571,6 +543,15 @@ public sealed class VagaService : IVagaService
         entity.Requisitos = BuildRequisitos(request.Requisitos);
         entity.Etapas = BuildEtapas(request.Etapas);
         entity.PerguntasTriagem = BuildPerguntas(request.PerguntasTriagem);
+
+        if (entity.Beneficios.Count > 0)
+            _db.VagaBeneficios.AddRange(entity.Beneficios);
+        if (entity.Requisitos.Count > 0)
+            _db.VagaRequisitos.AddRange(entity.Requisitos);
+        if (entity.Etapas.Count > 0)
+            _db.VagaEtapas.AddRange(entity.Etapas);
+        if (entity.PerguntasTriagem.Count > 0)
+            _db.VagaPerguntas.AddRange(entity.PerguntasTriagem);
     }
 
     private async Task EnsureAreaAsync(Guid areaId, CancellationToken ct)
@@ -588,11 +569,184 @@ public sealed class VagaService : IVagaService
     private static int ClampPercent(int value)
         => Math.Clamp(value, 0, 100);
 
+    private static VagaWeightsResponse MapWeights(Vaga v)
+    {
+        if (v.PesoCompetencia == 0 && v.PesoExperiencia == 0 && v.PesoFormacao == 0 && v.PesoLocalidade == 0)
+            return new VagaWeightsResponse(40, 30, 15, 15);
+
+        return new VagaWeightsResponse(v.PesoCompetencia, v.PesoExperiencia, v.PesoFormacao, v.PesoLocalidade);
+    }
+
+    private static (int Competencia, int Experiencia, int Formacao, int Localidade) NormalizeWeights(
+        VagaWeightsRequest? weights,
+        Vaga? fallback)
+    {
+        var competencia = weights?.Competencia ?? fallback?.PesoCompetencia ?? 40;
+        var experiencia = weights?.Experiencia ?? fallback?.PesoExperiencia ?? 30;
+        var formacao = weights?.Formacao ?? fallback?.PesoFormacao ?? 15;
+        var localidade = weights?.Localidade ?? fallback?.PesoLocalidade ?? 15;
+
+        return (
+            ClampPercent(competencia),
+            ClampPercent(experiencia),
+            ClampPercent(formacao),
+            ClampPercent(localidade)
+        );
+    }
+
     private static int NormalizeOrder(int ordem, int fallback)
         => ordem >= 0 ? ordem : fallback;
 
     private static string? TrimOrNull(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private void ApplyUpdate(Vaga entity, VagaUpdateRequest request)
+    {
+        entity.Codigo = TrimOrNull(request.Codigo);
+        entity.Titulo = (request.Titulo ?? string.Empty).Trim();
+        entity.DepartmentId = request.DepartmentId;
+        entity.AreaTime = request.AreaTime;
+        entity.AreaId = request.AreaId;
+        entity.Modalidade = request.Modalidade;
+        entity.Status = request.Status;
+        entity.Senioridade = request.Senioridade;
+        entity.QuantidadeVagas = request.QuantidadeVagas < 1 ? 1 : request.QuantidadeVagas;
+        entity.TipoContratacao = request.TipoContratacao;
+        entity.MatchMinimoPercentual = ClampPercent(request.MatchMinimoPercentual);
+        var weights = NormalizeWeights(request.Weights, entity);
+        entity.PesoCompetencia = weights.Competencia;
+        entity.PesoExperiencia = weights.Experiencia;
+        entity.PesoFormacao = weights.Formacao;
+        entity.PesoLocalidade = weights.Localidade;
+        entity.DescricaoInterna = TrimOrNull(request.DescricaoInterna);
+        entity.CodigoInterno = TrimOrNull(request.CodigoInterno);
+        entity.CodigoCbo = TrimOrNull(request.CodigoCbo);
+        entity.MotivoAbertura = request.MotivoAbertura;
+        entity.OrcamentoAprovado = request.OrcamentoAprovado;
+        entity.GestorRequisitante = TrimOrNull(request.GestorRequisitante);
+        entity.RecrutadorResponsavel = TrimOrNull(request.RecrutadorResponsavel);
+        entity.Prioridade = request.Prioridade;
+        entity.ResumoPitch = TrimOrNull(request.ResumoPitch);
+        entity.TagsResponsabilidadesRaw = TrimOrNull(request.TagsResponsabilidadesRaw);
+        entity.TagsKeywordsRaw = TrimOrNull(request.TagsKeywordsRaw);
+        entity.Confidencial = request.Confidencial;
+        entity.AceitaPcd = request.AceitaPcd;
+        entity.Urgente = request.Urgente;
+        entity.GeneroPreferencia = request.GeneroPreferencia;
+        entity.VagaAfirmativa = request.VagaAfirmativa;
+        entity.LinguagemInclusiva = request.LinguagemInclusiva;
+        entity.PublicoAfirmativo = TrimOrNull(request.PublicoAfirmativo);
+        entity.ObservacoesPcd = TrimOrNull(request.ObservacoesPcd);
+        entity.ProjetoNome = TrimOrNull(request.ProjetoNome);
+        entity.ProjetoClienteAreaImpactada = TrimOrNull(request.ProjetoClienteAreaImpactada);
+        entity.ProjetoPrazoPrevisto = TrimOrNull(request.ProjetoPrazoPrevisto);
+        entity.ProjetoDescricao = TrimOrNull(request.ProjetoDescricao);
+        entity.Regime = request.Regime;
+        entity.CargaSemanalHoras = request.CargaSemanalHoras;
+        entity.Escala = request.Escala;
+        entity.HoraEntrada = request.HoraEntrada;
+        entity.HoraSaida = request.HoraSaida;
+        entity.Intervalo = request.Intervalo;
+        entity.Cep = TrimOrNull(request.Cep);
+        entity.Logradouro = TrimOrNull(request.Logradouro);
+        entity.Numero = TrimOrNull(request.Numero);
+        entity.Bairro = TrimOrNull(request.Bairro);
+        entity.Cidade = TrimOrNull(request.Cidade);
+        entity.Uf = TrimOrNull(request.Uf);
+        entity.PoliticaTrabalho = TrimOrNull(request.PoliticaTrabalho);
+        entity.ObservacoesDeslocamento = TrimOrNull(request.ObservacoesDeslocamento);
+        entity.Moeda = request.Moeda;
+        entity.SalarioMinimo = request.SalarioMinimo;
+        entity.SalarioMaximo = request.SalarioMaximo;
+        entity.Periodicidade = request.Periodicidade;
+        entity.BonusTipo = request.BonusTipo;
+        entity.BonusPercentual = request.BonusPercentual;
+        entity.ObservacoesRemuneracao = TrimOrNull(request.ObservacoesRemuneracao);
+        entity.Escolaridade = request.Escolaridade;
+        entity.FormacaoArea = request.FormacaoArea;
+        entity.ExperienciaMinimaAnos = request.ExperienciaMinimaAnos;
+        entity.TagsStackRaw = TrimOrNull(request.TagsStackRaw);
+        entity.TagsIdiomasRaw = TrimOrNull(request.TagsIdiomasRaw);
+        entity.Diferenciais = TrimOrNull(request.Diferenciais);
+        entity.ObservacoesProcesso = TrimOrNull(request.ObservacoesProcesso);
+        entity.Visibilidade = request.Visibilidade;
+        entity.DataInicio = request.DataInicio;
+        entity.DataEncerramento = request.DataEncerramento;
+        entity.CanalLinkedIn = request.CanalLinkedIn;
+        entity.CanalSiteCarreiras = request.CanalSiteCarreiras;
+        entity.CanalIndicacao = request.CanalIndicacao;
+        entity.CanalPortaisEmprego = request.CanalPortaisEmprego;
+        entity.DescricaoPublica = TrimOrNull(request.DescricaoPublica);
+        entity.LgpdSolicitarConsentimentoExplicito = request.LgpdSolicitarConsentimentoExplicito;
+        entity.LgpdCompartilharCurriculoInternamente = request.LgpdCompartilharCurriculoInternamente;
+        entity.LgpdRetencaoAtiva = request.LgpdRetencaoAtiva;
+        entity.LgpdRetencaoMeses = request.LgpdRetencaoMeses;
+        entity.ExigeCnh = request.ExigeCnh;
+        entity.DisponibilidadeParaViagens = request.DisponibilidadeParaViagens;
+        entity.ChecagemAntecedentes = request.ChecagemAntecedentes;
+    }
+
+    private void EnsureTenantOwnership(Vaga entity)
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (string.IsNullOrWhiteSpace(tenantId))
+            throw new InvalidOperationException("Tenant identifier is required.");
+
+        if (!string.IsNullOrWhiteSpace(entity.TenantId) &&
+            !string.Equals(entity.TenantId, tenantId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Tenant mismatch for vaga.");
+
+        entity.TenantId = tenantId;
+
+        foreach (var item in entity.Beneficios)
+            item.TenantId = tenantId;
+        foreach (var item in entity.Requisitos)
+            item.TenantId = tenantId;
+        foreach (var item in entity.Etapas)
+            item.TenantId = tenantId;
+        foreach (var item in entity.PerguntasTriagem)
+            item.TenantId = tenantId;
+    }
+
+    private void LogConcurrency(string attempt, Vaga entity)
+    {
+        var tenantId = _tenantContext.TenantId;
+        var entry = _db.Entry(entity);
+
+        _logger.LogError(
+            "Vaga update concurrency ({Attempt}). Tenant={TenantId}, VagaId={VagaId}, State={State}, RowVersion={HasConcurrencyToken}, Beneficios={Beneficios}, Requisitos={Requisitos}, Etapas={Etapas}, Perguntas={Perguntas}",
+            attempt,
+            tenantId,
+            entity.Id,
+            entry.State,
+            HasConcurrencyToken(entry),
+            entity.Beneficios.Count,
+            entity.Requisitos.Count,
+            entity.Etapas.Count,
+            entity.PerguntasTriagem.Count);
+
+        LogEntries();
+    }
+
+    private void LogEntries()
+    {
+        foreach (var entry in _db.ChangeTracker.Entries())
+        {
+            if (entry.State == EntityState.Unchanged) continue;
+            var key = entry.Metadata.FindPrimaryKey();
+            var keyValues = key?.Properties.Select(p => entry.Property(p.Name).CurrentValue)?.ToArray() ?? Array.Empty<object?>();
+
+            _logger.LogError(
+                "Entry {Entity} State={State} Keys={Keys} TenantId={TenantId} RowsAffectedExpected=1",
+                entry.Metadata.ClrType.Name,
+                entry.State,
+                string.Join(",", keyValues.Select(v => v ?? "null")),
+                entry.Property("TenantId")?.CurrentValue ?? "n/a");
+        }
+    }
+
+    private static bool HasConcurrencyToken(EntityEntry entry)
+        => entry.Metadata.GetProperties().Any(p => p.IsConcurrencyToken);
 
     private static string? JoinSinonimos(IReadOnlyList<string>? sinonimos)
     {

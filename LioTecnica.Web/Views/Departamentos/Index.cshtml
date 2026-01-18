@@ -21,7 +21,7 @@
 			<i class="bi bi-filetype-csv"></i><span class="d-none d-sm-inline ms-1">Exportar</span>
 		</button>
 		<button class="btn btn-ghost" type="button" id="btnSeedReset" title="Restaurar demo">
-			<i class="bi bi-arrow-counterclockwise"></i><span class="d-none d-sm-inline ms-1">Reset demo</span>
+			<i class="bi bi-arrow-counterclockwise"></i><span class="d-none d-sm-inline ms-1">Atualizar</span>
 		</button>
 		<button class="btn btn-brand" type="button" id="btnNewDept">
 			<i class="bi bi-plus-lg"></i><span class="d-none d-sm-inline ms-1">Novo departamento</span>
@@ -153,7 +153,6 @@
 
 @section Scripts {
 	<script>
-		window.__seedData = @Html.Raw(Model.SeedJson);
-	</script>
+		</script>
 	<script src="~/js/views/departamentos.js" asp-append-version="true"></script>
 }

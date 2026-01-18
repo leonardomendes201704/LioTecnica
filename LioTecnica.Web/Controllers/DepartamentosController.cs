@@ -1,8 +1,3 @@
-using System.Reflection;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using LioTecnica.Web.Helpers;
-using LioTecnica.Web.Services;
 using LioTecnica.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using LioTecnica.Web.Infrastructure.ApiClients;
@@ -22,42 +17,11 @@ public sealed class DepartamentosController : Controller
     }
 
     [HttpGet("/Departamentos")]
-    public async Task<IActionResult> Index(CancellationToken ct)
+    public IActionResult Index()
     {
-        var tenantId = _tenantContext.TenantId;
-
-        // 1) Seed base (demo/localStorage/dropdowns etc.)
-        var baseSeed = MockDataService.BuildSeedBundle();
-
-        // 2) Busca departamentos na API
-        var api = await _departmentsApi.GetDepartmentsAsync(
-            tenantId: tenantId,
-            search: null,
-            status: null,
-            areaId: null,
-            page: 1,
-            pageSize: 200,
-            sort: "department",
-            dir: "asc",
-            ct: ct
-        );
-
-        // 3) Mapeia pro formato do seu JS (grid)
-        var departamentosForFront = (api?.Items is { Count: > 0 })
-            ? api.Items.Select(MapToFrontDepartamento).ToList()
-            : new List<object>();
-
-        // 4) Merge seed base + sobrescreve departamentos
-        var seedDict = ToDict(baseSeed);
-        seedDict["departamentos"] = departamentosForFront;
-
         var model = new PageSeedViewModel
         {
-            SeedJson = JsonSerializer.Serialize(seedDict, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            })
+            SeedJson = "{}"
         };
 
         return View("Index", model);
@@ -134,16 +98,6 @@ public sealed class DepartamentosController : Controller
     }
 
     // ===== Helpers =====
-
-    private static Dictionary<string, object?> ToDict(object obj)
-    {
-        var dict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var p in obj.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
-            dict[p.Name] = p.GetValue(obj);
-
-        return dict;
-    }
 
     private static string MapStatus(string? s)
         => (s?.Equals("Active", StringComparison.OrdinalIgnoreCase) ?? false) ? "ativo" : "inativo";
