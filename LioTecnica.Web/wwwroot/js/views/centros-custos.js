@@ -1,441 +1,419 @@
-﻿// =====================
-// Centro de Custo (demo/localStorage) — no mesmo padrão do JS de Áreas
-// =====================
-
-const seed = window.__seedData || {};
-const STORE_KEY = "lt_rh_centros_custos_v1";
-const VAGAS_STORE_KEY = "lt_rh_vagas_v1"; // opcional (se quiser cruzar vagas x centro de custo)
+const COST_CENTERS_API_BASE = "/CentrosCustos/_api";
+const DEPARTMENTS_API_URL = "/CentrosCustos/_api/departments";
 const EMPTY_TEXT = "-";
 
 const state = {
-    centrosCustos: [],
-    filters: { q: "", status: "all" }
+  centrosCustos: [],
+  departments: [],
+  filters: { q: "", status: "all", link: "all" }
 };
 
-// Helpers básicos (assumindo que você já tem no seu layout)
-// - $ (querySelector)
-// - cloneTemplate(id)
-// - toast(msg)
-// - uid()
-// - normalizeText(str)
+function apiFetchJson(url, opts) {
+  return fetch(url, {
+    headers: { "Accept": "application/json", ...(opts?.headers || {}) },
+    ...opts
+  }).then(async (res) => {
+    const contentType = res.headers.get("content-type") || "";
+    let bodyText = "";
+    let bodyJson = null;
+
+    try { bodyText = await res.text(); } catch { bodyText = ""; }
+
+    if (bodyText && contentType.includes("application/json")) {
+      try { bodyJson = JSON.parse(bodyText); } catch { bodyJson = null; }
+    }
+
+    if (res.status === 204) return null;
+
+    if (!res.ok) {
+      const msg =
+        bodyJson?.message ||
+        bodyJson?.title ||
+        (bodyText ? bodyText.slice(0, 300) : "") ||
+        `Erro HTTP ${res.status}`;
+
+      const err = new Error(msg);
+      err.status = res.status;
+      err.url = url;
+      err.body = bodyJson ?? bodyText;
+      err.headers = Object.fromEntries(res.headers.entries());
+      throw err;
+    }
+
+    if (contentType.includes("application/json")) {
+      try { return bodyJson ?? JSON.parse(bodyText || "null"); } catch { return null; }
+    }
+
+    return bodyText || null;
+  });
+}
+
 function setText(root, role, value, fallback = EMPTY_TEXT) {
-    if (!root) return;
-    const el = root.querySelector(`[data-role="${role}"]`);
-    if (!el) return;
-    el.textContent = value ?? fallback;
+  if (!root) return;
+  const el = root.querySelector(`[data-role="${role}"]`);
+  if (!el) return;
+  el.textContent = value ?? fallback;
 }
 
-function loadState() {
-    try {
-        const raw = localStorage.getItem(STORE_KEY);
-        if (!raw) return false;
-        const data = JSON.parse(raw);
-        if (!data || !Array.isArray(data.centrosCustos)) return false;
-        state.centrosCustos = data.centrosCustos;
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-function saveState() {
-    localStorage.setItem(STORE_KEY, JSON.stringify({
-        centrosCustos: state.centrosCustos
-    }));
-}
-
-function seedIfEmpty() {
-    if (state.centrosCustos.length) return;
-
-    // tenta seed.centrosCustos, senão seed.centrosCusto, senão seed.centrosCustosDemo
-    const list =
-        (Array.isArray(seed.centrosCustos) ? seed.centrosCustos : null) ||
-        (Array.isArray(seed.centrosCusto) ? seed.centrosCusto : null) ||
-        (Array.isArray(seed.centrosCustosDemo) ? seed.centrosCustosDemo : []);
-
-    state.centrosCustos = list.map(x => normalizeCostCenterRow(x));
-    saveState();
-}
-
-function loadVagas() {
-    try {
-        const raw = localStorage.getItem(VAGAS_STORE_KEY);
-        if (!raw) return Array.isArray(seed.vagas) ? seed.vagas : [];
-        const data = JSON.parse(raw);
-        if (data && Array.isArray(data.vagas)) return data.vagas;
-        return Array.isArray(seed.vagas) ? seed.vagas : [];
-    } catch {
-        return Array.isArray(seed.vagas) ? seed.vagas : [];
-    }
+function fromApiStatus(raw) {
+  const v = (raw || "").toString().trim().toLowerCase();
+  if (v === "active" || v === "ativo" || v === "true" || v === "1") return "ativo";
+  if (v === "inactive" || v === "inativo" || v === "false" || v === "0") return "inativo";
+  return v || "inativo";
 }
 
 function normalizeCostCenterRow(c) {
-    c = c || {};
-    const pick = (...vals) => {
-        for (const v of vals) {
-            if (v !== undefined && v !== null && String(v).trim() !== "") return v;
-        }
-        return "";
-    };
-
-    const id = pick(c.id);
-    const codigo = pick(c.codigo, c.code);
-    const nome = pick(c.nome, c.name);
-
-    const descricao = pick(c.descricao, c.description);
-    const grupo = pick(c.grupo, c.group, c.groupName);
-    const unidade = pick(c.unidade, c.unit, c.branchOrUnit, c.branch);
-
-    const rawStatus = pick(c.status, c.isActive);
-    let status = "ativo";
-    if (typeof rawStatus === "boolean") status = rawStatus ? "ativo" : "inativo";
-    else {
-        const s = String(rawStatus || "").toLowerCase();
-        if (s === "inactive" || s === "inativo") status = "inativo";
-        if (s === "active" || s === "ativo") status = "ativo";
+  c = c || {};
+  const pick = (...vals) => {
+    for (const v of vals) {
+      if (v !== undefined && v !== null && String(v).trim() !== "") return v;
     }
+    return "";
+  };
 
-    const createdAt = pick(c.createdAt, c.createdAtUtc);
-    const updatedAt = pick(c.updatedAt, c.updatedAtUtc);
+  return {
+    id: pick(c.id, c.Id),
+    codigo: pick(c.codigo, c.code),
+    nome: pick(c.nome, c.name),
+    descricao: pick(c.descricao, c.description),
+    grupo: pick(c.grupo, c.groupName),
+    unidade: pick(c.unidade, c.unitName),
+    status: fromApiStatus(pick(c.status, c.isActive ? "ativo" : "inativo"))
+  };
+}
 
-    return {
-        id: id || (typeof uid === "function" ? uid() : crypto.randomUUID()),
-        codigo: codigo || "",
-        nome: nome || "",
-        status,
-        descricao: descricao || "",
-        grupo: grupo || "",
-        unidade: unidade || "",
-        createdAt: createdAt || null,
-        updatedAt: updatedAt || null
-    };
+async function loadCostCentersFromApi() {
+  const data = await apiFetchJson(COST_CENTERS_API_BASE, { method: "GET" });
+  const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+  state.centrosCustos = items.map(normalizeCostCenterRow);
+}
+
+async function loadDepartmentsFromApi() {
+  const data = await apiFetchJson(`${DEPARTMENTS_API_URL}?page=1&pageSize=300`, { method: "GET" });
+  const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+  state.departments = items.map(d => ({
+    id: d.id || d.Id,
+    codigo: d.code || d.codigo,
+    nome: d.name || d.nome,
+    costCenter: d.costCenter || d.centroCusto,
+    headcount: Number.isFinite(+d.headcount) ? +d.headcount : 0
+  }));
 }
 
 function buildStatusBadge(status) {
-    const map = {
-        ativo: { text: "Ativo", cls: "success" },
-        inativo: { text: "Inativo", cls: "secondary" }
-    };
-    const meta = map[status] || { text: status || "-", cls: "secondary" };
-    const span = document.createElement("span");
-    span.className = `badge text-bg-${meta.cls} rounded-pill`;
-    span.textContent = meta.text;
-    return span;
+  const map = {
+    ativo: { text: "Ativo", cls: "success" },
+    inativo: { text: "Inativo", cls: "secondary" }
+  };
+  const meta = map[status] || { text: status || "-", cls: "secondary" };
+  const span = document.createElement("span");
+  span.className = `badge text-bg-${meta.cls} rounded-pill`;
+  span.textContent = meta.text;
+  return span;
 }
 
-function formatDate(iso) {
-    if (!iso) return EMPTY_TEXT;
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return EMPTY_TEXT;
-    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
-// Se você quiser relacionar vagas por centro de custo (caso exista campo v.costCenter / v.centroCusto):
-function getCostCenterVagas(cc) {
-    const vagas = loadVagas();
-    const key = normalizeText(cc?.codigo || cc?.nome || "");
-    return vagas.filter(v => {
-        const vv = normalizeText(v?.centroCusto || v?.costCenter || "");
-        return vv && vv.includes(key);
-    });
-}
-
-function getCostCenterOpenCount(cc) {
-    return getCostCenterVagas(cc).filter(v => v.status === "aberta").length;
+function getLinkedDepartments(cc) {
+  const codeKey = normalizeText(cc?.codigo || "");
+  const nameKey = normalizeText(cc?.nome || "");
+  return (state.departments || []).filter(d => {
+    const dc = normalizeText(d.costCenter || "");
+    return (codeKey && dc === codeKey) || (nameKey && dc === nameKey);
+  });
 }
 
 function updateKpis() {
-    const total = state.centrosCustos.length;
-    const ativos = state.centrosCustos.filter(c => c.status === "ativo").length;
+  const total = state.centrosCustos.length;
+  const ativos = state.centrosCustos.filter(c => c.status === "ativo").length;
+  const linkedDeptCount = state.centrosCustos.reduce((acc, c) => acc + getLinkedDepartments(c).length, 0);
+  const headcount = state.centrosCustos.reduce((acc, c) => {
+    const sum = getLinkedDepartments(c).reduce((s, d) => s + (parseInt(d.headcount, 10) || 0), 0);
+    return acc + sum;
+  }, 0);
 
-    // KPI “vagas abertas” opcional
-    const vagas = loadVagas();
-    const openVagas = vagas.filter(v => v.status === "aberta").length;
-
-    // ids sugeridos para sua view:
-    // kpiCcTotal, kpiCcActive, kpiCcOpenRoles, kpiCcGroups
-    const groupsSet = new Set(state.centrosCustos.map(c => (c.grupo || "").trim()).filter(Boolean));
-
-    const elTotal = $("#kpiCcTotal");
-    const elActive = $("#kpiCcActive");
-    const elOpen = $("#kpiCcOpenRoles");
-    const elGroups = $("#kpiCcGroups");
-
-    if (elTotal) elTotal.textContent = total;
-    if (elActive) elActive.textContent = ativos;
-    if (elOpen) elOpen.textContent = openVagas; // ou soma por CC se preferir
-    if (elGroups) elGroups.textContent = groupsSet.size;
+  $("#kpiCcTotal").textContent = total;
+  $("#kpiCcActive").textContent = ativos;
+  $("#kpiCcDepartments").textContent = linkedDeptCount;
+  $("#kpiCcHeadcount").textContent = headcount;
 }
 
 function getFiltered() {
-    const q = normalizeText(state.filters.q || "");
-    const st = state.filters.status;
+  const q = normalizeText(state.filters.q || "");
+  const st = state.filters.status;
+  const link = state.filters.link;
 
-    return state.centrosCustos.filter(c => {
-        if (st !== "all" && (c.status || "") !== st) return false;
-        if (!q) return true;
-        const blob = normalizeText([c.nome, c.codigo, c.descricao, c.grupo, c.unidade].join(" "));
-        return blob.includes(q);
-    });
+  return state.centrosCustos.filter(c => {
+    if (st !== "all" && (c.status || "") !== st) return false;
+    if (!q) {
+      // continue
+    } else {
+      const blob = normalizeText([c.nome, c.codigo, c.descricao, c.grupo, c.unidade].join(" "));
+      if (!blob.includes(q)) return false;
+    }
+
+    if (link !== "all") {
+      const hasLink = getLinkedDepartments(c).length > 0;
+      if (link === "linked" && !hasLink) return false;
+      if (link === "unlinked" && hasLink) return false;
+    }
+
+    return true;
+  });
 }
 
 function renderTable() {
-    const tbody = $("#ccTbody");
-    if (!tbody) return;
-    tbody.replaceChildren();
+  const tbody = $("#ccTbody");
+  if (!tbody) return;
+  tbody.replaceChildren();
 
-    const rows = getFiltered();
-    const countEl = $("#ccCount");
-    const hintEl = $("#ccHint");
-    if (countEl) countEl.textContent = rows.length;
-    if (hintEl) hintEl.textContent = rows.length ? `${rows.length} centros de custo encontrados.` : "Nenhum centro de custo encontrado.";
+  const rows = getFiltered();
+  const countEl = $("#ccCount");
+  const hintEl = $("#ccHint");
+  if (countEl) countEl.textContent = rows.length;
+  if (hintEl) hintEl.textContent = rows.length ? `${rows.length} centros de custo encontrados.` : "Nenhum centro de custo encontrado.";
 
-    if (!rows.length) {
-        const empty = cloneTemplate("tpl-cc-empty-row");
-        if (empty) tbody.appendChild(empty);
-        return;
-    }
+  if (!rows.length) {
+    const empty = cloneTemplate("tpl-cc-empty-row");
+    if (empty) tbody.appendChild(empty);
+    return;
+  }
 
-    rows.forEach(c0 => {
-        const c = normalizeCostCenterRow(c0);
-        const tr = cloneTemplate("tpl-cc-row");
-        if (!tr) return;
+  rows.forEach(c0 => {
+    const c = normalizeCostCenterRow(c0);
+    const tr = cloneTemplate("tpl-cc-row");
+    if (!tr) return;
 
-        setText(tr, "cc-name", c.nome || EMPTY_TEXT);
-        setText(tr, "cc-code", c.codigo || EMPTY_TEXT);
-        setText(tr, "cc-desc", c.descricao || EMPTY_TEXT);
-        setText(tr, "cc-group", c.grupo || EMPTY_TEXT);
-        setText(tr, "cc-unit", c.unidade || EMPTY_TEXT);
+    setText(tr, "cc-name", c.nome || EMPTY_TEXT);
+    setText(tr, "cc-code", c.codigo || EMPTY_TEXT);
+    setText(tr, "cc-desc", c.descricao || EMPTY_TEXT);
 
-        // opcional: vagas relacionadas
-        const totalVagas = getCostCenterVagas(c).length;
-        const abertas = getCostCenterOpenCount(c);
-        const vagasCell = tr.querySelector('[data-role="cc-vagas"]');
-        if (vagasCell) vagasCell.textContent = `${abertas}/${totalVagas}`;
+    const linked = getLinkedDepartments(c);
+    const deptCount = linked.length;
+    const headcount = linked.reduce((acc, d) => acc + (parseInt(d.headcount, 10) || 0), 0);
 
-        const statusHost = tr.querySelector('[data-role="cc-status-host"]');
-        if (statusHost) statusHost.replaceChildren(buildStatusBadge(c.status));
+    setText(tr, "cc-depts", String(deptCount));
+    setText(tr, "cc-headcount", String(headcount));
 
-        tr.querySelectorAll("button[data-act]").forEach(btn => {
-            btn.dataset.id = c.id;
-            btn.addEventListener("click", (ev) => {
-                ev.preventDefault();
-                const act = btn.dataset.act;
-                if (act === "detail") openCostCenterDetail(c.id);
-                if (act === "edit") openCostCenterModal("edit", c.id);
-                if (act === "del") deleteCostCenter(c.id);
-            });
-        });
+    const statusHost = tr.querySelector('[data-role="cc-status-host"]');
+    if (statusHost) statusHost.replaceChildren(buildStatusBadge(c.status));
 
-        tbody.appendChild(tr);
+    tr.querySelectorAll("button[data-act]").forEach(btn => {
+      btn.dataset.id = c.id;
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        const act = btn.dataset.act;
+        if (act === "detail") openCostCenterDetail(c.id);
+        if (act === "edit") openCostCenterModal("edit", c.id);
+        if (act === "del") deleteCostCenter(c.id);
+      });
     });
+
+    tbody.appendChild(tr);
+  });
 }
 
 function findCostCenter(id) {
-    return state.centrosCustos.find(c => c.id === id) || null;
+  return state.centrosCustos.find(c => c.id === id) || null;
 }
 
-// ==============
-// MODAL (CRUD)
-// ==============
+async function openCostCenterModal(mode, id) {
+  const modal = bootstrap.Modal.getOrCreateInstance($("#modalCostCenter"));
+  const isEdit = mode === "edit";
+  $("#modalCostCenterTitle").textContent = isEdit ? "Editar centro de custo" : "Novo centro de custo";
 
-function openCostCenterModal(mode, id) {
-    const modal = bootstrap.Modal.getOrCreateInstance($("#modalCostCenter"));
-    const isEdit = mode === "edit";
-    $("#modalCostCenterTitle").textContent = isEdit ? "Editar centro de custo" : "Novo centro de custo";
+  if (isEdit) {
+    try {
+      const apiCc = await apiFetchJson(`${COST_CENTERS_API_BASE}/${id}`, { method: "GET" });
+      const c = normalizeCostCenterRow(apiCc || findCostCenter(id) || {});
 
-    if (isEdit) {
-        const c = findCostCenter(id);
-        if (!c) return;
-
-        $("#ccId").value = c.id || "";
-        $("#ccCodigo").value = c.codigo || "";
-        $("#ccNome").value = c.nome || "";
-        $("#ccStatus").value = c.status || "ativo";
-        $("#ccDescricao").value = c.descricao || "";
-        if ($("#ccGrupo")) $("#ccGrupo").value = c.grupo || "";
-        if ($("#ccUnidade")) $("#ccUnidade").value = c.unidade || "";
-    } else {
-        $("#ccId").value = "";
-        $("#ccCodigo").value = "";
-        $("#ccNome").value = "";
-        $("#ccStatus").value = "ativo";
-        $("#ccDescricao").value = "";
-        if ($("#ccGrupo")) $("#ccGrupo").value = "";
-        if ($("#ccUnidade")) $("#ccUnidade").value = "";
+      $("#ccId").value = c.id || "";
+      $("#ccCodigo").value = c.codigo || "";
+      $("#ccNome").value = c.nome || "";
+      $("#ccStatus").value = c.status || "ativo";
+      $("#ccDescricao").value = c.descricao || "";
+      if ($("#ccGrupo")) $("#ccGrupo").value = c.grupo || "";
+      if ($("#ccUnidade")) $("#ccUnidade").value = c.unidade || "";
+    } catch (err) {
+      console.error(err);
+      toast("Falha ao carregar centro de custo para edicao.");
+      return;
     }
+  } else {
+    $("#ccId").value = "";
+    $("#ccCodigo").value = "";
+    $("#ccNome").value = "";
+    $("#ccStatus").value = "ativo";
+    $("#ccDescricao").value = "";
+    if ($("#ccGrupo")) $("#ccGrupo").value = "";
+    if ($("#ccUnidade")) $("#ccUnidade").value = "";
+  }
 
-    modal.show();
+  modal.show();
 }
 
-function saveCostCenterFromModal() {
-    const id = ($("#ccId").value || "").trim() || null;
-    const codigo = ($("#ccCodigo").value || "").trim();
-    const nome = ($("#ccNome").value || "").trim();
-    const status = ($("#ccStatus").value || "ativo").trim();
-    const descricao = ($("#ccDescricao").value || "").trim();
-    const grupo = ($("#ccGrupo") ? ($("#ccGrupo").value || "").trim() : "");
-    const unidade = ($("#ccUnidade") ? ($("#ccUnidade").value || "").trim() : "");
+async function saveCostCenterFromModal() {
+  const id = ($("#ccId").value || "").trim() || null;
+  const codigo = ($("#ccCodigo").value || "").trim();
+  const nome = ($("#ccNome").value || "").trim();
+  const status = ($("#ccStatus").value || "ativo").trim();
+  const descricao = ($("#ccDescricao").value || "").trim();
+  const grupo = ($("#ccGrupo") ? ($("#ccGrupo").value || "").trim() : "");
+  const unidade = ($("#ccUnidade") ? ($("#ccUnidade").value || "").trim() : "");
 
-    if (!codigo || !nome) {
-        toast("Informe código e nome do centro de custo.");
-        return;
-    }
+  if (!codigo || !nome) {
+    toast("Informe codigo e nome do centro de custo.");
+    return;
+  }
 
-    const now = new Date().toISOString();
+  const payload = {
+    code: codigo,
+    name: nome,
+    description: descricao,
+    groupName: grupo,
+    unitName: unidade,
+    isActive: status === "ativo"
+  };
 
+  const btn = $("#btnSaveCostCenter");
+  if (btn) btn.disabled = true;
+
+  try {
     if (id) {
-        const c = findCostCenter(id);
-        if (!c) return;
-
-        c.codigo = codigo;
-        c.nome = nome;
-        c.status = status;
-        c.descricao = descricao;
-        c.grupo = grupo;
-        c.unidade = unidade;
-        c.updatedAt = now;
-
-        toast("Centro de custo atualizado.");
+      await apiFetchJson(`${COST_CENTERS_API_BASE}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      toast("Centro de custo atualizado.");
     } else {
-        const c = {
-            id: (typeof uid === "function" ? uid() : crypto.randomUUID()),
-            codigo,
-            nome,
-            status,
-            descricao,
-            grupo,
-            unidade,
-            createdAt: now,
-            updatedAt: now
-        };
-        state.centrosCustos.unshift(c);
-        toast("Centro de custo criado.");
+      await apiFetchJson(COST_CENTERS_API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      toast("Centro de custo criado.");
     }
 
-    saveState();
+    await loadCostCentersFromApi();
     updateKpis();
     renderTable();
     bootstrap.Modal.getOrCreateInstance($("#modalCostCenter")).hide();
+  } catch (err) {
+    console.error(err);
+    toast("Falha ao salvar centro de custo.");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
-function deleteCostCenter(id) {
-    const c = findCostCenter(id);
-    if (!c) return;
-    const ok = confirm(`Excluir o centro de custo "${c.nome}"?`);
-    if (!ok) return;
+async function deleteCostCenter(id) {
+  const c = findCostCenter(id);
+  if (!c) return;
+  const ok = confirm(`Excluir o centro de custo "${c.nome}"?`);
+  if (!ok) return;
 
-    state.centrosCustos = state.centrosCustos.filter(x => x.id !== id);
-    saveState();
+  try {
+    await apiFetchJson(`${COST_CENTERS_API_BASE}/${id}`, { method: "DELETE" });
+    toast("Centro de custo removido.");
+
+    await loadCostCentersFromApi();
     updateKpis();
     renderTable();
-    toast("Centro de custo removido.");
+  } catch (err) {
+    console.error(err);
+    toast("Falha ao excluir centro de custo.");
+  }
 }
-
-// ==============
-// DETALHES (modal)
-// ==============
-// Você pode reaproveitar seu padrão de modal de detalhes.
-// Aqui fica um stub pronto (se você criar o modal #modalCostCenterDetalhes).
 
 function openCostCenterDetail(id) {
-    const c = findCostCenter(id);
-    if (!c) return;
+  const c = findCostCenter(id);
+  if (!c) return;
 
-    const root = $("#modalCostCenterDetalhes");
-    if (!root) {
-        // se você ainda não criou o modal de detalhes, só abre o modal de edição
-        openCostCenterModal("edit", id);
-        return;
-    }
+  const root = $("#modalCostCenterDetalhes");
+  if (!root) {
+    openCostCenterModal("edit", id);
+    return;
+  }
 
-    const modal = bootstrap.Modal.getOrCreateInstance(root);
+  const modal = bootstrap.Modal.getOrCreateInstance(root);
 
-    setText(root, "cc-name", c.nome || EMPTY_TEXT);
-    setText(root, "cc-code", c.codigo || EMPTY_TEXT);
-    setText(root, "cc-desc", c.descricao || EMPTY_TEXT);
-    setText(root, "cc-group", c.grupo || EMPTY_TEXT);
-    setText(root, "cc-unit", c.unidade || EMPTY_TEXT);
+  setText(root, "cc-name", c.nome || EMPTY_TEXT);
+  setText(root, "cc-code", c.codigo || EMPTY_TEXT);
+  setText(root, "cc-desc", c.descricao || EMPTY_TEXT);
+  setText(root, "cc-group", c.grupo || EMPTY_TEXT);
+  setText(root, "cc-unit", c.unidade || EMPTY_TEXT);
 
-    const statusHost = root.querySelector('[data-role="cc-status-host"]');
-    if (statusHost) statusHost.replaceChildren(buildStatusBadge(c.status));
+  const statusHost = root.querySelector('[data-role="cc-status-host"]');
+  if (statusHost) statusHost.replaceChildren(buildStatusBadge(c.status));
 
-    // opcional: vagas relacionadas
-    const vagas = getCostCenterVagas(c);
-    const countEl = $("#ccVagasCount");
-    if (countEl) countEl.textContent = vagas.length;
+  const linked = getLinkedDepartments(c);
+  const countEl = $("#ccVagasCount");
+  if (countEl) countEl.textContent = linked.length;
 
-    modal.show();
+  modal.show();
 }
-
-// ==============
-// EXPORT CSV
-// ==============
 
 function exportCsv() {
-    const headers = ["Codigo", "CentroDeCusto", "Status", "Grupo", "Unidade", "Descricao"];
-    const rows = state.centrosCustos.map(c => [
-        c.codigo, c.nome, c.status, c.grupo, c.unidade, c.descricao
-    ]);
+  const headers = ["Codigo", "CentroDeCusto", "Status", "Grupo", "Unidade", "Descricao"];
+  const rows = state.centrosCustos.map(c => [
+    c.codigo, c.nome, c.status, c.grupo, c.unidade, c.descricao
+  ]);
+  const csv = [
+    headers.map(h => `"${String(h).replaceAll('"', '""')}"`).join(";"),
+    ...rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"', '""')}"`).join(";"))
+  ].join("\r\n");
 
-    const csv = [
-        headers.map(h => `"${String(h).replaceAll('"', '""')}"`).join(";"),
-        ...rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"', '""')}"`).join(";"))
-    ].join("\r\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "centros_custo_liotecnica.csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "centros_custo_liotecnica.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
-// ==============
-// WIRES
-// ==============
-
 function wireFilters() {
-    const apply = () => {
-        state.filters.q = ($("#ccSearch").value || "").trim();
-        state.filters.status = $("#ccStatusFilter").value || "all";
-        renderTable();
-    };
+  const apply = () => {
+    state.filters.q = ($("#ccSearch").value || "").trim();
+    state.filters.status = $("#ccStatusFilter").value || "all";
+    state.filters.link = $("#ccLink").value || "all";
+    renderTable();
+  };
 
-    $("#ccSearch").addEventListener("input", apply);
-    $("#ccStatusFilter").addEventListener("change", apply);
+  $("#ccSearch").addEventListener("input", apply);
+  $("#ccStatusFilter").addEventListener("change", apply);
+  $("#ccLink").addEventListener("change", apply);
 
-    const global = $("#globalSearchCostCenter");
-    if (global) {
-        global.addEventListener("input", () => {
-            $("#ccSearch").value = global.value;
-            apply();
-        });
-    }
+  const global = $("#globalSearchCostCenter");
+  if (global) {
+    global.addEventListener("input", () => {
+      $("#ccSearch").value = global.value;
+      apply();
+    });
+  }
 }
 
 function wireButtons() {
-    $("#btnNewCostCenter").addEventListener("click", () => openCostCenterModal("new"));
-    $("#btnSaveCostCenter").addEventListener("click", saveCostCenterFromModal);
-
-    $("#btnExportCostCenter").addEventListener("click", exportCsv);
+  $("#btnNewCostCenter").addEventListener("click", () => openCostCenterModal("new"));
+  $("#btnSaveCostCenter").addEventListener("click", saveCostCenterFromModal);
+  $("#btnExportCostCenter").addEventListener("click", exportCsv);
 }
 
+(async function init() {
+  try {
+    await loadCostCentersFromApi();
+    await loadDepartmentsFromApi();
+  } catch (err) {
+    console.error(err);
+    toast("Falha ao carregar dados da API.");
+    state.centrosCustos = [];
+    state.departments = [];
+  }
 
-// ==============
-// INIT
-// ==============
-(function init() {
-    const has = loadState();
-    if (!has) seedIfEmpty();
-    else seedIfEmpty(); // mantém o mesmo comportamento do seu JS de áreas
+  updateKpis();
+  renderTable();
 
-    updateKpis();
-    renderTable();
-
-    wireFilters();
-    wireButtons();
+  wireFilters();
+  wireButtons();
 })();

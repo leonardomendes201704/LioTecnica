@@ -63,6 +63,10 @@ public static class DbSeeder
         string Name,
         string Description);
 
+    private sealed record CostCenterSeed(
+        string Code,
+        string Name);
+
     private static async Task SeedTenantAsync(
         AppDbContext db,
         ITenantContext tenantContext,
@@ -137,6 +141,8 @@ public static class DbSeeder
         {
             await EnsureDepartmentsAsync(db, areaByCode, seeds, emailDomain);
         }
+
+        await EnsureCostCentersFromDepartmentsAsync(db);
 
         var hasAnyUnit = await db.Units.AnyAsync();
         if (!hasAnyUnit)
@@ -1185,6 +1191,47 @@ BuildDemoRequisitos(string areaCode)
         if (toAdd.Count > 0)
         {
             db.RequisitoCategorias.AddRange(toAdd);
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private static async Task EnsureCostCentersFromDepartmentsAsync(AppDbContext db)
+    {
+        var deptCostCenters = await db.Departments
+            .AsNoTracking()
+            .Select(x => x.CostCenter)
+            .Where(x => x != null && x != "")
+            .Distinct()
+            .ToListAsync();
+
+        if (deptCostCenters.Count == 0) return;
+
+        var existingCodes = await db.CostCenters
+            .AsNoTracking()
+            .Select(x => x.Code)
+            .ToListAsync();
+
+        var existingSet = existingCodes.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var toAdd = new List<CostCenter>();
+
+        foreach (var cc in deptCostCenters)
+        {
+            var code = cc!.Trim();
+            if (existingSet.Contains(code)) continue;
+
+            toAdd.Add(new CostCenter
+            {
+                Id = Guid.NewGuid(),
+                Code = code,
+                Name = code,
+                IsActive = true
+            });
+            existingSet.Add(code);
+        }
+
+        if (toAdd.Count > 0)
+        {
+            db.CostCenters.AddRange(toAdd);
             await db.SaveChangesAsync();
         }
     }

@@ -159,12 +159,7 @@
 }
 
 @section Scripts {
-    <script type="application/json" id="seedData">
-        @Html.Raw(Model.SeedJson)
-    </script>
     <script>
-        const seedElement = document.getElementById("seedData");
-        window.__seedData = seedElement ? JSON.parse(seedElement.textContent || "null") : null;
     </script>
 	<script src="~/js/views/centros-custos.js" asp-append-version="true"></script>
 }

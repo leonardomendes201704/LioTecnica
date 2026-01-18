@@ -24,6 +24,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Area> Areas => Set<Area>();
     public DbSet<RequisitoCategoria> RequisitoCategorias => Set<RequisitoCategoria>();
+    public DbSet<CostCenter> CostCenters => Set<CostCenter>();
     public DbSet<Unit> Units => Set<Unit>();
     public DbSet<JobPosition> JobPositions => Set<JobPosition>();
     public DbSet<Manager> Managers => Set<Manager>();
@@ -161,6 +162,22 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.Property(x => x.Code).HasMaxLength(40).IsRequired();
             b.Property(x => x.Name).HasMaxLength(120).IsRequired();
             b.Property(x => x.Description).HasMaxLength(1000);
+
+            b.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<CostCenter>(b =>
+        {
+            b.ToTable("CostCenters");
+            b.HasKey(x => x.Id);
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Code).HasMaxLength(40).IsRequired();
+            b.Property(x => x.Name).HasMaxLength(160).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(1000);
+            b.Property(x => x.GroupName).HasMaxLength(120);
+            b.Property(x => x.UnitName).HasMaxLength(160);
 
             b.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
             b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
@@ -504,6 +521,15 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
 
                 if (entry.State is EntityState.Added or EntityState.Modified)
                     dep.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is CostCenter cc)
+            {
+                if (entry.State == EntityState.Added)
+                    cc.CreatedAtUtc = now;
+
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                    cc.UpdatedAtUtc = now;
             }
 
             if (entry.Entity is Unit unit)
