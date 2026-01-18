@@ -1,6 +1,3 @@
-﻿using System.Reflection;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using LioTecnica.Web.Infrastructure.Security;
 using LioTecnica.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -22,49 +19,66 @@ public sealed class UnidadesController : Controller
     }
 
     [HttpGet("/Unidades")]
-    public async Task<IActionResult> Index(CancellationToken ct)
+    public IActionResult Index()
     {
-        var tenantId = _tenantContext.TenantId;
-
-        // 2) Seed base (provavelmente anonymous type: new { unidades = ..., vagas = ..., gestores = ... })
-        var baseSeed = BuildBaseSeed();
-
-        // 3) API
-        var api = await _unitsApi.GetUnitsAsync(tenantId, ct);
-
-        // 4) Unidades no formato do front
-        var unidadesForFront = (api?.Items is { Count: > 0 })
-            ? api.Items.Select(MapToFrontUnidade).ToList()
-            : new List<object>();
-
-        // 5) Pegar vagas/gestores do seed base (sem dynamic)
-        static object? GetProp(object obj, string name)
-            => obj.GetType()
-                  .GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase)
-                  ?.GetValue(obj);
-
-        var vagasBase = GetProp(baseSeed, "vagas") ?? Array.Empty<object>();
-        var gestoresBase = GetProp(baseSeed, "gestores") ?? Array.Empty<object>();
-
-        // 6) Objeto FINAL (imutável) já com as unidades corretas
-        var seedFinal = new
-        {
-            unidades = unidadesForFront,
-            vagas = vagasBase,
-            gestores = gestoresBase
-        };
-
-        // 7) Serializar
         var vm = new PageSeedViewModel
         {
-            SeedJson = JsonSerializer.Serialize(seedFinal, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            })
+            SeedJson = "{}"
         };
 
         return View("Index", vm);
+    }
+
+    [HttpGet("/Unidades/_api")]
+    public async Task<IActionResult> List(CancellationToken ct)
+    {
+        var tenantId = _tenantContext.TenantId;
+        var api = await _unitsApi.GetUnitsAsync(tenantId, ct);
+
+        var items = (api?.Items is { Count: > 0 })
+            ? api.Items.Select(MapToFrontUnidade).ToList()
+            : new List<object>();
+
+        return Ok(new
+        {
+            items,
+            api.Page,
+            api.PageSize,
+            api.TotalItems,
+            api.TotalPages
+        });
+    }
+
+    [HttpGet("/Unidades/_api/{id:guid}")]
+    public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
+    {
+        var tenantId = _tenantContext.TenantId;
+        var item = await _unitsApi.GetByIdAsync(tenantId, id, ct);
+        return item is null ? NotFound() : Ok(item);
+    }
+
+    [HttpPost("/Unidades/_api")]
+    public async Task<IActionResult> Create([FromBody] UnitCreateRequest request, CancellationToken ct)
+    {
+        var tenantId = _tenantContext.TenantId;
+        var created = await _unitsApi.CreateAsync(tenantId, request, ct);
+        return Ok(created);
+    }
+
+    [HttpPut("/Unidades/_api/{id:guid}")]
+    public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UnitUpdateRequest request, CancellationToken ct)
+    {
+        var tenantId = _tenantContext.TenantId;
+        var updated = await _unitsApi.UpdateAsync(tenantId, id, request, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpDelete("/Unidades/_api/{id:guid}")]
+    public async Task<IActionResult> Delete([FromRoute] Guid id, CancellationToken ct)
+    {
+        var tenantId = _tenantContext.TenantId;
+        var ok = await _unitsApi.DeleteAsync(tenantId, id, ct);
+        return ok ? NoContent() : NotFound();
     }
 
     [HttpGet("/api/lookup/units")]
@@ -88,7 +102,6 @@ public sealed class UnidadesController : Controller
         return Ok(items); // array direto
     }
 
-
     // /Unidades/{id}/gestores -> web chama API e devolve JSON pro JS
     [HttpGet("/Unidades/{id:guid}/gestores")]
     public async Task<IActionResult> GestoresDaUnidade([FromRoute] Guid id, CancellationToken ct)
@@ -104,7 +117,7 @@ public sealed class UnidadesController : Controller
             ct: ct
         );
 
-        // devolve no formato que teu JS já espera
+        // devolve no formato que teu JS j? espera
         var items = api.Items.Select(m => new {
             id = m.Id,
             nome = m.Name,
@@ -118,7 +131,6 @@ public sealed class UnidadesController : Controller
 
         return Ok(new { items });
     }
-
 
     // ====== MAPEAMENTO ======
     private static object MapToFrontUnidade(UnitApiItem u)
@@ -144,25 +156,11 @@ public sealed class UnidadesController : Controller
             cidade = u.City ?? "",
             uf = (u.Uf ?? "").ToUpperInvariant(),
 
-            // Esses hoje não vêm no /api/units (ainda). Vai ficar "-" no modal até você expor no backend.
             endereco = u.AddressLine ?? "",
             bairro = u.Neighborhood ?? "",
             cep = u.ZipCode ?? "",
             responsavel = u.ResponsibleName ?? "",
             observacao = u.Notes ?? "",
-        };
-    }
-
-    // ====== SEED BASE (EXEMPLO) ======
-    // Aqui você deve plugar no seu SeedBuilder real.
-    private static dynamic BuildBaseSeed()
-    {
-        // IMPORTANTE: manter vagas/gestores no seed pq seu modal de unidade usa loadVagas/loadGestores do localStorage/seed.
-        return new
-        {
-            gestores = Array.Empty<object>(),
-            vagas = Array.Empty<object>(),
-            unidades = Array.Empty<object>()
         };
     }
 }

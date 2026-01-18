@@ -1,72 +1,114 @@
-﻿const seed = window.__seedData || {};
-const STORE_KEY = "lt_rh_unidades_v1";
-const VAGAS_STORE_KEY = "lt_rh_vagas_v1";
-const GESTORES_STORE_KEY = "lt_rh_gestores_v1";
+const UNIDADES_API_BASE = "/Unidades/_api";
+const VAGAS_API_URL = window.__vagasApiUrl || "/api/vagas";
 const EMPTY_TEXT = "-";
 
 const state = {
   unidades: [],
+  vagas: [],
   filters: { q: "", status: "all" }
 };
 
-function setText(root, role, value, fallback = EMPTY_TEXT){
-  if(!root) return;
+function apiFetchJson(url, opts) {
+  return fetch(url, {
+    headers: { "Accept": "application/json", ...(opts?.headers || {}) },
+    ...opts
+  }).then(async (res) => {
+    const contentType = res.headers.get("content-type") || "";
+    let bodyText = "";
+    let bodyJson = null;
+
+    try { bodyText = await res.text(); } catch { bodyText = ""; }
+
+    if (bodyText && contentType.includes("application/json")) {
+      try { bodyJson = JSON.parse(bodyText); } catch { bodyJson = null; }
+    }
+
+    if (res.status === 204) return null;
+
+    if (!res.ok) {
+      const msg =
+        bodyJson?.message ||
+        bodyJson?.title ||
+        (bodyText ? bodyText.slice(0, 300) : "") ||
+        `Erro HTTP ${res.status}`;
+
+      const err = new Error(msg);
+      err.status = res.status;
+      err.url = url;
+      err.body = bodyJson ?? bodyText;
+      err.headers = Object.fromEntries(res.headers.entries());
+      throw err;
+    }
+
+    if (contentType.includes("application/json")) {
+      try { return bodyJson ?? JSON.parse(bodyText || "null"); } catch { return null; }
+    }
+
+    return bodyText || null;
+  });
+}
+
+function fromApiStatus(apiStatus) {
+  const s = (apiStatus || "").toLowerCase();
+  if (s === "inactive") return "inativo";
+  if (s === "active") return "ativo";
+  if (s === "inativo" || s === "ativo") return s;
+  return "ativo";
+}
+
+function toApiStatus(uiStatus) {
+  const s = (uiStatus || "").toLowerCase();
+  return s === "inativo" ? "Inactive" : "Active";
+}
+
+function normalizeUnitRow(u) {
+  u = u || {};
+  const pick = (...vals) => {
+    for (const v of vals) {
+      if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+    }
+    return "";
+  };
+
+  return {
+    id: pick(u.id, u.Id),
+    codigo: pick(u.codigo, u.code),
+    nome: pick(u.nome, u.name),
+    status: fromApiStatus(pick(u.status)),
+    cidade: pick(u.cidade, u.city),
+    uf: pick(u.uf, u.state),
+    endereco: pick(u.endereco, u.addressLine),
+    bairro: pick(u.bairro, u.neighborhood),
+    cep: pick(u.cep, u.zipCode),
+    email: pick(u.email),
+    telefone: pick(u.telefone, u.phone),
+    responsavel: pick(u.responsavel, u.responsibleName),
+    tipo: pick(u.tipo, u.type),
+    headcount: Number.isFinite(+u.headcount) ? (+u.headcount) : 0,
+    observacao: pick(u.observacao, u.notes)
+  };
+}
+
+async function loadUnidadesFromApi() {
+  const data = await apiFetchJson(UNIDADES_API_BASE, { method: "GET" });
+  const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+  state.unidades = items.map(normalizeUnitRow);
+}
+
+async function loadVagasFromApi() {
+  const data = await apiFetchJson(VAGAS_API_URL, { method: "GET" });
+  const list = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+  state.vagas = list;
+}
+
+function setText(root, role, value, fallback = EMPTY_TEXT) {
+  if (!root) return;
   const el = root.querySelector(`[data-role="${role}"]`);
-  if(!el) return;
+  if (!el) return;
   el.textContent = value ?? fallback;
 }
 
-function loadState(){
-  try{
-    const raw = localStorage.getItem(STORE_KEY);
-    if(!raw) return false;
-    const data = JSON.parse(raw);
-    if(!data || !Array.isArray(data.unidades)) return false;
-    state.unidades = data.unidades;
-    return true;
-  }catch{
-    return false;
-  }
-}
-
-function saveState(){
-  localStorage.setItem(STORE_KEY, JSON.stringify({
-    unidades: state.unidades
-  }));
-}
-
-function seedIfEmpty(){
-  if(state.unidades.length) return;
-  const list = Array.isArray(seed.unidades) ? seed.unidades : [];
-  state.unidades = list;
-  saveState();
-}
-
-function loadVagas(){
-  try{
-    const raw = localStorage.getItem(VAGAS_STORE_KEY);
-    if(!raw) return Array.isArray(seed.vagas) ? seed.vagas : [];
-    const data = JSON.parse(raw);
-    if(data && Array.isArray(data.vagas)) return data.vagas;
-    return Array.isArray(seed.vagas) ? seed.vagas : [];
-  }catch{
-    return Array.isArray(seed.vagas) ? seed.vagas : [];
-  }
-}
-
-function loadGestores(){
-  try{
-    const raw = localStorage.getItem(GESTORES_STORE_KEY);
-    if(!raw) return Array.isArray(seed.gestores) ? seed.gestores : [];
-    const data = JSON.parse(raw);
-    if(data && Array.isArray(data.gestores)) return data.gestores;
-    return Array.isArray(seed.gestores) ? seed.gestores : [];
-  }catch{
-    return Array.isArray(seed.gestores) ? seed.gestores : [];
-  }
-}
-
-function buildStatusBadge(status){
+function buildStatusBadge(status) {
   const map = {
     ativo: { text: "Ativo", cls: "success" },
     inativo: { text: "Inativo", cls: "secondary" }
@@ -78,7 +120,7 @@ function buildStatusBadge(status){
   return span;
 }
 
-function formatVagaStatus(status){
+function formatVagaStatus(status) {
   const map = {
     aberta: "Aberta",
     pausada: "Pausada",
@@ -92,7 +134,7 @@ function formatVagaStatus(status){
   return map[status] || status || EMPTY_TEXT;
 }
 
-function buildVagaStatusBadge(status){
+function buildVagaStatusBadge(status) {
   const map = {
     aberta: "success",
     pausada: "warning",
@@ -109,45 +151,39 @@ function buildVagaStatusBadge(status){
   return span;
 }
 
-function formatLocal(vaga){
+function formatLocal(vaga) {
   const parts = [vaga?.cidade, vaga?.uf].filter(Boolean);
   return parts.length ? parts.join(" - ") : EMPTY_TEXT;
 }
 
-function formatDate(iso){
-  if(!iso) return EMPTY_TEXT;
+function formatDate(iso) {
+  if (!iso) return EMPTY_TEXT;
   const d = new Date(iso);
-  if(Number.isNaN(d.getTime())) return EMPTY_TEXT;
+  if (Number.isNaN(d.getTime())) return EMPTY_TEXT;
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function unidadeKey(unidade){
+function unidadeKey(unidade) {
   const text = unidade?.nome || `${unidade?.cidade || ""} - ${unidade?.uf || ""}`.trim();
   return normalizeText(text);
 }
 
-function vagaLocalKey(vaga){
+function vagaLocalKey(vaga) {
   const parts = [vaga?.cidade, vaga?.uf].filter(Boolean);
   return parts.length ? normalizeText(parts.join(" - ")) : "";
 }
 
-function getUnidadeVagas(unidade){
+function getUnidadeVagas(unidade) {
   const key = unidadeKey(unidade);
-  if(!key) return [];
-  return loadVagas().filter(v => vagaLocalKey(v) === key);
+  if (!key) return [];
+  return (state.vagas || []).filter(v => vagaLocalKey(v) === key);
 }
 
-function getUnidadeGestores(unidade){
-  const key = unidadeKey(unidade);
-  if(!key) return [];
-  return loadGestores().filter(g => normalizeText(g.unidade) === key);
-}
-
-function updateKpis(){
+function updateKpis() {
   const total = state.unidades.length;
   const ativos = state.unidades.filter(u => u.status === "ativo").length;
   const headcount = state.unidades.reduce((acc, u) => acc + (parseInt(u.headcount, 10) || 0), 0);
-  const openVagas = loadVagas().filter(v => v.status === "aberta" && vagaLocalKey(v)).length;
+  const openVagas = (state.vagas || []).filter(v => v.status === "aberta" && vagaLocalKey(v)).length;
 
   $("#kpiUnTotal").textContent = total;
   $("#kpiUnActive").textContent = ativos;
@@ -155,13 +191,13 @@ function updateKpis(){
   $("#kpiUnOpenRoles").textContent = openVagas;
 }
 
-function getFiltered(){
+function getFiltered() {
   const q = normalizeText(state.filters.q || "");
   const st = state.filters.status;
 
   return state.unidades.filter(u => {
-    if(st !== "all" && (u.status || "") !== st) return false;
-    if(!q) return true;
+    if (st !== "all" && (u.status || "") !== st) return false;
+    if (!q) return true;
     const blob = normalizeText([
       u.nome, u.codigo, u.cidade, u.uf, u.endereco, u.bairro, u.email, u.telefone, u.responsavel, u.tipo
     ].join(" "));
@@ -169,24 +205,24 @@ function getFiltered(){
   });
 }
 
-function renderTable(){
+function renderTable() {
   const tbody = $("#unTbody");
-  if(!tbody) return;
+  if (!tbody) return;
   tbody.replaceChildren();
 
   const rows = getFiltered();
   $("#unCount").textContent = rows.length;
   $("#unHint").textContent = rows.length ? `${rows.length} unidades encontradas.` : "Nenhuma unidade encontrada.";
 
-  if(!rows.length){
+  if (!rows.length) {
     const empty = cloneTemplate("tpl-un-empty-row");
-    if(empty) tbody.appendChild(empty);
+    if (empty) tbody.appendChild(empty);
     return;
   }
 
   rows.forEach(u => {
     const tr = cloneTemplate("tpl-un-row");
-    if(!tr) return;
+    if (!tr) return;
     setText(tr, "un-name", u.nome || EMPTY_TEXT);
     setText(tr, "un-code", u.codigo || EMPTY_TEXT);
     setText(tr, "un-headcount", u.headcount != null ? String(u.headcount) : "0");
@@ -195,16 +231,16 @@ function renderTable(){
     setText(tr, "un-type", u.tipo || EMPTY_TEXT);
 
     const statusHost = tr.querySelector('[data-role="un-status-host"]');
-    if(statusHost) statusHost.replaceChildren(buildStatusBadge(u.status));
+    if (statusHost) statusHost.replaceChildren(buildStatusBadge(u.status));
 
     tr.querySelectorAll("button[data-act]").forEach(btn => {
       btn.dataset.id = u.id;
       btn.addEventListener("click", (ev) => {
         ev.preventDefault();
         const act = btn.dataset.act;
-        if(act === "detail") openUnidadeDetail(u.id);
-        if(act === "edit") openUnidadeModal("edit", u.id);
-        if(act === "del") deleteUnidade(u.id);
+        if (act === "detail") openUnidadeDetail(u.id);
+        if (act === "edit") openUnidadeModal("edit", u.id);
+        if (act === "del") deleteUnidade(u.id);
       });
     });
 
@@ -212,34 +248,41 @@ function renderTable(){
   });
 }
 
-function findUnidade(id){
+function findUnidade(id) {
   return state.unidades.find(u => u.id === id) || null;
 }
 
-function openUnidadeModal(mode, id){
+async function openUnidadeModal(mode, id) {
   const modal = bootstrap.Modal.getOrCreateInstance($("#modalUnidade"));
   const isEdit = mode === "edit";
   $("#modalUnidadeTitle").textContent = isEdit ? "Editar unidade" : "Nova unidade";
 
-  if(isEdit){
-    const u = findUnidade(id);
-    if(!u) return;
-    $("#unId").value = u.id || "";
-    $("#unCodigo").value = u.codigo || "";
-    $("#unNome").value = u.nome || "";
-    $("#unStatus").value = u.status || "ativo";
-    $("#unCidade").value = u.cidade || "";
-    $("#unUf").value = u.uf || "";
-    $("#unEndereco").value = u.endereco || "";
-    $("#unBairro").value = u.bairro || "";
-    $("#unCep").value = u.cep || "";
-    $("#unEmail").value = u.email || "";
-    $("#unTelefone").value = u.telefone || "";
-    $("#unResponsavel").value = u.responsavel || "";
-    $("#unTipo").value = u.tipo || "";
-    $("#unHeadcount").value = u.headcount != null ? String(u.headcount) : "0";
-    $("#unObs").value = u.observacao || "";
-  }else{
+  if (isEdit) {
+    try {
+      const apiUnit = await apiFetchJson(`${UNIDADES_API_BASE}/${id}`, { method: "GET" });
+      const u = normalizeUnitRow(apiUnit || findUnidade(id) || {});
+
+      $("#unId").value = u.id || "";
+      $("#unCodigo").value = u.codigo || "";
+      $("#unNome").value = u.nome || "";
+      $("#unStatus").value = u.status || "ativo";
+      $("#unCidade").value = u.cidade || "";
+      $("#unUf").value = u.uf || "";
+      $("#unEndereco").value = u.endereco || "";
+      $("#unBairro").value = u.bairro || "";
+      $("#unCep").value = u.cep || "";
+      $("#unEmail").value = u.email || "";
+      $("#unTelefone").value = u.telefone || "";
+      $("#unResponsavel").value = u.responsavel || "";
+      $("#unTipo").value = u.tipo || "";
+      $("#unHeadcount").value = u.headcount != null ? String(u.headcount) : "0";
+      $("#unObs").value = u.observacao || "";
+    } catch (err) {
+      console.error(err);
+      toast("Falha ao carregar unidade para edicao.");
+      return;
+    }
+  } else {
     $("#unId").value = "";
     $("#unCodigo").value = "";
     $("#unNome").value = "";
@@ -260,13 +303,13 @@ function openUnidadeModal(mode, id){
   modal.show();
 }
 
-function saveUnidadeFromModal(){
+async function saveUnidadeFromModal() {
   const id = $("#unId").value || null;
   const codigo = ($("#unCodigo").value || "").trim();
   const nome = ($("#unNome").value || "").trim();
   const status = ($("#unStatus").value || "ativo").trim();
   const cidade = ($("#unCidade").value || "").trim();
-  const uf = ($("#unUf").value || "").trim().toUpperCase().slice(0,2);
+  const uf = ($("#unUf").value || "").trim().toUpperCase().slice(0, 2);
   const endereco = ($("#unEndereco").value || "").trim();
   const bairro = ($("#unBairro").value || "").trim();
   const cep = ($("#unCep").value || "").trim();
@@ -277,76 +320,81 @@ function saveUnidadeFromModal(){
   const headcount = parseInt($("#unHeadcount").value, 10) || 0;
   const observacao = ($("#unObs").value || "").trim();
 
-  if(!codigo || !nome){
+  if (!codigo || !nome) {
     toast("Informe codigo e nome da unidade.");
     return;
   }
 
-  const now = new Date().toISOString();
+  const payload = {
+    code: codigo,
+    name: nome,
+    status: toApiStatus(status),
+    city: cidade,
+    uf,
+    addressLine: endereco,
+    neighborhood: bairro,
+    zipCode: cep,
+    email,
+    phone: telefone,
+    responsibleName: responsavel,
+    type: tipo,
+    headcount,
+    notes: observacao
+  };
 
-  if(id){
-    const u = findUnidade(id);
-    if(!u) return;
-    u.codigo = codigo;
-    u.nome = nome;
-    u.status = status;
-    u.cidade = cidade;
-    u.uf = uf;
-    u.endereco = endereco;
-    u.bairro = bairro;
-    u.cep = cep;
-    u.email = email;
-    u.telefone = telefone;
-    u.responsavel = responsavel;
-    u.tipo = tipo;
-    u.headcount = headcount;
-    u.observacao = observacao;
-    u.updatedAt = now;
-    toast("Unidade atualizada.");
-  }else{
-    const u = {
-      id: uid(),
-      codigo,
-      nome,
-      status,
-      cidade,
-      uf,
-      endereco,
-      bairro,
-      cep,
-      email,
-      telefone,
-      responsavel,
-      tipo,
-      headcount,
-      observacao,
-      createdAt: now,
-      updatedAt: now
-    };
-    state.unidades.unshift(u);
-    toast("Unidade criada.");
+  const btn = $("#btnSaveUnidade");
+  if (btn) btn.disabled = true;
+
+  try {
+    if (id) {
+      await apiFetchJson(`${UNIDADES_API_BASE}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      toast("Unidade atualizada.");
+    } else {
+      await apiFetchJson(UNIDADES_API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      toast("Unidade criada.");
+    }
+
+    await loadUnidadesFromApi();
+    updateKpis();
+    renderTable();
+    bootstrap.Modal.getOrCreateInstance($("#modalUnidade")).hide();
+  } catch (err) {
+    console.error(err);
+    toast("Falha ao salvar unidade.");
+  } finally {
+    if (btn) btn.disabled = false;
   }
-
-  saveState();
-  updateKpis();
-  renderTable();
-  bootstrap.Modal.getOrCreateInstance($("#modalUnidade")).hide();
 }
 
-function deleteUnidade(id){
+async function deleteUnidade(id) {
   const u = findUnidade(id);
-  if(!u) return;
-  const ok = confirm(`Excluir a unidade \"${u.nome}\"?`);
-  if(!ok) return;
-  state.unidades = state.unidades.filter(x => x.id !== id);
-  saveState();
-  updateKpis();
-  renderTable();
-  toast("Unidade removida.");
+  const nome = u?.nome || "esta unidade";
+  const ok = confirm(`Excluir a unidade "${nome}"?`);
+  if (!ok) return;
+
+  try {
+    await apiFetchJson(`${UNIDADES_API_BASE}/${id}`, { method: "DELETE" });
+    toast("Unidade removida.");
+
+    await loadUnidadesFromApi();
+    updateKpis();
+    renderTable();
+  } catch (err) {
+    console.error(err);
+    toast("Falha ao excluir unidade.");
+  }
 }
 
-function goToVagaDetail(vagaId){
-  if(!vagaId) return;
+function goToVagaDetail(vagaId) {
+  if (!vagaId) return;
   const url = new URL("/Vagas", window.location.origin);
   url.searchParams.set("vagaId", vagaId);
   url.searchParams.set("open", "detail");
@@ -354,133 +402,127 @@ function goToVagaDetail(vagaId){
 }
 
 async function renderGestoresFromApi(unitId) {
-    const gestoresBody = $("#unGestoresTbody");
-    if (!gestoresBody) return;
+  const gestoresBody = $("#unGestoresTbody");
+  if (!gestoresBody) return;
 
-    // estado "carregando..."
+  gestoresBody.replaceChildren();
+  const trLoading = document.createElement("tr");
+  trLoading.innerHTML = `<td colspan="5" class="text-muted py-3">Carregando gestores...</td>`;
+  gestoresBody.appendChild(trLoading);
+
+  $("#unGestoresCount").textContent = "...";
+
+  try {
+    const resp = await fetch(`/Unidades/${unitId}/gestores`, {
+      headers: { "accept": "application/json" }
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    const gestores = Array.isArray(data?.items) ? data.items : [];
+
+    $("#unGestoresCount").textContent = gestores.length;
+
     gestoresBody.replaceChildren();
-    const trLoading = document.createElement("tr");
-    trLoading.innerHTML = `<td colspan="5" class="text-muted py-3">Carregando gestores...</td>`;
-    gestoresBody.appendChild(trLoading);
 
-    // contador provisório
-    $("#unGestoresCount").textContent = "…";
-
-    try {
-        // endpoint do WEB (proxy) sugerido: /Unidades/{id}/gestores
-        const resp = await fetch(`/Unidades/${unitId}/gestores`, {
-            headers: { "accept": "application/json" }
-        });
-
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-        const data = await resp.json();
-        const gestores = Array.isArray(data?.items) ? data.items : [];
-
-        $("#unGestoresCount").textContent = gestores.length;
-
-        gestoresBody.replaceChildren();
-
-        if (!gestores.length) {
-            const empty = cloneTemplate("tpl-un-gestor-empty-row");
-            if (empty) gestoresBody.appendChild(empty);
-            return;
-        }
-
-        gestores
-            .slice()
-            .sort((a, b) => (a.nome || "").localeCompare(b.nome || ""))
-            .forEach(g => {
-                const tr = cloneTemplate("tpl-un-gestor-row");
-                if (!tr) return;
-
-                setText(tr, "gestor-name", g.nome || EMPTY_TEXT);
-                setText(tr, "gestor-email", g.email || EMPTY_TEXT);
-                setText(tr, "gestor-cargo", g.cargo || EMPTY_TEXT);
-                setText(tr, "gestor-area", g.area || EMPTY_TEXT);
-                setText(tr, "gestor-headcount", g.headcount != null ? String(g.headcount) : "0");
-
-                const statusEl = tr.querySelector('[data-role="gestor-status-host"]');
-                if (statusEl) statusEl.replaceChildren(buildStatusBadge(g.status)); // espera "ativo/inativo"
-
-                gestoresBody.appendChild(tr);
-            });
-    } catch (err) {
-        $("#unGestoresCount").textContent = "0";
-        gestoresBody.replaceChildren();
-        const empty = cloneTemplate("tpl-un-gestor-empty-row");
-        if (empty) gestoresBody.appendChild(empty);
-        toast("Não foi possível carregar gestores desta unidade.");
+    if (!gestores.length) {
+      const empty = cloneTemplate("tpl-un-gestor-empty-row");
+      if (empty) gestoresBody.appendChild(empty);
+      return;
     }
+
+    gestores
+      .slice()
+      .sort((a, b) => (a.nome || "").localeCompare(b.nome || ""))
+      .forEach(g => {
+        const tr = cloneTemplate("tpl-un-gestor-row");
+        if (!tr) return;
+
+        setText(tr, "gestor-name", g.nome || EMPTY_TEXT);
+        setText(tr, "gestor-email", g.email || EMPTY_TEXT);
+        setText(tr, "gestor-cargo", g.cargo || EMPTY_TEXT);
+        setText(tr, "gestor-area", g.area || EMPTY_TEXT);
+        setText(tr, "gestor-headcount", g.headcount != null ? String(g.headcount) : "0");
+
+        const statusEl = tr.querySelector('[data-role="gestor-status-host"]');
+        if (statusEl) statusEl.replaceChildren(buildStatusBadge(g.status));
+
+        gestoresBody.appendChild(tr);
+      });
+  } catch (err) {
+    $("#unGestoresCount").textContent = "0";
+    gestoresBody.replaceChildren();
+    const empty = cloneTemplate("tpl-un-gestor-empty-row");
+    if (empty) gestoresBody.appendChild(empty);
+    toast("Nao foi possivel carregar gestores desta unidade.");
+  }
 }
 
 async function openUnidadeDetail(id) {
-    const u = findUnidade(id);
-    if (!u) return;
-    const root = $("#modalUnidadeDetalhes");
-    if (!root) return;
-    const modal = bootstrap.Modal.getOrCreateInstance(root);
+  const u = findUnidade(id);
+  if (!u) return;
+  const root = $("#modalUnidadeDetalhes");
+  if (!root) return;
+  const modal = bootstrap.Modal.getOrCreateInstance(root);
 
-    setText(root, "un-name", u.nome || EMPTY_TEXT);
-    setText(root, "un-code", u.codigo || EMPTY_TEXT);
-    const addressParts = [u.endereco, u.bairro, u.cidade, u.uf].filter(Boolean);
-    setText(root, "un-address", addressParts.join(" - ") || EMPTY_TEXT);
-    setText(root, "un-email", u.email || EMPTY_TEXT);
-    setText(root, "un-phone", u.telefone || EMPTY_TEXT);
-    setText(root, "un-owner", u.responsavel || EMPTY_TEXT);
-    setText(root, "un-type", u.tipo || EMPTY_TEXT);
+  setText(root, "un-name", u.nome || EMPTY_TEXT);
+  setText(root, "un-code", u.codigo || EMPTY_TEXT);
+  const addressParts = [u.endereco, u.bairro, u.cidade, u.uf].filter(Boolean);
+  setText(root, "un-address", addressParts.join(" - ") || EMPTY_TEXT);
+  setText(root, "un-email", u.email || EMPTY_TEXT);
+  setText(root, "un-phone", u.telefone || EMPTY_TEXT);
+  setText(root, "un-owner", u.responsavel || EMPTY_TEXT);
+  setText(root, "un-type", u.tipo || EMPTY_TEXT);
 
-    const statusHost = root.querySelector('[data-role="un-status-host"]');
-    if (statusHost) statusHost.replaceChildren(buildStatusBadge(u.status));
+  const statusHost = root.querySelector('[data-role="un-status-host"]');
+  if (statusHost) statusHost.replaceChildren(buildStatusBadge(u.status));
 
-    // ✅ Gestores agora vêm da API (on-demand)
-    renderGestoresFromApi(u.id);
+  renderGestoresFromApi(u.id);
 
-    // ✅ Vagas continuam como estava (localStorage/seed)
-    const vagas = getUnidadeVagas(u);
-    $("#unVagasCount").textContent = vagas.length;
-    const vagasBody = $("#unVagasTbody");
-    vagasBody.replaceChildren();
+  const vagas = getUnidadeVagas(u);
+  $("#unVagasCount").textContent = vagas.length;
+  const vagasBody = $("#unVagasTbody");
+  vagasBody.replaceChildren();
 
-    if (!vagas.length) {
-        const empty = cloneTemplate("tpl-un-vaga-empty-row");
-        if (empty) vagasBody.appendChild(empty);
-    } else {
-        vagas
-            .slice()
-            .sort((a, b) => (a.titulo || "").localeCompare(b.titulo || ""))
-            .forEach(v => {
-                const tr = cloneTemplate("tpl-un-vaga-row");
-                if (!tr) return;
+  if (!vagas.length) {
+    const empty = cloneTemplate("tpl-un-vaga-empty-row");
+    if (empty) vagasBody.appendChild(empty);
+  } else {
+    vagas
+      .slice()
+      .sort((a, b) => (a.titulo || "").localeCompare(b.titulo || ""))
+      .forEach(v => {
+        const tr = cloneTemplate("tpl-un-vaga-row");
+        if (!tr) return;
 
-                setText(tr, "vaga-code", v.codigo || EMPTY_TEXT);
-                setText(tr, "vaga-title", v.titulo || EMPTY_TEXT);
-                setText(tr, "vaga-modalidade", v.modalidade || EMPTY_TEXT);
-                setText(tr, "vaga-local", formatLocal(v));
-                setText(tr, "vaga-updated", formatDate(v.updatedAt));
+        setText(tr, "vaga-code", v.codigo || EMPTY_TEXT);
+        setText(tr, "vaga-title", v.titulo || EMPTY_TEXT);
+        setText(tr, "vaga-modalidade", v.modalidade || EMPTY_TEXT);
+        setText(tr, "vaga-local", formatLocal(v));
+        setText(tr, "vaga-updated", formatDate(v.updatedAt));
 
-                const statusEl = tr.querySelector('[data-role="vaga-status-host"]');
-                if (statusEl) statusEl.replaceChildren(buildVagaStatusBadge(v.status));
+        const statusEl = tr.querySelector('[data-role="vaga-status-host"]');
+        if (statusEl) statusEl.replaceChildren(buildVagaStatusBadge(v.status));
 
-                const btn = tr.querySelector('[data-act="open-vaga"]');
-                if (btn) btn.addEventListener("click", () => goToVagaDetail(v.id));
+        const btn = tr.querySelector('[data-act="open-vaga"]');
+        if (btn) btn.addEventListener("click", () => goToVagaDetail(v.id));
 
-                vagasBody.appendChild(tr);
-            });
-    }
+        vagasBody.appendChild(tr);
+      });
+  }
 
-    modal.show();
+  modal.show();
 }
 
-
-function exportCsv(){
+function exportCsv() {
   const headers = ["Codigo", "Unidade", "Status", "Cidade", "UF", "Endereco", "Bairro", "CEP", "Email", "Telefone", "Responsavel", "Tipo", "Headcount"];
   const rows = state.unidades.map(u => [
     u.codigo, u.nome, u.status, u.cidade, u.uf, u.endereco, u.bairro, u.cep, u.email, u.telefone, u.responsavel, u.tipo, u.headcount
   ]);
   const csv = [
-    headers.map(h => `"${String(h).replaceAll('"','""')}"`).join(";"),
-    ...rows.map(r => r.map(c => `"${String(c ?? "").replaceAll('"','""')}"`).join(";"))
+    headers.map(h => `"${String(h).replaceAll('"', '""')}"`).join(";"),
+    ...rows.map(r => r.map(c => `"${String(c ?? "").replaceAll('"', '""')}"`).join(";"))
   ].join("\r\n");
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -494,7 +536,7 @@ function exportCsv(){
   URL.revokeObjectURL(url);
 }
 
-function wireFilters(){
+function wireFilters() {
   const apply = () => {
     state.filters.q = ($("#uSearch").value || "").trim();
     state.filters.status = $("#uStatus").value || "all";
@@ -510,25 +552,29 @@ function wireFilters(){
   });
 }
 
-function wireButtons(){
+function wireButtons() {
   $("#btnNewUnidade").addEventListener("click", () => openUnidadeModal("new"));
   $("#btnSaveUnidade").addEventListener("click", saveUnidadeFromModal);
-  $("#btnSeedReset").addEventListener("click", () => {
-    const ok = confirm("Restaurar dados de exemplo? Isso substitui suas unidades atuais.");
-    if(!ok) return;
-    state.unidades = [];
-    saveState();
-    seedIfEmpty();
-    updateKpis();
-    renderTable();
-    toast("Demo restaurada.");
+  $("#btnSeedReset").addEventListener("click", async () => {
+    const ok = confirm("Recarregar dados da API?");
+    if (!ok) return;
+    try {
+      await loadUnidadesFromApi();
+      await loadVagasFromApi();
+      updateKpis();
+      renderTable();
+      toast("Dados recarregados.");
+    } catch (err) {
+      console.error(err);
+      toast("Falha ao recarregar.");
+    }
   });
   $("#btnExportUnidade").addEventListener("click", exportCsv);
 }
 
-function wireClock(){
+function wireClock() {
   const label = $("#nowLabel");
-  if(!label) return;
+  if (!label) return;
   const tick = () => {
     const d = new Date();
     label.textContent = d.toLocaleString("pt-BR", {
@@ -540,11 +586,18 @@ function wireClock(){
   setInterval(tick, 1000 * 15);
 }
 
-(function init(){
+(async function init() {
   wireClock();
-  const has = loadState();
-  if(!has) seedIfEmpty();
-  else seedIfEmpty();
+
+  try {
+    await loadUnidadesFromApi();
+    await loadVagasFromApi();
+  } catch (err) {
+    console.error(err);
+    toast("Falha ao carregar dados da API.");
+    state.unidades = [];
+    state.vagas = [];
+  }
 
   updateKpis();
   renderTable();
