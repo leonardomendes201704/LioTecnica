@@ -145,6 +145,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
             b.Property(x => x.Code).HasMaxLength(40).IsRequired();
             b.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(1000);
 
             b.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
             b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
