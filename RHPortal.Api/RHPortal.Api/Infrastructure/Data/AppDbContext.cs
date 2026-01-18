@@ -35,6 +35,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<VagaPergunta> VagaPerguntas => Set<VagaPergunta>();
     public DbSet<Candidato> Candidatos => Set<Candidato>();
     public DbSet<CandidatoDocumento> CandidatoDocumentos => Set<CandidatoDocumento>();
+    public DbSet<InboxItem> InboxItems => Set<InboxItem>();
+    public DbSet<InboxAnexo> InboxAttachments => Set<InboxAnexo>();
 
 
 
@@ -454,6 +456,47 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
         });
 
+        modelBuilder.Entity<InboxItem>(b =>
+        {
+            b.ToTable("InboxItems");
+            b.HasKey(x => x.Id);
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Remetente).HasMaxLength(180);
+            b.Property(x => x.Assunto).HasMaxLength(220);
+            b.Property(x => x.Destinatario).HasMaxLength(200);
+            b.Property(x => x.ProcessamentoEtapa).HasMaxLength(120);
+            b.Property(x => x.ProcessamentoUltimoErro).HasMaxLength(400);
+
+            b.HasIndex(x => new { x.TenantId, x.Origem });
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.RecebidoEm });
+
+            b.HasOne(x => x.Vaga)
+                .WithMany()
+                .HasForeignKey(x => x.VagaId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            b.HasMany(x => x.Anexos)
+                .WithOne(x => x.InboxItem)
+                .HasForeignKey(x => x.InboxItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<InboxAnexo>(b =>
+        {
+            b.ToTable("InboxAttachments");
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Nome).HasMaxLength(200).IsRequired();
+            b.Property(x => x.Tipo).HasMaxLength(20);
+            b.Property(x => x.Hash).HasMaxLength(120);
+
+            b.HasIndex(x => new { x.TenantId, x.InboxItemId });
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
 
     }
 
@@ -599,6 +642,18 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
             {
                 if (entry.State == EntityState.Added) cd.CreatedAtUtc = now;
                 if (entry.State is EntityState.Added or EntityState.Modified) cd.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is InboxItem inbox)
+            {
+                if (entry.State == EntityState.Added) inbox.CreatedAtUtc = now;
+                if (entry.State is EntityState.Added or EntityState.Modified) inbox.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is InboxAnexo inboxAnexo)
+            {
+                if (entry.State == EntityState.Added) inboxAnexo.CreatedAtUtc = now;
+                if (entry.State is EntityState.Added or EntityState.Modified) inboxAnexo.UpdatedAtUtc = now;
             }
         }
         return await base.SaveChangesAsync(cancellationToken);

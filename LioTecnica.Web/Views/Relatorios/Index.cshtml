@@ -11,8 +11,8 @@
 	@await Html.PartialAsync("_TopbarBrand", "Tela: Relatórios")
 
 	<div class="d-flex align-items-center gap-2">
-		<button class="btn btn-ghost" type="button" id="btnSeedReset" title="Restaurar demo">
-			<i class="bi bi-arrow-counterclockwise"></i><span class="d-none d-sm-inline ms-1">Reset demo</span>
+		<button class="btn btn-ghost" type="button" id="btnRefresh" title="Atualizar dados">
+			<i class="bi bi-arrow-counterclockwise"></i><span class="d-none d-sm-inline ms-1">Atualizar</span>
 		</button>
 
 		<button class="btn btn-ghost" type="button" id="btnExport" title="Exportar relatório atual (CSV)">
@@ -199,9 +199,9 @@
 
 <!-- Bootstrap JS (CDN) -->
 @section Scripts {
-	<script>
-		window.__seedData = @Html.Raw(Model.SeedJson);
-	</script>
 	<script src="~/js/views/relatorios.js" asp-append-version="true"></script>
 }
+
+
+
 

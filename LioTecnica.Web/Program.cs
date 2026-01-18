@@ -88,6 +88,16 @@ builder.Services.AddHttpClient<DashboardApiClient>(http =>
     http.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
 }).AddHttpMessageHandler<ApiAuthenticationHandler>();
 
+builder.Services.AddHttpClient<ReportsApiClient>(http =>
+{
+    http.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
+}).AddHttpMessageHandler<ApiAuthenticationHandler>();
+
+builder.Services.AddHttpClient<InboxApiClient>(http =>
+{
+    http.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
+}).AddHttpMessageHandler<ApiAuthenticationHandler>();
+
 builder.Services.AddHttpClient<AuthApiClient>(http =>
 {
     http.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);

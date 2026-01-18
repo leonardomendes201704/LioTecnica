@@ -20,25 +20,23 @@ public sealed class DashboardController : ControllerBase
         var todayStart = new DateTimeOffset(now.Date, TimeSpan.Zero);
         var weekStart = now.AddDays(-7);
 
-        var openVagasTask = db.Vagas.AsNoTracking()
+        var openVagas = await db.Vagas.AsNoTracking()
             .CountAsync(v => v.Status == VagaStatus.Aberta, ct);
 
-        var cvsHojeTask = db.Candidatos.AsNoTracking()
+        var cvsHoje = await db.Candidatos.AsNoTracking()
             .CountAsync(c => c.CreatedAtUtc >= todayStart, ct);
 
-        var pendentesTask = db.Candidatos.AsNoTracking()
+        var pendentes = await db.Candidatos.AsNoTracking()
             .CountAsync(c => c.LastMatchAtUtc == null && c.LastMatchScore == null, ct);
 
-        var aprovadosTask = db.Candidatos.AsNoTracking()
+        var aprovados = await db.Candidatos.AsNoTracking()
             .CountAsync(c => c.Status == CandidatoStatus.Aprovado && c.UpdatedAtUtc >= weekStart, ct);
 
-        await Task.WhenAll(openVagasTask, cvsHojeTask, pendentesTask, aprovadosTask);
-
         return Ok(new DashboardKpisResponse(
-            openVagasTask.Result,
-            cvsHojeTask.Result,
-            pendentesTask.Result,
-            aprovadosTask.Result
+            openVagas,
+            cvsHoje,
+            pendentes,
+            aprovados
         ));
     }
 
@@ -79,21 +77,19 @@ public sealed class DashboardController : ControllerBase
         [FromServices] AppDbContext db,
         CancellationToken ct)
     {
-        var totalTask = db.Candidatos.AsNoTracking().CountAsync(ct);
-        var triagemTask = db.Candidatos.AsNoTracking()
+        var total = await db.Candidatos.AsNoTracking().CountAsync(ct);
+        var triagem = await db.Candidatos.AsNoTracking()
             .CountAsync(c => c.Status == CandidatoStatus.Triagem, ct);
-        var pendenteTask = db.Candidatos.AsNoTracking()
+        var pendente = await db.Candidatos.AsNoTracking()
             .CountAsync(c => c.Status == CandidatoStatus.Pendente, ct);
-        var aprovadoTask = db.Candidatos.AsNoTracking()
+        var aprovado = await db.Candidatos.AsNoTracking()
             .CountAsync(c => c.Status == CandidatoStatus.Aprovado, ct);
 
-        await Task.WhenAll(totalTask, triagemTask, pendenteTask, aprovadoTask);
-
         return Ok(new DashboardFunnelResponse(
-            totalTask.Result,
-            triagemTask.Result,
-            pendenteTask.Result,
-            aprovadoTask.Result
+            total,
+            triagem,
+            pendente,
+            aprovado
         ));
     }
 

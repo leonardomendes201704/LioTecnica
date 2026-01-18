@@ -1,63 +1,45 @@
 // ========= Logo (Data URI placeholder)
-    const seed = window.__seedData || {};
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
-// ========= Storage keys (compatÃ­vel com telas anteriores)
-    const VAGAS_KEY = "lt_rh_vagas_v1";
-    const CANDS_KEY = "lt_rh_candidatos_v1";
-    const INBOX_KEY = "lt_rh_inbox_v1";
+    const INBOX_API_URL = "/EntradaEmailPasta/_api/inbox";
+    const VAGAS_API_URL = "/EntradaEmailPasta/_api/vagas";
+    const CANDIDATOS_API_URL = "/EntradaEmailPasta/_api/candidatos";
 
     const state = {
       vagas: [],
-      candidatos: [],
       inbox: [],
       selectedId: null,
       filters: { q:"", origem:"all", status:"all" }
     };
 
-    function loadJson(key, fallback){
-      try{
-        const raw = localStorage.getItem(key);
-        if(!raw) return fallback;
-        return JSON.parse(raw);
-      }catch{ return fallback; }
-    }
-    function saveInbox(){
-      localStorage.setItem(INBOX_KEY, JSON.stringify({ inbox: state.inbox, selectedId: state.selectedId, savedAt: new Date().toISOString() }));
-    }
-
-    // ========= Seed (se vazio)
-    function seedIfEmpty(){
-      const vagasSeed = Array.isArray(seed.vagas) ? seed.vagas : [];
-      const candsSeed = Array.isArray(seed.candidatos) ? seed.candidatos : [];
-      const inboxSeed = Array.isArray(seed.inbox) ? seed.inbox : [];
-
-      const vagasRaw = loadJson(VAGAS_KEY, null);
-      if((!vagasRaw || !Array.isArray(vagasRaw.vagas) || !vagasRaw.vagas.length) && vagasSeed.length){
-        localStorage.setItem(VAGAS_KEY, JSON.stringify({ vagas: vagasSeed, selectedId: seed.selectedVagaId || null }));
+    async function apiFetchJson(url, options = {}){
+      const opts = { ...options };
+      opts.headers = { "Accept": "application/json", ...(opts.headers || {}) };
+      if(opts.body && !opts.headers["Content-Type"]){
+        opts.headers["Content-Type"] = "application/json";
       }
 
-      const candRaw = loadJson(CANDS_KEY, null);
-      if((!candRaw || !Array.isArray(candRaw.candidatos) || !candRaw.candidatos.length) && candsSeed.length){
-        localStorage.setItem(CANDS_KEY, JSON.stringify({ candidatos: candsSeed, selectedId: seed.selectedCandidatoId || null }));
+      const res = await fetch(url, opts);
+      if(!res.ok){
+        const message = await res.text();
+        throw new Error(message || `Falha na API (${res.status}).`);
       }
-
-      const inboxRaw = loadJson(INBOX_KEY, null);
-      if((!inboxRaw || !Array.isArray(inboxRaw.inbox) || !inboxRaw.inbox.length) && inboxSeed.length){
-        localStorage.setItem(INBOX_KEY, JSON.stringify({ inbox: inboxSeed, selectedId: seed.selectedInboxId || inboxSeed[0]?.id || null, savedAt: new Date().toISOString() }));
-      }
+      if(res.status === 204) return null;
+      return res.json();
     }
 
-function loadAll(){
-      state.vagas = (loadJson(VAGAS_KEY, { vagas: [] }).vagas || []);
-      const c = loadJson(CANDS_KEY, { candidatos: [], selectedId: null });
-      state.candidatos = c.candidatos || [];
-      const i = loadJson(INBOX_KEY, { inbox: [], selectedId: null });
-      state.inbox = i.inbox || [];
-      state.selectedId = i.selectedId || state.inbox[0]?.id || null;
+    function mapVagaFromApi(v){
+      return { id: v.id, titulo: v.titulo || "", codigo: v.codigo || "" };
+    }
+
+    function setSelected(id){
+      state.selectedId = id;
+      renderList();
+      renderDetail(findInbox(id));
     }
 
     function findVaga(id){ return state.vagas.find(v => v.id === id) || null; }
     function findInbox(id){ return state.inbox.find(x => x.id === id) || null; }
+
     function statusTag(st){
       const map = {
         novo:  { cls:"", icon:"dot" },
@@ -88,7 +70,68 @@ function loadAll(){
       return `<span class="chip"><i class="bi bi-${icon}"></i>${escapeHtml(a.nome)} <span class="mono muted">(${escapeHtml(a.tamanhoKB)}KB)</span></span>`;
     }
 
-    // ========= Filters
+    async function loadVagas(){
+      const list = await apiFetchJson(VAGAS_API_URL, { method: "GET" });
+      state.vagas = Array.isArray(list) ? list.map(mapVagaFromApi) : [];
+    }
+
+    async function loadInbox(){
+      const list = await apiFetchJson(INBOX_API_URL, { method: "GET" });
+      state.inbox = Array.isArray(list) ? list : [];
+      state.selectedId = state.inbox[0]?.id || null;
+    }
+
+    function buildInboxPayload(item){
+      return {
+        origem: item.origem,
+        status: item.status,
+        recebidoEm: item.recebidoEm,
+        remetente: item.remetente,
+        assunto: item.assunto,
+        destinatario: item.destinatario,
+        vagaId: item.vagaId,
+        previewText: item.previewText || null,
+        processamento: item.processamento ? {
+          pct: item.processamento.pct || 0,
+          etapa: item.processamento.etapa || null,
+          log: item.processamento.log || [],
+          tentativas: item.processamento.tentativas || 0,
+          ultimoErro: item.processamento.ultimoErro || null
+        } : null,
+        anexos: (item.anexos || []).map(a => ({
+          id: a.id || null,
+          nome: a.nome,
+          tipo: a.tipo || null,
+          tamanhoKB: a.tamanhoKB || 0,
+          hash: a.hash || null
+        }))
+      };
+    }
+
+    async function saveInboxItem(item){
+      const payload = buildInboxPayload(item);
+      const saved = await apiFetchJson(`${INBOX_API_URL}/${item.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+      if(saved){
+        state.inbox = state.inbox.map(x => x.id === saved.id ? saved : x);
+      }
+      return saved;
+    }
+
+    async function createInboxItem(item){
+      const payload = buildInboxPayload(item);
+      const saved = await apiFetchJson(INBOX_API_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      if(saved){
+        state.inbox.unshift(saved);
+      }
+      return saved;
+    }
+
     function applyFilters(list){
       const q = (state.filters.q||"").trim().toLowerCase();
       const o = state.filters.origem;
@@ -110,7 +153,6 @@ function loadAll(){
       });
     }
 
-    // ========= Render
     function renderAll(){
       renderKPIs();
       renderList();
@@ -138,16 +180,11 @@ function loadAll(){
         .sort((a,b)=> new Date(b.recebidoEm||0) - new Date(a.recebidoEm||0));
 
       $("#queueHint").textContent = list.length ? "" : "Nenhum item encontrado com os filtros atuais.";
-      $("#queueList").innerHTML = list.map(x => renderRow(x)).join("") || `<div class="text-muted small">â€”</div>`;
+      $("#queueList").innerHTML = list.map(x => renderRow(x)).join("") || `<div class="text-muted small">—</div>`;
 
       $$(".row-item").forEach(el => {
         if(el.dataset.id === state.selectedId) el.classList.add("active");
-        el.addEventListener("click", () => {
-          state.selectedId = el.dataset.id;
-          saveInbox();
-          renderList();
-          renderDetail(findInbox(state.selectedId));
-        });
+        el.addEventListener("click", () => setSelected(el.dataset.id));
       });
     }
 
@@ -161,7 +198,7 @@ function loadAll(){
         ? `<div class="progress mt-2"><div class="progress-bar" style="width:${pct}%"></div></div>`
         : ``;
 
-      const sub = vaga ? `${vaga.titulo} (${vaga.codigo||"â€”"})` : "Vaga: nÃ£o definida";
+      const sub = vaga ? `${vaga.titulo} (${vaga.codigo||"—"})` : "Vaga: não definida";
 
       return `
         <div class="row-item" data-id="${x.id}">
@@ -169,8 +206,8 @@ function loadAll(){
             <div class="d-flex align-items-center gap-2">
               <div class="avatar"><i class="bi bi-${icon}"></i></div>
               <div>
-                <div class="fw-bold">${escapeHtml(x.assunto || (anexo?.nome || "â€”"))}</div>
-                <div class="text-muted small">${escapeHtml(x.remetente || "â€”")} â€¢ ${escapeHtml(fmtDate(x.recebidoEm))}</div>
+                <div class="fw-bold">${escapeHtml(x.assunto || (anexo?.nome || "—"))}</div>
+                <div class="text-muted small">${escapeHtml(x.remetente || "—")} • ${escapeHtml(fmtDate(x.recebidoEm))}</div>
               </div>
             </div>
             <div class="text-end">
@@ -191,7 +228,7 @@ function loadAll(){
               <i class="bi bi-info-circle mt-1"></i>
               <div>
                 <div class="fw-bold">Selecione um item da fila</div>
-                <div class="small mt-1">VocÃª verÃ¡ metadados, anexos e aÃ§Ãµes.</div>
+                <div class="small mt-1">Você verá metadados, anexos e ações.</div>
               </div>
             </div>
           </div>`;
@@ -247,9 +284,9 @@ function loadAll(){
                 <i class="bi bi-inbox"></i>
               </div>
               <div>
-                <div class="fw-bold" style="font-size:1.05rem;">${escapeHtml(x.assunto || "â€”")}</div>
-                <div class="text-muted small">${escapeHtml(x.remetente || "â€”")} â€¢ ${escapeHtml(fmtDate(x.recebidoEm))}</div>
-                <div class="text-muted small">Destino: ${escapeHtml(x.destinatario || "â€”")}</div>
+                <div class="fw-bold" style="font-size:1.05rem;">${escapeHtml(x.assunto || "—")}</div>
+                <div class="text-muted small">${escapeHtml(x.remetente || "—")} • ${escapeHtml(fmtDate(x.recebidoEm))}</div>
+                <div class="text-muted small">Destino: ${escapeHtml(x.destinatario || "—")}</div>
               </div>
             </div>
             <div class="text-end">
@@ -259,8 +296,8 @@ function loadAll(){
           </div>
 
           <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="pill"><i class="bi bi-briefcase"></i>${escapeHtml(vaga?.titulo || "Vaga nÃ£o definida")}</span>
-            <span class="pill mono">${escapeHtml(vaga?.codigo || "â€”")}</span>
+            <span class="pill"><i class="bi bi-briefcase"></i>${escapeHtml(vaga?.titulo || "Vaga não definida")}</span>
+            <span class="pill mono">${escapeHtml(vaga?.codigo || "—")}</span>
             <span class="pill"><i class="bi bi-paperclip"></i>Anexos: <strong class="ms-1">${(x.anexos||[]).length}</strong></span>
             <span class="pill"><i class="bi bi-arrow-counterclockwise"></i>Tentativas: <strong class="ms-1">${escapeHtml(x.processamento?.tentativas ?? 0)}</strong></span>
           </div>
@@ -271,7 +308,7 @@ function loadAll(){
               <div>${attachments}</div>
 
               <div class="mt-3">
-                <div class="fw-bold">Preview (texto extraÃ­do)</div>
+                <div class="fw-bold">Preview (texto extraído)</div>
                 <div class="text-muted small">No MVP real, vem do parser de PDF/Word.</div>
                 <textarea class="form-control mt-2" rows="6" id="previewText" style="border-color:var(--lt-border);" placeholder="(vazio)">${escapeHtml(x.previewText || "")}</textarea>
                 <div class="d-flex flex-wrap gap-2 mt-2">
@@ -293,7 +330,7 @@ function loadAll(){
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
                     <div class="fw-semibold">Etapa</div>
-                    <div class="text-muted small" id="stepLabel">${escapeHtml(x.processamento?.etapa || "â€”")}</div>
+                    <div class="text-muted small" id="stepLabel">${escapeHtml(x.processamento?.etapa || "—")}</div>
                   </div>
                   <div class="fw-bold" style="font-size:1.15rem;color:var(--lt-primary);" id="pctLabel">${pct}%</div>
                 </div>
@@ -317,7 +354,7 @@ function loadAll(){
 
                 <div class="text-muted small mt-3">
                   <i class="bi bi-info-circle me-1"></i>
-                  Produto real: IMAP/Watcher â†’ fila â†’ storage â†’ parser â†’ candidato (triagem).
+                  Produto real: IMAP/Watcher ? fila ? storage ? parser ? candidato (triagem).
                 </div>
               </div>
             </div>
@@ -325,40 +362,35 @@ function loadAll(){
         </div>
       `;
 
-      // bind actions
-      $("#btnSavePreview").addEventListener("click", () => {
+      $("#btnSavePreview").addEventListener("click", async () => {
         x.previewText = ($("#previewText").value || "").trim();
-        saveInbox();
+        await saveInboxItem(x);
         toast("Preview salvo.");
       });
 
-      $("#btnAutoAssign").addEventListener("click", () => {
-        // demo simples: se preview tiver "sql" ou "power" => vaga 1, senÃ£o mantÃ©m
-        const txt = ($("#previewText").value || "").toLowerCase();
+      $("#btnAutoAssign").addEventListener("click", async () => {
         const v = state.vagas[0];
         if(v){
           x.vagaId = v.id;
-          saveInbox();
-          toast("Vaga atribuÃ­da (demo).");
+          await saveInboxItem(x);
+          toast("Vaga atribuída (demo).");
           renderAll();
         }
       });
 
-      $("#btnProcess").addEventListener("click", () => runProcess(x, false));
-      $("#btnReprocess").addEventListener("click", () => runProcess(x, true));
+      $("#btnProcess").addEventListener("click", () => { void runProcess(x, false); });
+      $("#btnReprocess").addEventListener("click", () => { void runProcess(x, true); });
 
-      $("#btnCreateCandidate").addEventListener("click", () => {
-        createCandidateFromInbox(x);
-      });
+      $("#btnCreateCandidate").addEventListener("click", () => { void createCandidateFromInbox(x); });
 
-      $("#btnDiscard").addEventListener("click", () => {
+      $("#btnDiscard").addEventListener("click", async () => {
         if(!confirm("Descartar este item?")) return;
         x.status = "descartado";
         x.processamento.etapa = "Descartado";
         x.processamento.pct = 100;
         x.processamento.log = (x.processamento.log||[]);
         x.processamento.log.push("Item descartado manualmente.");
-        saveInbox();
+        await saveInboxItem(x);
         toast("Item descartado.");
         renderAll();
       });
@@ -367,7 +399,7 @@ function loadAll(){
     // ========= Processing simulation
     let simTimer = null;
 
-    function runProcess(item, force){
+    async function runProcess(item, force){
       if(!item) return;
 
       if(force){
@@ -376,11 +408,11 @@ function loadAll(){
       }
 
       if(item.status === "processado"){
-        toast("JÃ¡ estÃ¡ processado. Use Reprocessar se precisar.");
+        toast("Já está processado. Use Reprocessar se precisar.");
         return;
       }
       if(item.status === "descartado"){
-        toast("Item descartado. NÃ£o Ã© possÃ­vel processar.");
+        toast("Item descartado. Não é possível processar.");
         return;
       }
 
@@ -391,50 +423,47 @@ function loadAll(){
       item.processamento.log = item.processamento.log || [];
       item.processamento.log.push("Processamento iniciado.");
 
-      saveInbox();
+      await saveInboxItem(item);
       renderAll();
 
-      // simula etapas
       const steps = [
         { pct: 15, etapa: "Validando anexos", log: "Anexos validados." },
         { pct: 35, etapa: "Armazenando arquivo", log: "Arquivo armazenado (demo)." },
-        { pct: 60, etapa: "Extraindo texto", log: "Texto extraÃ­do (demo)." },
-        { pct: 85, etapa: "Normalizando conteÃºdo", log: "NormalizaÃ§Ã£o concluÃ­da." },
-        { pct: 100, etapa: "ConcluÃ­do", log: "Processamento finalizado." }
+        { pct: 60, etapa: "Extraindo texto", log: "Texto extraído (demo)." },
+        { pct: 85, etapa: "Normalizando conteúdo", log: "Normalização concluída." },
+        { pct: 100, etapa: "Concluído", log: "Processamento finalizado." }
       ];
 
       let idx = 0;
       clearInterval(simTimer);
-      simTimer = setInterval(() => {
+      simTimer = setInterval(async () => {
         const s = steps[idx++];
         if(!s){
           clearInterval(simTimer);
 
-          // chance de falha (se tiver "senha" no assunto ou item jÃ¡ falhou)
           const fail = (item.assunto||"").toLowerCase().includes("senha") || (item.remetente||"").includes("carlos");
           if(fail && item.processamento.tentativas < 3){
             item.status = "falha";
             item.processamento.etapa = "Falha";
             item.processamento.pct = 100;
-            item.processamento.ultimoErro = "Falha na extraÃ§Ã£o: documento protegido / invÃ¡lido (demo).";
-            item.processamento.log.push("Falha detectada: arquivo protegido/ invÃ¡lido.");
-            saveInbox();
+            item.processamento.ultimoErro = "Falha na extração: documento protegido / inválido (demo).";
+            item.processamento.log.push("Falha detectada: arquivo protegido/ inválido.");
+            await saveInboxItem(item);
             toast("Falha ao processar (demo).");
             renderAll();
             return;
           }
 
           item.status = "processado";
-          item.processamento.etapa = "ConcluÃ­do";
+          item.processamento.etapa = "Concluído";
           item.processamento.pct = 100;
 
-          // preenche preview se vazio
           if(!item.previewText){
-            item.previewText = "Resumo (demo): experiÃªncia com excel, dashboards, comunicaÃ§Ã£o e relatÃ³rios.";
+            item.previewText = "Resumo (demo): experiência com excel, dashboards, comunicação e relatórios.";
           }
 
-          saveInbox();
-          toast("Processamento concluÃ­do.");
+          await saveInboxItem(item);
+          toast("Processamento concluído.");
           renderAll();
           return;
         }
@@ -442,62 +471,68 @@ function loadAll(){
         item.processamento.etapa = s.etapa;
         item.processamento.pct = s.pct;
         item.processamento.log.push(s.log);
-        saveInbox();
+        await saveInboxItem(item);
         renderAll();
       }, 700);
     }
 
-    // ========= Candidate creation (demo)
-    function createCandidateFromInbox(item){
+    async function createCandidateFromInbox(item){
       if(!item) return;
+      if(!item.vagaId){
+        toast("Selecione uma vaga antes de criar o candidato.");
+        return;
+      }
 
-      const candRaw = loadJson(CANDS_KEY, { candidatos: [], selectedId: null });
-      const candidatos = candRaw.candidatos || [];
-
-      // tenta inferir nome pelo arquivo
       const firstAtt = item.anexos?.[0]?.nome || "Candidato";
       const base = firstAtt.replace(/\.(pdf|doc|docx|txt)$/i,"").replaceAll("_"," ").replaceAll("-"," ");
       const nome = base.length >= 4 ? base : "Novo Candidato";
 
-      const novo = {
-        id: uid(),
+      const fonte = item.origem === "email" ? "Email" : (item.origem === "pasta" ? "Pasta" : "Site");
+
+      const payload = {
         nome,
-        email: (item.remetente && item.remetente.includes("@@")) ? item.remetente : "",
-        fone: "",
-        cidade: "",
-        uf: "",
-        fonte: item.origem === "email" ? "Email" : (item.origem === "pasta" ? "Pasta" : "Upload"),
-        status: "triagem",
-        vagaId: item.vagaId || null,
-        obs: "Criado a partir da Entrada (demo).",
-        cvText: (item.previewText || "").trim(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastMatch: null
+        email: (item.remetente && item.remetente.includes("@")) ? item.remetente : "",
+        fone: null,
+        cidade: null,
+        uf: null,
+        fonte,
+        status: "Triagem",
+        vagaId: item.vagaId,
+        obs: "Criado a partir da Entrada.",
+        cvText: (item.previewText || "").trim() || null,
+        lastMatch: null,
+        documentos: null
       };
 
-      candidatos.unshift(novo);
-      localStorage.setItem(CANDS_KEY, JSON.stringify({ ...candRaw, candidatos, selectedId: novo.id }));
-      state.candidatos = candidatos;
-
-      // marca item como processado e vinculado
-      if(item.status !== "processado"){
-        item.status = "processado";
-        item.processamento = item.processamento || { pct: 100, etapa: "ConcluÃ­do", log: [], tentativas: 1, ultimoErro: null };
-        item.processamento.pct = 100;
-        item.processamento.etapa = "ConcluÃ­do";
-        item.processamento.ultimoErro = null;
+      if(!payload.email){
+        toast("Informe um email valido antes de criar o candidato.");
+        return;
       }
-      item.processamento.log = item.processamento.log || [];
-      item.processamento.log.push("Candidato criado a partir da entrada (demo).");
-      saveInbox();
 
-      toast("Candidato criado (demo).");
-      renderAll();
+      try{
+        await apiFetchJson(CANDIDATOS_API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        item.status = "processado";
+        item.processamento = item.processamento || { pct: 100, etapa: "Concluído", log: [], tentativas: 1, ultimoErro: null };
+        item.processamento.pct = 100;
+        item.processamento.etapa = "Concluído";
+        item.processamento.ultimoErro = null;
+        item.processamento.log = item.processamento.log || [];
+        item.processamento.log.push("Candidato criado a partir da entrada.");
+        await saveInboxItem(item);
+
+        toast("Candidato criado.");
+        renderAll();
+      }catch(err){
+        console.error(err);
+        toast("Falha ao criar candidato.");
+      }
     }
 
-    // ========= Upload handlers (demo)
-    function addUploads(files){
+    async function addUploads(files){
       if(!files || !files.length) return;
 
       const vagaId = state.vagas[0]?.id || null;
@@ -507,65 +542,70 @@ function loadAll(){
         const ext = (name.split(".").pop() || "").toLowerCase();
         const tipo = ["pdf","doc","docx","txt"].includes(ext) ? ext : "file";
 
-        state.inbox.unshift({
-          id: uid(),
+        const item = {
           origem: "upload",
           status: "novo",
           recebidoEm: new Date().toISOString(),
-          remetente: "upload@@local",
+          remetente: "upload@local",
           assunto: "Upload manual",
           destinatario: "Portal RH",
           vagaId,
           anexos: [{ nome: name, tipo, tamanhoKB: Math.max(1, Math.round((f.size||1024)/1024)), hash: "up-"+Math.random().toString(16).slice(2,10) }],
-          processamento: { pct: 0, etapa: "Aguardando", log: ["Arquivo anexado via upload (demo)."], tentativas: 0, ultimoErro: null },
+          processamento: { pct: 0, etapa: "Aguardando", log: ["Arquivo anexado via upload."], tentativas: 0, ultimoErro: null },
           previewText: ""
-        });
+        };
+
+        try{
+          const saved = await createInboxItem(item);
+          if(!state.selectedId && saved?.id){
+            state.selectedId = saved.id;
+          }
+        }catch(err){
+          console.error(err);
+          toast("Falha ao registrar upload.");
+        }
       }
 
-      state.selectedId = state.inbox[0]?.id || state.selectedId;
-      saveInbox();
-      toast(`${files.length} arquivo(s) adicionado(s) na fila.`);
       renderAll();
     }
 
-    // ========= Import/Export (Entrada)
     function exportJson(){
-      const payload = { version:1, exportedAt: new Date().toISOString(), inbox: state.inbox };
+      const payload = { exportedAt: new Date().toISOString(), inbox: state.inbox };
       const json = JSON.stringify(payload, null, 2);
       const blob = new Blob([json], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "entrada_inbox_liotecnica.json";
+      a.download = "inbox_export.json";
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast("ExportaÃ§Ã£o iniciada.");
     }
+
     function importJson(){
       const inp = document.createElement("input");
       inp.type = "file";
       inp.accept = "application/json";
-      inp.onchange = () => {
+      inp.onchange = async () => {
         const file = inp.files && inp.files[0];
         if(!file) return;
+
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.onload = async () => {
           try{
             const data = JSON.parse(reader.result);
             if(data && Array.isArray(data.inbox)){
-              state.inbox = data.inbox;
-              state.selectedId = state.inbox[0]?.id || null;
-              saveInbox();
-              toast("ImportaÃ§Ã£o concluÃ­da.");
-              renderAll();
-            }else{
-              alert("JSON invÃ¡lido (esperado: { inbox: [...] }).");
+              for(const item of data.inbox){
+                await createInboxItem(item);
+              }
             }
+            await loadInbox();
+            renderAll();
+            toast("Importação concluída.");
           }catch(e){
             console.error(e);
-            alert("Falha ao importar JSON.");
+            alert("Falha ao importar JSON. Verifique o arquivo.");
           }
         };
         reader.readAsText(file);
@@ -573,115 +613,100 @@ function loadAll(){
       inp.click();
     }
 
-    // ========= Simular coleta (demo)
-    function simulateCollect(){
-      const vagaId = state.vagas[0]?.id || null;
-      const now = Date.now();
-      const newItem = {
-        id: uid(),
-        origem: Math.random() > .45 ? "email" : "pasta",
-        status: "novo",
-        recebidoEm: new Date(now).toISOString(),
-        remetente: Math.random() > .45 ? "novo.candidato@@email.com" : "watcher@@server",
-        assunto: Math.random() > .45 ? "CurrÃ­culo â€¢ Vaga aberta" : "Novo arquivo em pasta monitorada",
-        destinatario: Math.random() > .45 ? "rh@@liotecnica.com.br" : "FS: \\\\RH\\Curriculos\\Entrada",
-        vagaId,
-        anexos: [
-          { nome: Math.random() > .5 ? "Novo_Candidato_CV.pdf" : "Curriculo_Atualizado.docx", tipo: Math.random() > .5 ? "pdf" : "docx", tamanhoKB: 220 + Math.round(Math.random()*600), hash: "sim-"+Math.random().toString(16).slice(2,10) }
-        ],
-        processamento: { pct: 0, etapa: "Aguardando", log: ["Item coletado (demo)."], tentativas: 0, ultimoErro: null },
-        previewText: ""
-      };
-      state.inbox.unshift(newItem);
-      state.selectedId = newItem.id;
-      saveInbox();
-      toast("Novo item coletado (demo).");
-      renderAll();
-    }
-
-    // ========= Wire
     function initLogo(){
       $("#logoDesktop").src = LOGO_DATA_URI;
       $("#logoMobile").src = LOGO_DATA_URI;
     }
-    function wireClock(){
-      const label = $("#nowLabel");
-      if(!label) return;
-      const tick = () => {
-        const d = new Date();
-        label.textContent = d.toLocaleString("pt-BR", { weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
-      };
-      tick();
-      setInterval(tick, 1000*15);
-    }
+
     function wireFilters(){
-      const apply = () => {
+      $("#fSearch").addEventListener("input", () => {
         state.filters.q = ($("#fSearch").value || "").trim();
+        renderList();
+      });
+
+      $("#fOrigem").addEventListener("change", () => {
         state.filters.origem = $("#fOrigem").value || "all";
+        renderList();
+      });
+
+      $("#fStatus").addEventListener("change", () => {
         state.filters.status = $("#fStatus").value || "all";
-        renderAll();
-      };
-      $("#fSearch").addEventListener("input", apply);
-      $("#fOrigem").addEventListener("change", apply);
-      $("#fStatus").addEventListener("change", apply);
-    }
-    function wireUpload(){
-      const dz = $("#dropzone");
-      const picker = $("#filePicker");
-
-      $("#btnAddUpload").addEventListener("click", () => picker.click());
-      picker.addEventListener("change", () => addUploads(picker.files));
-
-      dz.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        dz.classList.add("dragover");
-      });
-      dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
-      dz.addEventListener("drop", (e) => {
-        e.preventDefault();
-        dz.classList.remove("dragover");
-        const files = e.dataTransfer?.files;
-        addUploads(files);
+        renderList();
       });
     }
-    function wireTopButtons(){
+
+    function wireButtons(){
+      $("#btnAddUpload").addEventListener("click", () => $("#filePicker").click());
+
+      $("#filePicker").addEventListener("change", (ev) => {
+        const files = ev.target.files;
+        void addUploads(files);
+        ev.target.value = "";
+      });
+
+      const dropzone = $("#dropzone");
+      if(dropzone){
+        dropzone.addEventListener("dragover", (ev) => {
+          ev.preventDefault();
+          dropzone.classList.add("drag");
+        });
+        dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
+        dropzone.addEventListener("drop", (ev) => {
+          ev.preventDefault();
+          dropzone.classList.remove("drag");
+          void addUploads(ev.dataTransfer.files);
+        });
+      }
+
       $("#btnExport").addEventListener("click", exportJson);
       $("#btnImport").addEventListener("click", importJson);
-      $("#btnRunSim").addEventListener("click", simulateCollect);
 
-      $("#btnSeedReset").addEventListener("click", () => {
-        const ok = confirm("Restaurar demo? Isso substituirÃ¡ Inbox (Entrada) e resetarÃ¡ as seeds.");
-        if(!ok) return;
+      $("#btnRunSim").addEventListener("click", async () => {
+        const vagaId = state.vagas[0]?.id || null;
+        const sample = {
+          origem: "email",
+          status: "novo",
+          recebidoEm: new Date().toISOString(),
+          remetente: "amostra@empresa.com",
+          assunto: "Curriculo enviado",
+          destinatario: "rh@liotecnica.com.br",
+          vagaId,
+          anexos: [{ nome: "Amostra_CV.pdf", tipo: "pdf", tamanhoKB: 220, hash: "sim-"+Math.random().toString(16).slice(2,8) }],
+          processamento: { pct: 0, etapa: "Aguardando", log: ["Simulação de coleta."], tentativas: 0, ultimoErro: null },
+          previewText: ""
+        };
 
-        localStorage.removeItem(INBOX_KEY);
-        localStorage.removeItem(VAGAS_KEY);
-        localStorage.removeItem(CANDS_KEY);
-
-        seedIfEmpty();
-        loadAll();
+        await createInboxItem(sample);
         renderAll();
-        toast("Demo restaurada.");
+      });
+
+      $("#btnRefresh").addEventListener("click", async () => {
+        try{
+          await Promise.all([loadVagas(), loadInbox()]);
+          renderAll();
+          toast("Dados atualizados.");
+        }catch(err){
+          console.error(err);
+          toast("Falha ao atualizar dados.");
+        }
       });
     }
 
     // ========= Init
     (async function init(){
       initLogo();
-      wireClock();
+      wireFilters();
+      wireButtons();
 
       await ensureEnumData();
       applyEnumSelects();
 
-      seedIfEmpty();
-      loadAll();
-
-      wireFilters();
-      wireUpload();
-      wireTopButtons();
-
-      // select first visible item if none
-      if(!state.selectedId && state.inbox[0]) state.selectedId = state.inbox[0].id;
-      saveInbox();
-
-      renderAll();
+      try{
+        await Promise.all([loadVagas(), loadInbox()]);
+        renderAll();
+      }catch(err){
+        console.error(err);
+        toast("Falha ao carregar inbox.");
+      }
     })();
+
