@@ -17,6 +17,29 @@ public sealed class JobPositionsApiClient
 
     public JobPositionsApiClient(HttpClient http) => _http = http;
 
+    public async Task<IReadOnlyList<JobPositionLookupItem>> GetLookupOptionsAsync(string tenantId, Guid? areaId, CancellationToken ct)
+    {
+        var query = new Dictionary<string, string?>()
+        {
+            ["areaId"] = areaId.HasValue && areaId.Value != Guid.Empty ? areaId.Value.ToString() : null
+        };
+
+        var url = QueryHelpers.AddQueryString("/api/lookup/job-positions", query!);
+
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.TryAddWithoutValidation("X-Tenant-Id", tenantId);
+        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        using var resp = await _http.SendAsync(req, ct);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            return new List<JobPositionLookupItem>();
+
+        resp.EnsureSuccessStatusCode();
+
+        var json = await resp.Content.ReadAsStringAsync(ct);
+        return JsonSerializer.Deserialize<List<JobPositionLookupItem>>(json, JsonOpts) ?? new List<JobPositionLookupItem>();
+    }
+
     public async Task<JobPositionsPagedResponse> GetJobPositionsAsync(
         string tenantId,
         string? search,

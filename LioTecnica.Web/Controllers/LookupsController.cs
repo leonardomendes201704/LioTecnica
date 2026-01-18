@@ -13,6 +13,7 @@ public sealed class LookupController : ControllerBase
     private readonly DepartmentsApiClient _departments;
     private readonly VagasApiClient _vagas;
     private readonly IGestoresLookupService _gestores;
+    private readonly JobPositionsApiClient _jobPositions;
     private readonly PortalTenantContext _tenantContext;
 
     public LookupController(
@@ -20,12 +21,14 @@ public sealed class LookupController : ControllerBase
         DepartmentsApiClient departments,
         VagasApiClient vagas,
         IGestoresLookupService gestores,
+        JobPositionsApiClient jobPositions,
         PortalTenantContext tenantContext)
     {
         _areas = areas;
         _departments = departments;
         _vagas = vagas;
         _gestores = gestores;
+        _jobPositions = jobPositions;
         _tenantContext = tenantContext;
     }
 
@@ -62,6 +65,17 @@ public sealed class LookupController : ControllerBase
             ContentType = "application/json",
             Content = resp.Content
         };
+    }
+
+    [HttpGet("job-positions")]
+    public async Task<IActionResult> JobPositions([FromQuery] Guid? areaId, CancellationToken ct)
+    {
+        var list = await _jobPositions.GetLookupOptionsAsync(_tenantContext.TenantId, areaId, ct);
+        var items = list
+            .Select(x => new { id = x.Id, code = x.Code, name = x.Name })
+            .ToList();
+
+        return Ok(items);
     }
 
     // GET /api/lookup/managers?onlyActive=true&page=1&pageSize=50&q=ana

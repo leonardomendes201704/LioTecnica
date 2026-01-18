@@ -122,8 +122,8 @@ public sealed class UnidadesController : Controller
             id = m.Id,
             nome = m.Name,
             email = m.Email,
-            cargo = m.JobTitle,
-            area = m.Area,
+            cargo = m.JobPositionName,
+            area = m.AreaName,
             unidade = m.UnitName,
             status = (m.Status?.Equals("Active", StringComparison.OrdinalIgnoreCase) ?? false) ? "ativo" : "inativo",
             headcount = m.Headcount

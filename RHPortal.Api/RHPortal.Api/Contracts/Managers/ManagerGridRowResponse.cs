@@ -8,6 +8,7 @@ public sealed record ManagerGridRowResponse(
     string Email,
     string? Phone,
     ManagerStatus Status,
+    int Headcount,
     Guid UnitId,
     string UnitName,
     Guid AreaId,

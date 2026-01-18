@@ -114,6 +114,7 @@ public sealed class ManagerService : IManagerService
                 x.Email,
                 x.Phone,
                 x.Status,
+                x.Headcount,
                 x.UnitId,
                 x.Unit != null ? x.Unit.Name : string.Empty,
                 x.AreaId,
@@ -148,6 +149,7 @@ public sealed class ManagerService : IManagerService
                 x.Email,
                 x.Phone,
                 x.Status,
+                x.Headcount,
                 x.UnitId,
                 x.Unit != null ? x.Unit.Name : string.Empty,
                 x.AreaId,
@@ -180,6 +182,7 @@ public sealed class ManagerService : IManagerService
             Email = normalizedEmail,
             Phone = TrimOrNull(request.Phone),
             Status = request.Status,
+            Headcount = request.Headcount,
             UnitId = request.UnitId,
             AreaId = request.AreaId,
             JobPositionId = request.JobPositionId,
@@ -210,6 +213,7 @@ public sealed class ManagerService : IManagerService
         entity.Email = normalizedEmail;
         entity.Phone = TrimOrNull(request.Phone);
         entity.Status = request.Status;
+        entity.Headcount = request.Headcount;
         entity.UnitId = request.UnitId;
         entity.AreaId = request.AreaId;
         entity.JobPositionId = request.JobPositionId;

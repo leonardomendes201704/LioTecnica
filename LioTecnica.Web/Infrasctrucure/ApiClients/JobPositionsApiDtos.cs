@@ -104,3 +104,15 @@ public sealed class JobPositionUpdateRequest
     public string? Type { get; set; }
     public string? Description { get; set; }
 }
+
+public sealed class JobPositionLookupItem
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+}
