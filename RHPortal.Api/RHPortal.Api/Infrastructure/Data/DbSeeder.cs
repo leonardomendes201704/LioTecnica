@@ -58,6 +58,11 @@ public static class DbSeeder
         string BranchOrLocation,
         string Description);
 
+    private sealed record RequisitoCategoriaSeed(
+        string Code,
+        string Name,
+        string Description);
+
     private static async Task SeedTenantAsync(
         AppDbContext db,
         ITenantContext tenantContext,
@@ -92,6 +97,20 @@ public static class DbSeeder
         };
 
         await EnsureAreasAsync(db, areas);
+
+        var requisitoCategorias = new RequisitoCategoriaSeed[]
+        {
+            new("competencia", "Competencia", "Habilidades comportamentais e competencias."),
+            new("experiencia", "Experiencia", "Tempo e tipo de experiencia profissional."),
+            new("formacao", "Formacao", "Formacao academica e cursos."),
+            new("ferramenta_tecnologia", "Ferramenta/Tecnologia", "Conhecimentos tecnicos e ferramentas."),
+            new("idioma", "Idioma", "Idiomas e niveis requeridos."),
+            new("certificacao", "Certificacao", "Certificacoes exigidas ou desejaveis."),
+            new("localidade", "Localidade", "Disponibilidade geografica e deslocamento."),
+            new("outros", "Outros", "Requisitos adicionais.")
+        };
+
+        await EnsureRequisitoCategoriasAsync(db, requisitoCategorias);
 
         var areaByCode = await db.Areas
             .AsNoTracking()
@@ -1135,6 +1154,37 @@ BuildDemoRequisitos(string areaCode)
         if (toAdd.Count > 0)
         {
             db.Areas.AddRange(toAdd);
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private static async Task EnsureRequisitoCategoriasAsync(AppDbContext db, IEnumerable<RequisitoCategoriaSeed> seeds)
+    {
+        var existingCodes = await db.RequisitoCategorias
+            .AsNoTracking()
+            .Select(x => x.Code)
+            .ToListAsync();
+
+        var existingSet = existingCodes.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var toAdd = new List<RequisitoCategoria>();
+
+        foreach (var s in seeds)
+        {
+            if (existingSet.Contains(s.Code)) continue;
+            toAdd.Add(new RequisitoCategoria
+            {
+                Id = Guid.NewGuid(),
+                Code = s.Code,
+                Name = s.Name,
+                Description = s.Description,
+                IsActive = true
+            });
+            existingSet.Add(s.Code);
+        }
+
+        if (toAdd.Count > 0)
+        {
+            db.RequisitoCategorias.AddRange(toAdd);
             await db.SaveChangesAsync();
         }
     }

@@ -63,6 +63,11 @@ builder.Services.AddHttpClient<JobPositionsApiClient>(c =>
     c.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
 }).AddHttpMessageHandler<ApiAuthenticationHandler>();
 
+builder.Services.AddHttpClient<RequisitoCategoriasApiClient>(c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
+}).AddHttpMessageHandler<ApiAuthenticationHandler>();
+
 builder.Services.AddHttpClient<VagasApiClient>(http =>
 {
     http.BaseAddress = new Uri(builder.Configuration["Endpoints:RhApi"]!);
