@@ -1,14 +1,28 @@
 ﻿// ========= Logo (Data URI placeholder)
-    const seed = window.__seedData || {};
     const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
-function enumFirstCode(key, fallback){
+    const VAGAS_API_URL = window.__triagemVagasApiUrl || "/Triagem/_api/vagas";
+    const CANDIDATOS_API_URL = window.__triagemCandidatosApiUrl || "/Triagem/_api/candidatos";
+
+    function enumFirstCode(key, fallback){
       const list = getEnumOptions(key);
       return list.length ? list[0].code : fallback;
     }
 
     let VAGA_ALL = enumFirstCode("vagaFilter", "all");
+    let DEFAULT_CAND_FONTE = enumFirstCode("candidatoFonte", "email");
+    let DEFAULT_CAND_STATUS = enumFirstCode("candidatoStatus", "novo");
     const EMPTY_TEXT = "—";
     const BULLET = "•";
+
+    function toUiStatus(value){
+      const text = (value ?? "").toString().trim();
+      return text ? text.toLowerCase() : DEFAULT_CAND_STATUS;
+    }
+
+    function toApiStatus(value){
+      const text = (value ?? DEFAULT_CAND_STATUS).toString().trim().toLowerCase();
+      return text || DEFAULT_CAND_STATUS;
+    }
 
     function setText(root, role, value, fallback = EMPTY_TEXT){
       if(!root) return;
@@ -48,12 +62,7 @@ function enumFirstCode(key, fallback){
       return getEnumText("triagemDecisionReason", code, code);
     }
 
-
-    // ========= Storage keys (compatÃ­veis com a tela de Candidatos/Vagas)
-    const VAGAS_KEY = "lt_rh_vagas_v1";
-    const CANDS_KEY = "lt_rh_candidatos_v1";
-
-    // Triagem: histórico de decisões (novo key)
+    // ========= Storage keys (triagem local)
     const TRIAGE_KEY = "lt_rh_triagem_v1";
 
     const state = {
@@ -64,34 +73,6 @@ function enumFirstCode(key, fallback){
       filters: { q:"", vagaId:"all", sla:"all" }
     };
 
-    function loadVagas(){
-      try{
-        const raw = localStorage.getItem(VAGAS_KEY);
-        if(!raw) return [];
-        const data = JSON.parse(raw);
-        if(!data || !Array.isArray(data.vagas)) return [];
-        return data.vagas;
-      }catch{ return []; }
-    }
-
-    function loadCands(){
-      try{
-        const raw = localStorage.getItem(CANDS_KEY);
-        if(!raw) return false;
-        const data = JSON.parse(raw);
-        if(!data || !Array.isArray(data.candidatos)) return false;
-        state.candidatos = data.candidatos;
-        state.selectedId = data.selectedId ?? null;
-        return true;
-      }catch{ return false; }
-    }
-    function saveCands(){
-      localStorage.setItem(CANDS_KEY, JSON.stringify({
-        candidatos: state.candidatos,
-        selectedId: state.selectedId
-      }));
-    }
-
     function loadTriageLog(){
       try{
         const raw = localStorage.getItem(TRIAGE_KEY);
@@ -101,36 +82,179 @@ function enumFirstCode(key, fallback){
         state.triageLog = data.log;
       }catch{}
     }
+
     function saveTriageLog(){
       localStorage.setItem(TRIAGE_KEY, JSON.stringify({
         log: state.triageLog
       }));
     }
 
-    function seedVagasIfEmpty(){
-      if(state.vagas.length) return;
+    async function apiFetchJson(url, options = {}){
+      const opts = { ...options };
+      opts.headers = { "Accept": "application/json", ...(opts.headers || {}) };
+      const isFormData = typeof FormData !== "undefined" && opts.body instanceof FormData;
+      if(opts.body && !opts.headers["Content-Type"] && !isFormData){
+        opts.headers["Content-Type"] = "application/json";
+      }
 
-      const vagasSeed = Array.isArray(seed.vagas) ? seed.vagas : [];
-      if(!vagasSeed.length) return;
-
-      localStorage.setItem(VAGAS_KEY, JSON.stringify({ vagas: vagasSeed, selectedId: seed.selectedVagaId || null }));
-      state.vagas = vagasSeed;
+      const res = await fetch(url, opts);
+      if(!res.ok){
+        const message = await res.text();
+        throw new Error(message || `Falha na API (${res.status}).`);
+      }
+      if(res.status === 204) return null;
+      return res.json();
     }
 
-    function seedCandsIfEmpty(){
-      if(state.candidatos.length) return;
+    function mapPesoToNumber(peso){
+      if(typeof peso === "number") return peso;
+      const text = getEnumText("vagaPeso", peso, peso);
+      const match = (text ?? "").toString().match(/\d+/);
+      return match ? parseInt(match[0], 10) : 0;
+    }
 
-      const candsSeed = Array.isArray(seed.candidatos) ? seed.candidatos : [];
-      if(!candsSeed.length) return;
+    function mapVagaFromList(api){
+      if(!api) return null;
+      return {
+        id: api.id,
+        codigo: api.codigo || "",
+        titulo: api.titulo || "",
+        threshold: api.matchMinimoPercentual ?? 0,
+        requisitos: []
+      };
+    }
 
-      state.candidatos = candsSeed;
-      state.selectedId = seed.selectedCandidatoId || candsSeed[0]?.id || null;
-      saveCands();
+    function mapVagaFromDetail(api){
+      if(!api) return null;
+      const requisitos = Array.isArray(api.requisitos)
+        ? api.requisitos.map(r => ({
+            id: r.id,
+            termo: r.nome || "",
+            peso: mapPesoToNumber(r.peso),
+            obrigatorio: !!r.obrigatorio,
+            sinonimos: Array.isArray(r.sinonimos) ? r.sinonimos : []
+          }))
+        : [];
+
+      return {
+        id: api.id,
+        codigo: api.codigo || "",
+        titulo: api.titulo || "",
+        threshold: api.matchMinimoPercentual ?? 0,
+        requisitos
+      };
+    }
+
+    function mapLastMatchFromApi(lastMatch){
+      if(!lastMatch) return null;
+      return {
+        score: lastMatch.score ?? null,
+        pass: lastMatch.pass ?? null,
+        at: lastMatch.atUtc ?? null,
+        vagaId: lastMatch.vagaId ?? null
+      };
+    }
+
+    function mapCandidateFromApi(api){
+      if(!api) return null;
+      const fonte = (api.fonte || DEFAULT_CAND_FONTE).toString().trim().toLowerCase() || DEFAULT_CAND_FONTE;
+      const status = toUiStatus(api.status || DEFAULT_CAND_STATUS);
+
+      return {
+        id: api.id,
+        nome: api.nome || "",
+        email: api.email || "",
+        fone: api.fone || "",
+        cidade: api.cidade || "",
+        uf: (api.uf || "").toString().toUpperCase(),
+        fonte,
+        status,
+        vagaId: api.vagaId,
+        obs: api.obs || "",
+        cvText: api.cvText || "",
+        createdAt: api.createdAtUtc || api.createdAt,
+        updatedAt: api.updatedAtUtc || api.updatedAt,
+        lastMatch: mapLastMatchFromApi(api.lastMatch)
+      };
+    }
+
+    function buildCandidatePayload(c){
+      return {
+        nome: (c.nome || "").trim(),
+        email: (c.email || "").trim(),
+        fone: (c.fone || "").trim() || null,
+        cidade: (c.cidade || "").trim() || null,
+        uf: (c.uf || "").trim().toUpperCase().slice(0,2) || null,
+        fonte: (c.fonte || DEFAULT_CAND_FONTE).trim().toLowerCase(),
+        status: toApiStatus(c.status || DEFAULT_CAND_STATUS),
+        vagaId: c.vagaId,
+        obs: (c.obs || "").trim() || null,
+        cvText: (c.cvText || "").trim() || null,
+        lastMatch: c.lastMatch ? {
+          score: c.lastMatch.score ?? null,
+          pass: c.lastMatch.pass ?? null,
+          atUtc: c.lastMatch.at ?? null,
+          vagaId: c.lastMatch.vagaId ?? null
+        } : null,
+        documentos: null
+      };
+    }
+
+    async function fetchVagaById(id){
+      return apiFetchJson(`${VAGAS_API_URL}/${id}`, { method: "GET" });
+    }
+
+    async function syncVagasSummary(){
+      const list = await apiFetchJson(VAGAS_API_URL, { method: "GET" });
+      state.vagas = Array.isArray(list)
+        ? list.map(mapVagaFromList).filter(Boolean)
+        : [];
+    }
+
+    async function syncCandidatosFromApi(){
+      const list = await apiFetchJson(CANDIDATOS_API_URL, { method: "GET" });
+      state.candidatos = Array.isArray(list)
+        ? list.map(mapCandidateFromApi).filter(Boolean)
+        : [];
+      state.selectedId = state.candidatos.find(c => c.status === "triagem")?.id || state.candidatos[0]?.id || null;
+    }
+
+    async function syncVagaDetailsForCandidates(){
+      const ids = new Set(state.candidatos.map(c => c.vagaId).filter(Boolean));
+      const detailList = await Promise.all(Array.from(ids).map(async id => {
+        try{
+          return await fetchVagaById(id);
+        }catch{
+          return null;
+        }
+      }));
+
+      detailList.filter(Boolean).forEach(detail => {
+        const mapped = mapVagaFromDetail(detail);
+        if(!mapped) return;
+        const idx = state.vagas.findIndex(v => v.id === mapped.id);
+        if(idx >= 0) state.vagas[idx] = { ...state.vagas[idx], ...mapped };
+        else state.vagas.push(mapped);
+      });
+    }
+
+    async function saveCandToApi(candidate){
+      const payload = buildCandidatePayload(candidate);
+      const saved = await apiFetchJson(`${CANDIDATOS_API_URL}/${candidate.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+      const mapped = mapCandidateFromApi(saved);
+      if(mapped){
+        state.candidatos = state.candidatos.map(c => c.id === mapped.id ? mapped : c);
+      }
+      return mapped;
     }
 
     function findVaga(id){
       return state.vagas.find(v => v.id === id) || null;
     }
+
     function findCand(id){
       return state.candidatos.find(c => c.id === id) || null;
     }
@@ -189,10 +313,6 @@ function enumFirstCode(key, fallback){
     }
 
     // ========= SLA
-    // Regra simples:
-    // - status "triagem": SLA 48h
-    // - status "pendente": SLA 72h
-    // - aprovado/reprovado: sem SLA
     function slaInfo(c){
       const now = Date.now();
       const updatedAt = c.updatedAt ? new Date(c.updatedAt).getTime() : now;
@@ -237,7 +357,6 @@ function enumFirstCode(key, fallback){
       const sla = state.filters.sla;
 
       return state.candidatos.filter(c => {
-        // só³ pipeline de triagem
         if(!["triagem","pendente","aprovado","reprovado"].includes(c.status)) return false;
 
         if(vid !== "all" && c.vagaId !== vid) return false;
@@ -403,39 +522,48 @@ function enumFirstCode(key, fallback){
           ev.preventDefault();
           const id = ev.dataTransfer.getData("text/plain") || dragId;
           if(!id) return;
-          moveStage(id, z.stage, { reason:"Drag&Drop", note:"Movido no board." });
+          void moveStage(id, z.stage, { reason:"Drag&Drop", note:"Movido no board." });
         });
       });
     }
 
-    function moveStage(candId, newStage, meta){
+    async function moveStage(candId, newStage, meta, patch){
       const c = findCand(candId);
       if(!c) return;
 
       const prev = c.status;
       if(prev === newStage) return;
 
-      c.status = newStage;
-      c.updatedAt = new Date().toISOString();
+      const updated = {
+        ...c,
+        ...patch,
+        status: newStage,
+        updatedAt: new Date().toISOString()
+      };
 
-      // log
-      state.triageLog.unshift({
-        id: uid(),
-        candId: c.id,
-        from: prev,
-        to: newStage,
-        at: c.updatedAt,
-        reason: meta?.reason || "",
-        note: meta?.note || ""
-      });
+      try{
+        const saved = await saveCandToApi(updated);
+        if(!saved) throw new Error("Resposta invalida da API.");
 
-      saveCands();
-      saveTriageLog();
+        state.triageLog.unshift({
+          id: uid(),
+          candId: saved.id,
+          from: prev,
+          to: newStage,
+          at: updated.updatedAt,
+          reason: meta?.reason || "",
+          note: meta?.note || ""
+        });
+        saveTriageLog();
 
-      state.selectedId = c.id;
-      renderBoard();
-      renderDetail();
-      toast(`Movido: ${labelStage(prev)} â†’ ${labelStage(newStage)}`);
+        state.selectedId = saved.id;
+        renderBoard();
+        renderDetail();
+        toast(`Movido: ${labelStage(prev)} -> ${labelStage(newStage)}`);
+      }catch(err){
+        console.error(err);
+        toast("Falha ao salvar candidato.");
+      }
     }
 
     function labelStage(s){
@@ -561,7 +689,6 @@ function enumFirstCode(key, fallback){
       const c = findCand(candId);
       if(!c) return;
       state.selectedId = c.id;
-      saveCands();
       renderBoard();
       renderDetail();
       bootstrap.Modal.getOrCreateInstance($("#modalTriagemDetails")).show();
@@ -578,7 +705,6 @@ function enumFirstCode(key, fallback){
 
       $("#decCandId").value = c.id;
 
-      // sugestão automática
       const v = findVaga(c.vagaId);
       const m = calcMatchForCand(c);
       const suggested = suggestDecision(c, v, m);
@@ -587,7 +713,7 @@ function enumFirstCode(key, fallback){
       $("#decReason").value = suggested.reason || "";
       $("#decObs").value = "";
 
-        $("#decisionTitle").textContent = `Decisão • ${c.nome}`;
+      $("#decisionTitle").textContent = `Decisao • ${c.nome}`;
 
       bootstrap.Modal.getOrCreateInstance($("#modalDecision")).show();
     }
@@ -595,10 +721,6 @@ function enumFirstCode(key, fallback){
     window.__openDecision = (id) => openDecision(id);
 
     function suggestDecision(c, v, m){
-      // Regras MVP:
-      // - se obrigatórios faltando => reprovar
-      // - senão se match < threshold => pendente (ou reprovar se muito baixo)
-      // - senão => aprovar
       const thr = m.threshold ?? (v ? v.threshold : 0);
       const miss = (m.missMandatory||[]).length;
       if(miss){
@@ -612,7 +734,7 @@ function enumFirstCode(key, fallback){
       return { action:"aprovado", reason:"profile_fit" };
     }
 
-    function applyDecision(){
+    async function applyDecision(){
       const id = $("#decCandId").value;
       const action = $("#decAction").value;
       const reason = ($("#decReason").value || "").trim();
@@ -622,46 +744,46 @@ function enumFirstCode(key, fallback){
       const c = findCand(id);
       if(!c) return;
 
-      moveStage(id, action, {
+      const lines = [];
+      if(reason) lines.push(reasonLabel || reason);
+      if(obs) lines.push(obs);
+      const note = lines.join(" • ");
+      const mergedObs = note ? ((c.obs || "").trim() ? `${c.obs.trim()}\n${note}` : note) : c.obs;
+
+      await moveStage(id, action, {
         reason: reason || "Decisao",
         note: obs || ""
-      });
-
-      // também grava observação no candidato (append)
-      if(reason || obs){
-        const lines = [];
-        if(reason) lines.push(reasonLabel || reason);
-        if(obs) lines.push(obs);
-          const note = lines.join(" • ");
-        c.obs = (c.obs || "").trim();
-        c.obs = c.obs ? (c.obs + "\n" + note) : note;
-        c.updatedAt = new Date().toISOString();
-        saveCands();
-      }
+      }, { obs: mergedObs });
 
       bootstrap.Modal.getOrCreateInstance($("#modalDecision")).hide();
     }
 
     // ========= Recalc match
-    function recalcMatch(candId){
+    async function recalcMatch(candId){
       const c = findCand(candId);
       if(!c) return;
 
       const m = calcMatchForCand(c);
-      c.lastMatch = { score: m.score, pass: m.pass, at: new Date().toISOString() };
-      c.updatedAt = new Date().toISOString();
+      const updated = {
+        ...c,
+        lastMatch: { score: m.score, pass: m.pass, at: new Date().toISOString(), vagaId: c.vagaId },
+        updatedAt: new Date().toISOString()
+      };
 
-      saveCands();
-      renderBoard();
-      renderDetail();
-      toast("Match recalculado.");
+      try{
+        await saveCandToApi(updated);
+        renderBoard();
+        renderDetail();
+        toast("Match recalculado.");
+      }catch(err){
+        console.error(err);
+        toast("Falha ao recalcular match.");
+      }
     }
 
     // ========= Auto-triage
-    function autoTriage(){
+    async function autoTriage(){
       const list = getFilteredCands();
-
-      // só auto em triagem
       const tri = list.filter(c => c.status === "triagem");
 
       if(!tri.length){
@@ -671,18 +793,16 @@ function enumFirstCode(key, fallback){
 
       let moved = 0;
 
-      tri.forEach(c => {
+      for(const c of tri){
         const v = findVaga(c.vagaId);
         const m = calcMatchForCand(c);
         const sug = suggestDecision(c, v, m);
 
-        // não aprovar automaticamente se for "pendente"
-        // (mantém pendente como pendente quando sugerido, mas aqui move para pendente)
         if(sug.action && sug.action !== "triagem"){
-          moveStage(c.id, sug.action, { reason: "Auto-triagem", note: formatDecisionReason(sug.reason) || "" });
+          await moveStage(c.id, sug.action, { reason: "Auto-triagem", note: formatDecisionReason(sug.reason) || "" });
           moved++;
         }
-      });
+      }
 
       toast(`Auto-triagem aplicada em ${moved} candidato(s).`);
     }
@@ -692,20 +812,19 @@ function enumFirstCode(key, fallback){
       const payload = {
         version: 1,
         exportedAt: new Date().toISOString(),
-        triageLog: state.triageLog,
-        candidatos: state.candidatos
+        triageLog: state.triageLog
       };
       const json = JSON.stringify(payload, null, 2);
       const blob = new Blob([json], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "triagem_mvp_liotecnica.json";
+      a.download = "triagem_log_liotecnica.json";
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast("Exportação iniciada.");
+      toast("Exportacao iniciada.");
     }
 
     function importJson(){
@@ -720,22 +839,12 @@ function enumFirstCode(key, fallback){
         reader.onload = () => {
           try{
             const data = JSON.parse(reader.result);
-
-            if(data && Array.isArray(data.candidatos)){
-              state.candidatos = data.candidatos;
-              saveCands();
-            }
             if(data && Array.isArray(data.triageLog)){
               state.triageLog = data.triageLog;
               saveTriageLog();
+              renderDetail();
             }
-
-            state.selectedId = state.candidatos[0]?.id || null;
-
-            renderVagaFilter();
-            renderBoard();
-            renderDetail();
-            toast("Importação concluí­da.");
+            toast("Importacao concluida.");
           }catch(e){
             console.error(e);
             alert("Falha ao importar JSON. Verifique o arquivo.");
@@ -779,7 +888,6 @@ function enumFirstCode(key, fallback){
         const visibleIds = new Set(getFilteredCands().map(c => c.id));
         if(state.selectedId && !visibleIds.has(state.selectedId)){
           state.selectedId = null;
-          saveCands();
           renderDetail();
         }
       };
@@ -791,33 +899,28 @@ function enumFirstCode(key, fallback){
 
     function wireButtons(){
       $("#btnApplyDecision").addEventListener("click", applyDecision);
-      $("#btnAutoTriage").addEventListener("click", autoTriage);
+      $("#btnAutoTriage").addEventListener("click", () => { void autoTriage(); });
 
       $("#btnExportJson").addEventListener("click", exportJson);
       $("#btnImportJson").addEventListener("click", importJson);
 
-      $("#btnSeedReset").addEventListener("click", () => {
-        const ok = confirm("Restaurar demo? Isso substitui candidatos e log de triagem do MVP.");
-        if(!ok) return;
-        localStorage.removeItem(CANDS_KEY);
-        localStorage.removeItem(TRIAGE_KEY);
-
-        state.candidatos = [];
-        state.triageLog = [];
-        state.selectedId = null;
-
-        seedCandsIfEmpty();
-        saveTriageLog();
-
-        renderVagaFilter();
-        renderBoard();
-        renderDetail();
-        toast("Demo restaurada.");
-      });
+      const clearBtn = $("#btnClearHistory");
+      if(clearBtn){
+        clearBtn.addEventListener("click", () => {
+          const ok = confirm("Limpar historico local de triagem?");
+          if(!ok) return;
+          localStorage.removeItem(TRIAGE_KEY);
+          state.triageLog = [];
+          renderDetail();
+          toast("Historico limpo.");
+        });
+      }
     }
 
     function refreshEnumDefaults(){
       VAGA_ALL = enumFirstCode("vagaFilter", "all");
+      DEFAULT_CAND_FONTE = enumFirstCode("candidatoFonte", "email");
+      DEFAULT_CAND_STATUS = enumFirstCode("candidatoStatus", "novo");
     }
 
     // ========= Init
@@ -829,22 +932,15 @@ function enumFirstCode(key, fallback){
       refreshEnumDefaults();
       applyEnumSelects();
 
-      state.vagas = loadVagas();
-      seedVagasIfEmpty();
-      const hasC = loadCands();
       loadTriageLog();
 
-      if(!hasC) seedCandsIfEmpty();
-      else seedCandsIfEmpty();
-
-      if(!state.vagas.length){
-        toast("Nenhuma vaga encontrada no localStorage. Abra a tela de Vagas e crie/seed primeiro.");
-      }
-
-      // se não houver candidato selecionado, tenta um em triagem
-      if(!state.selectedId){
-        state.selectedId = state.candidatos.find(c => c.status === "triagem")?.id || state.candidatos[0]?.id || null;
-        saveCands();
+      try{
+        await syncVagasSummary();
+        await syncCandidatosFromApi();
+        await syncVagaDetailsForCandidates();
+      }catch(err){
+        console.error(err);
+        toast("Falha ao carregar candidatos/vagas.");
       }
 
       renderVagaFilter();
@@ -855,7 +951,3 @@ function enumFirstCode(key, fallback){
       wireFilters();
       wireButtons();
     })();
-
-
-
-

@@ -18,8 +18,8 @@
 	@await Html.PartialAsync("_TopbarBrand", "Tela: Triagem (pipeline + decisão rápida)")
 
 	<div class="d-flex align-items-center gap-2">
-		<button class="btn btn-ghost" type="button" id="btnSeedReset" title="Restaurar demo">
-			<i class="bi bi-arrow-counterclockwise"></i><span class="d-none d-sm-inline ms-1">Reset demo</span>
+		<button class="btn btn-ghost" type="button" id="btnClearHistory" title="Limpar historico">
+			<i class="bi bi-arrow-counterclockwise"></i><span class="d-none d-sm-inline ms-1">Limpar historico</span>
 		</button>
 
 		<button class="btn btn-ghost" type="button" id="btnExportJson" title="Exportar triagem (JSON)">
@@ -259,7 +259,7 @@
 		<hr class="my-3" style="border-color: rgba(16,82,144,.14);">
 
 		<div class="fw-bold mb-1">Historico de triagem</div>
-		<div class="text-muted small mb-2">Ultimas movimentacoes (MVP localStorage).</div>
+		<div class="text-muted small mb-2">Historico local de triagem.</div>
 
 		<lt-list class="list-group" style="border-radius: 14px; overflow:hidden;" data-role="tri-log-list"></lt-list>
 	</div>
@@ -299,8 +299,5 @@
 
 <!-- Bootstrap JS (CDN) -->
 @section Scripts {
-	<script>
-		window.__seedData = @Html.Raw(Model.SeedJson);
-	</script>
 	<script src="~/js/views/triagem.js" asp-append-version="true"></script>
 }
