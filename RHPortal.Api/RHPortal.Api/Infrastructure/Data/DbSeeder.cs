@@ -27,7 +27,15 @@ public static class DbSeeder
 
         if (resetDb)
         {
-            await db.Database.EnsureDeletedAsync(ct);
+            if (string.Equals(db.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.OrdinalIgnoreCase))
+            {
+                await db.Database.ExecuteSqlRawAsync("DROP SCHEMA IF EXISTS public CASCADE;", ct);
+                await db.Database.ExecuteSqlRawAsync("CREATE SCHEMA public;", ct);
+            }
+            else
+            {
+                await db.Database.EnsureDeletedAsync(ct);
+            }
         }
 
         await db.Database.MigrateAsync(ct);

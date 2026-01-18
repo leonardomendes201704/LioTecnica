@@ -51,11 +51,11 @@ builder.Services.AddHealthChecks()
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<TenantMiddleware>();
 
-// SQLite + EF Core
+// PostgreSQL + EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var conn = builder.Configuration.GetConnectionString("Default");
-    options.UseSqlite(conn);
+    options.UseNpgsql(conn);
 });
 
 // Identity
