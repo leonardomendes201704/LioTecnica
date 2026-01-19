@@ -16,10 +16,6 @@
 @await Html.PartialAsync("_TopbarBrand", "Tela: Usuários & Perfis")
 
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-ghost" type="button" id="btnSeedReset" title="Restaurar demo">
-              <i class="bi bi-arrow-counterclockwise"></i><span class="d-none d-sm-inline ms-1">Reset demo</span>
-            </button>
-
             <button class="btn btn-ghost" type="button" id="btnExportUsers" title="Exportar usuários (CSV)">
               <i class="bi bi-filetype-csv"></i><span class="d-none d-sm-inline ms-1">Exportar</span>
             </button>
@@ -233,9 +229,6 @@
   <!-- Bootstrap JS (CDN) -->
 
 @section Scripts {
-  <script>
-    window.__seedData = @Html.Raw(Model.SeedJson);
-  </script>
 <script src="~/js/views/usuarios-perfis.js" asp-append-version="true"></script>
 }
 

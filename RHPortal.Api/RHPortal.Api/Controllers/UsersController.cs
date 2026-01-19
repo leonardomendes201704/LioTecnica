@@ -124,4 +124,27 @@ public sealed class UsersController : ControllerBase
             });
         }
     }
+
+    [RequirePermission("users.write")]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(
+        [FromRoute] Guid id,
+        [FromServices] UserAdministrationService service,
+        CancellationToken ct)
+    {
+        try
+        {
+            var removed = await service.DeleteAsync(id, ct);
+            return removed ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Unable to delete user.",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+    }
 }

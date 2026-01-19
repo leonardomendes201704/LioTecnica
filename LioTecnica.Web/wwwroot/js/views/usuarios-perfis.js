@@ -1,7 +1,11 @@
 // ========= Logo (data URI real do arquivo recebido)
-// Obs: apesar do nome do arquivo ser .png, o conteúdo é WebP (ok).
-const seed = window.__seedData || {};
+// Obs: apesar do nome do arquivo ser .png, o conteudo e WebP (ok).
+const USERS_API_BASE = "/UsuariosPerfis/_api/users";
+const ROLES_API_BASE = "/UsuariosPerfis/_api/roles";
+const MENUS_API_BASE = "/UsuariosPerfis/_api/menus";
+
 const LOGO_DATA_URI = "data:image/webp;base64,UklGRngUAABXRUJQVlA4IGwUAAAQYwCdASpbAVsBPlEokUajoqGhIpNoyHAK7AQYJjYQmG9Dtu/6p6QZ4lQd6lPde+Jk3i3kG2EoP+QW0c0h8Oe3jW2C5zE0o9jzZ1x2fX9cZlX0d7rW8r0vQ9p3d2nJ1bqzQfQZxVwTt7mJvU8j1GqF4oJc8Qb+gq+oQyHcQyYc2b9u2fYf0Rj9x9hRZp2Y2xK0yVQ8Hj4p6w8B1K2cKk2mY9m2r8kz3a4m7xG4xg9m5VjzP3E4RjQH8fYkC4mB8g0vR3c5h1D0yE8Qzv7t7gQj0Z9yKk3cWZgVnq3l1kq6rE8oWc4z6oZk8k0b1o9m8p2m+QJ3nJm6GgA=";
+
 function enumFirstCode(key, fallback) {
     const list = getEnumOptions(key);
     return list.length ? list[0].code : fallback;
@@ -11,92 +15,210 @@ let ROLE_ALL = enumFirstCode("roleFilter", "all");
 let DEFAULT_USER_STATUS = enumFirstCode("usuarioStatus", "active");
 let DEFAULT_USER_STATUS_FILTER = enumFirstCode("usuarioStatusFilter", "all");
 let DEFAULT_MFA_OPTION = enumFirstCode("usuarioMfaOption", "false");
-// ========= Storage keys (compatÃ­vel com outras telas)
-const USERS_KEY = "lt_rh_users_v1";
-const ROLES_KEY = "lt_rh_roles_v1";
 
-// ========= Modules/permissions
-const MODULES = [
+const DEFAULT_MODULES = [
     { key: "dashboard", label: "Dashboard" },
     { key: "vagas", label: "Vagas" },
     { key: "candidatos", label: "Candidatos" },
     { key: "triagem", label: "Triagem" },
     { key: "matching", label: "Matching" },
     { key: "entrada", label: "Entrada (Email/Pasta)" },
-    { key: "relatorios", label: "Relatórios" },
-    { key: "config", label: "Configurações" },
-    { key: "usuarios", label: "Usuários & Perfis" },
+    { key: "relatorios", label: "Relatorios" },
+    { key: "config", label: "Configuracoes" },
+    { key: "usuarios", label: "Usuarios & Perfis" }
 ];
+
 const ACTIONS = [
     { key: "view", label: "Visualizar" },
     { key: "create", label: "Criar" },
     { key: "edit", label: "Editar" },
     { key: "delete", label: "Excluir" },
     { key: "export", label: "Exportar" },
-    { key: "admin", label: "Admin" },
+    { key: "admin", label: "Admin" }
 ];
 
-// ========= State
+const ACTION_PERMISSION_OVERRIDES = {
+    users: {
+        view: "users.read",
+        create: "users.write",
+        edit: "users.write",
+        delete: "users.write",
+        export: "users.write",
+        admin: "users.write"
+    },
+    roles: {
+        view: "roles.manage",
+        create: "roles.manage",
+        edit: "roles.manage",
+        delete: "roles.manage",
+        export: "roles.manage",
+        admin: "roles.manage"
+    },
+    menus: {
+        view: "menus.manage",
+        create: "menus.manage",
+        edit: "menus.manage",
+        delete: "menus.manage",
+        export: "menus.manage",
+        admin: "menus.manage"
+    },
+    access: {
+        view: "access.manage",
+        create: "access.manage",
+        edit: "access.manage",
+        delete: "access.manage",
+        export: "access.manage",
+        admin: "access.manage"
+    }
+};
+
 const state = {
     users: [],
     roles: [],
+    menus: [],
+    modules: [],
+    moduleMenuMap: new Map(),
+    roleMenus: {},
     selectedRoleId: null,
     selectedUserId: null,
     filters: { q: "", status: "all", role: "all" }
 };
 
-// ========= Load/save
-function loadJson(key, fallback) {
-    try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return fallback;
-        return JSON.parse(raw);
-    } catch { return fallback; }
+function apiFetchJson(url, opts) {
+    return fetch(url, {
+        headers: { "Accept": "application/json", ...(opts?.headers || {}) },
+        ...opts
+    }).then(async (res) => {
+        const contentType = res.headers.get("content-type") || "";
+        let bodyText = "";
+        let bodyJson = null;
+
+        try { bodyText = await res.text(); } catch { bodyText = ""; }
+
+        if (bodyText && contentType.includes("application/json")) {
+            try { bodyJson = JSON.parse(bodyText); } catch { bodyJson = null; }
+        }
+
+        if (res.status === 204) return null;
+
+        if (!res.ok) {
+            const msg =
+                bodyJson?.message ||
+                bodyJson?.title ||
+                (bodyText ? bodyText.slice(0, 300) : "") ||
+                `Erro HTTP ${res.status}`;
+
+            const err = new Error(msg);
+            err.status = res.status;
+            err.url = url;
+            err.body = bodyJson ?? bodyText;
+            err.headers = Object.fromEntries(res.headers.entries());
+            throw err;
+        }
+
+        if (contentType.includes("application/json")) {
+            try { return bodyJson ?? JSON.parse(bodyText || "null"); } catch { return null; }
+        }
+
+        return bodyText || null;
+    });
 }
-function saveUsers() { localStorage.setItem(USERS_KEY, JSON.stringify({ users: state.users })); }
-function saveRoles() { localStorage.setItem(ROLES_KEY, JSON.stringify({ roles: state.roles })); }
 
-// ========= Seed
-function emptyPerms() {
-    const p = {};
-    for (const m of MODULES) {
-        p[m.key] = { view: false, create: false, edit: false, delete: false, export: false, admin: false };
-    }
-    return p;
-}
-function seedIfEmpty() {
-    const rolesSeed = Array.isArray(seed.roles) ? seed.roles : [];
-    const usersSeed = Array.isArray(seed.users) ? seed.users : [];
-
-    const rolesRaw = loadJson(ROLES_KEY, null);
-    if ((!rolesRaw || !Array.isArray(rolesRaw.roles) || !rolesRaw.roles.length) && rolesSeed.length) {
-        localStorage.setItem(ROLES_KEY, JSON.stringify({ roles: rolesSeed }));
-    }
-
-    const usersRaw = loadJson(USERS_KEY, null);
-    if ((!usersRaw || !Array.isArray(usersRaw.users) || !usersRaw.users.length) && usersSeed.length) {
-        localStorage.setItem(USERS_KEY, JSON.stringify({ users: usersSeed }));
-    }
-}
-
-function loadAll() {
-    state.roles = (loadJson(ROLES_KEY, { roles: [] }).roles || []);
-    state.users = (loadJson(USERS_KEY, { users: [] }).users || []);
-    if (!state.selectedRoleId) state.selectedRoleId = state.roles[0]?.id || null;
-}
-
-// ========= Toast
 function showToast(title, body) {
     if (typeof window.toast !== "function") return;
-    window.toast(body || "-", title || "Notificação");
+    window.toast(body || "-", title || "Notificacao");
 }
 
-// ========= Role helpers
+function moduleKeyFromPermission(permissionKey) {
+    const raw = (permissionKey || "").split(".")[0];
+    return raw || permissionKey || "module";
+}
+
+function permissionKeyFor(moduleKey, actionKey) {
+    const override = ACTION_PERMISSION_OVERRIDES[moduleKey];
+    if (override && override[actionKey]) return override[actionKey];
+
+    const suffix = actionKey === "admin" ? "manage" : actionKey;
+    return `${moduleKey}.${suffix}`;
+}
+
+function buildModulesFromMenus(menus) {
+    const byKey = new Map();
+    const menuMap = new Map();
+
+    menus.forEach(menu => {
+        const key = moduleKeyFromPermission(menu.permissionKey || "");
+        if (!byKey.has(key)) {
+            byKey.set(key, { key, label: menu.displayName || key });
+        }
+        if (!menuMap.has(key)) {
+            menuMap.set(key, menu.id);
+        }
+    });
+
+    state.moduleMenuMap = menuMap;
+    return Array.from(byKey.values()).sort((a, b) => (a.label || "").localeCompare(b.label || ""));
+}
+
 function roleById(id) { return state.roles.find(r => r.id === id) || null; }
-function roleName(id) { return roleById(id)?.name || "•"; }
+function roleName(id) { return roleById(id)?.name || "?"; }
 function userById(id) { return state.users.find(u => u.id === id) || null; }
 
-// ========= KPIs
+async function apiGetJson(url) {
+    return await apiFetchJson(url, { method: "GET" });
+}
+
+async function loadRoles() {
+    const list = await apiGetJson(ROLES_API_BASE) || [];
+    state.roles = list.map(r => ({
+        id: r.id,
+        name: r.name,
+        desc: r.description,
+        isActive: r.isActive,
+        builtIn: false
+    }));
+}
+
+async function loadMenus() {
+    const list = await apiGetJson(MENUS_API_BASE) || [];
+    state.menus = list || [];
+    state.modules = buildModulesFromMenus(state.menus);
+    if (!state.modules.length) state.modules = DEFAULT_MODULES.slice();
+}
+
+function mapUsersFromApi(users) {
+    const roleNameMap = new Map(state.roles.map(r => [String(r.name || "").toLowerCase(), r.id]));
+    state.users = (users || []).map(u => {
+        const ids = (u.roles || [])
+            .map(name => roleNameMap.get(String(name || "").toLowerCase()))
+            .filter(Boolean);
+
+        return {
+            id: u.id,
+            name: u.fullName,
+            email: u.email,
+            dept: "",
+            status: u.isActive ? "active" : "disabled",
+            mfaEnabled: false,
+            roleIds: ids,
+            createdAt: null,
+            updatedAt: null,
+            lastLoginAt: null
+        };
+    });
+}
+
+async function loadUsers() {
+    const list = await apiGetJson(USERS_API_BASE) || [];
+    mapUsersFromApi(list);
+}
+
+async function loadRoleMenus(roleId) {
+    if (!roleId) return;
+    const items = await apiGetJson(`${ROLES_API_BASE}/${roleId}/menus`) || [];
+    state.roleMenus[roleId] = items;
+}
+
 function renderKPIs() {
     const total = state.users.length;
     const active = state.users.filter(u => u.status === "active").length;
@@ -109,7 +231,6 @@ function renderKPIs() {
     $("#kpiRoles").textContent = roles;
 }
 
-// ========= Filters (users)
 function renderRoleFilterOptions() {
     const sel = $("#uRole");
     const current = sel.value || ROLE_ALL;
@@ -152,27 +273,26 @@ function statusTag(status) {
     if (status === "invited") return `<span class="tag warn"><i class="bi bi-envelope"></i>${escapeHtml(label)}</span>`;
     if (status === "disabled") return `<span class="tag bad"><i class="bi bi-slash-circle"></i>${escapeHtml(label)}</span>`;
     return `<span class="tag"><i class="bi bi-dot"></i>${escapeHtml(label)}</span>`;
-}</span>`;
 }
+
 function mfaTag(enabled) {
     return enabled
         ? `<span class="tag ok"><i class="bi bi-shield-lock"></i>On</span>`
         : `<span class="tag"><i class="bi bi-shield"></i>Off</span>`;
 }
 
-// ========= Users table
 function renderUsers() {
     const filtered = applyUserFilters(state.users.slice().sort((a, b) => (a.name || "").localeCompare(b.name || "")));
     $("#usersCount").textContent = filtered.length;
 
     $("#usersHint").textContent = filtered.length
         ? "Dica: clique na linha para ver detalhes no drawer."
-        : "Nenhum usuário com os filtros atuais.";
+        : "Nenhum usuario com os filtros atuais.";
 
     const tbody = $("#usersTbody");
     tbody.innerHTML = filtered.map(u => {
         const roles = (u.roleIds || []).map(id => `<span class="pill"><i class="bi bi-person-badge"></i>${escapeHtml(roleName(id))}</span>`).join(" ");
-        const last = u.lastLoginAt ? fmtDate(u.lastLoginAt) : "•";
+        const last = u.lastLoginAt ? fmtDate(u.lastLoginAt) : "?";
 
         return `
           <tr data-id="${u.id}" class="user-row" style="cursor:pointer;">
@@ -180,14 +300,14 @@ function renderUsers() {
               <div class="d-flex align-items-center gap-2">
                 <div class="avatar">${escapeHtml(initials(u.name, "U"))}</div>
                 <div class="lh-1">
-                  <div class="fw-bold">${escapeHtml(u.name || "•")}</div>
+                  <div class="fw-bold">${escapeHtml(u.name || "?")}</div>
                   <small class="text-muted">${escapeHtml(u.id.slice(0, 8))}</small>
                 </div>
               </div>
             </td>
-            <td class="mono">${escapeHtml(u.email || "•")}</td>
-            <td>${escapeHtml(u.dept || "•")}</td>
-            <td>${roles || "•"}</td>
+            <td class="mono">${escapeHtml(u.email || "?")}</td>
+            <td>${escapeHtml(u.dept || "?")}</td>
+            <td>${roles || "?"}</td>
             <td>${statusTag(u.status)}</td>
             <td>${mfaTag(!!u.mfaEnabled)}</td>
             <td>${escapeHtml(last)}</td>
@@ -201,7 +321,6 @@ function renderUsers() {
         `;
     }).join("");
 
-    // row click => drawer
     $$(".user-row", tbody).forEach(tr => {
         tr.addEventListener("click", (ev) => {
             const btn = ev.target.closest("button[data-act]");
@@ -212,8 +331,8 @@ function renderUsers() {
                 ev.stopPropagation();
                 const act = btn.getAttribute("data-act");
                 if (act === "edit") openUserModal(id);
-                if (act === "invite") { showToast("Convite", "Convite reenviado (demo)."); }
-                if (act === "reset") { showToast("Senha", "Reset solicitado (demo)."); }
+                if (act === "invite") { showToast("Convite", "Reenvio de convite ainda nao implementado."); }
+                if (act === "reset") { showToast("Senha", "Reset de senha ainda nao implementado."); }
                 if (act === "toggle") { toggleUserStatus(id); }
                 return;
             }
@@ -223,19 +342,18 @@ function renderUsers() {
     });
 }
 
-// ========= Drawer
-function openUserDrawer(userId) {
+async function openUserDrawer(userId) {
     state.selectedUserId = userId;
     const u = userById(userId);
     if (!u) return;
 
     $("#drawerAvatar").textContent = initials(u.name, "U");
-    $("#drawerName").textContent = u.name || "•";
-    $("#drawerEmail").textContent = u.email || "•";
-    $("#drawerDept").textContent = u.dept || "•";
-    $("#drawerCreated").textContent = fmtDate(u.createdAt);
-    $("#drawerLastLogin").textContent = u.lastLoginAt ? fmtDate(u.lastLoginAt) : "•";
-    $("#drawerRoles").textContent = (u.roleIds || []).map(roleName).join(", ") || "•";
+    $("#drawerName").textContent = u.name || "?";
+    $("#drawerEmail").textContent = u.email || "?";
+    $("#drawerDept").textContent = u.dept || "?";
+    $("#drawerCreated").textContent = u.createdAt ? fmtDate(u.createdAt) : "?";
+    $("#drawerLastLogin").textContent = u.lastLoginAt ? fmtDate(u.lastLoginAt) : "?";
+    $("#drawerRoles").textContent = (u.roleIds || []).map(roleName).join(", ") || "?";
     $("#drawerMfa").textContent = u.mfaEnabled ? "Habilitado" : "Desabilitado";
 
     const st = u.status;
@@ -243,10 +361,20 @@ function openUserDrawer(userId) {
     if (st === "active") { tag.className = "tag ok"; tag.innerHTML = `<i class="bi bi-check2-circle"></i>Ativo`; }
     else if (st === "invited") { tag.className = "tag warn"; tag.innerHTML = `<i class="bi bi-envelope"></i>Convidado`; }
     else if (st === "disabled") { tag.className = "tag bad"; tag.innerHTML = `<i class="bi bi-slash-circle"></i>Desativado`; }
-    else { tag.className = "tag"; tag.innerHTML = `<i class="bi bi-dot"></i>${escapeHtml(st || "•")}`; }
+    else { tag.className = "tag"; tag.innerHTML = `<i class="bi bi-dot"></i>${escapeHtml(st || "?")}`; }
 
     const oc = new bootstrap.Offcanvas($("#offcanvasUser"));
     oc.show();
+
+    const detail = await apiGetJson(`${USERS_API_BASE}/${userId}`);
+    if (!detail) return;
+
+    u.createdAt = detail.createdAtUtc;
+    u.updatedAt = detail.updatedAtUtc;
+    u.roleIds = (detail.roles || []).map(r => r.id);
+
+    $("#drawerCreated").textContent = u.createdAt ? fmtDate(u.createdAt) : "?";
+    $("#drawerRoles").textContent = (u.roleIds || []).map(roleName).join(", ") || "?";
 }
 
 function wireDrawerButtons() {
@@ -256,11 +384,11 @@ function wireDrawerButtons() {
     });
     $("#btnDrawerInvite").addEventListener("click", () => {
         if (!state.selectedUserId) return;
-        showToast("Convite", "Convite reenviado (demo).");
+        showToast("Convite", "Reenvio de convite ainda nao implementado.");
     });
     $("#btnDrawerReset").addEventListener("click", () => {
         if (!state.selectedUserId) return;
-        showToast("Senha", "Reset solicitado (demo).");
+        showToast("Senha", "Reset de senha ainda nao implementado.");
     });
     $("#btnDrawerToggle").addEventListener("click", () => {
         if (!state.selectedUserId) return;
@@ -268,34 +396,35 @@ function wireDrawerButtons() {
     });
     $("#btnDrawerDelete").addEventListener("click", () => {
         if (!state.selectedUserId) return;
-        const u = userById(state.selectedUserId);
-        if (!u) return;
-        const ok = confirm(`Excluir usuário "${u.name}"? (demo)`);
-        if (!ok) return;
-        state.users = state.users.filter(x => x.id !== u.id);
-        saveUsers();
-        renderKPIs();
-        renderUsers();
-        showToast("Usuário", "Excluí­do (demo).");
+        showToast("Usuario", "Exclusao de usuario ainda nao implementada na API.");
     });
 }
 
-// ========= User CRUD
-function openUserModal(userId) {
+async function openUserModal(userId) {
     const modal = new bootstrap.Modal($("#modalUser"));
     const isEdit = !!userId;
-    $("#userModalTitle").textContent = isEdit ? "Editar usuário" : "Novo usuário";
+    $("#userModalTitle").textContent = isEdit ? "Editar usuario" : "Novo usuario";
 
-    const u = isEdit ? userById(userId) : null;
+    $("#userId").value = "";
+    $("#userName").value = "";
+    $("#userEmail").value = "";
+    $("#userDept").value = "";
+    $("#userStatus").value = DEFAULT_USER_STATUS;
+    $("#userMfa").value = DEFAULT_MFA_OPTION;
+    $("#userPassword").value = "";
 
-    $("#userId").value = u?.id || "";
-    $("#userName").value = u?.name || "";
-    $("#userEmail").value = u?.email || "";
-    $("#userDept").value = u?.dept || "";
-    $("#userStatus").value = u?.status || DEFAULT_USER_STATUS;
-    $("#userMfa").value = (u?.mfaEnabled ? "true" : DEFAULT_MFA_OPTION);
+    if (isEdit) {
+        const detail = await apiGetJson(`${USERS_API_BASE}/${userId}`);
+        if (!detail) return;
+        $("#userId").value = detail.id;
+        $("#userName").value = detail.fullName || "";
+        $("#userEmail").value = detail.email || "";
+        $("#userStatus").value = detail.isActive ? "active" : "disabled";
+        renderUserRoleSelectors((detail.roles || []).map(r => r.id));
+    } else {
+        renderUserRoleSelectors([]);
+    }
 
-    renderUserRoleSelectors(u?.roleIds || []);
     modal.show();
 }
 
@@ -333,64 +462,97 @@ function renderUserRoleSelectors(selectedIds) {
     });
 }
 
-function saveUserFromModal() {
+async function saveUserFromModal() {
     const id = ($("#userId").value || "").trim();
     const name = ($("#userName").value || "").trim();
     const email = ($("#userEmail").value || "").trim();
-    const dept = ($("#userDept").value || "").trim();
     const status = $("#userStatus").value;
-    const mfaEnabled = $("#userMfa").value === "true";
     const roleIds = $$("#userRolesChecks .role-check").filter(x => x.checked).map(x => x.value);
+    const password = ($("#userPassword").value || "").trim();
 
     if (!name || !email) {
-        showToast("Validação", "Informe Nome e Email.");
+        showToast("Validacao", "Informe Nome e Email.");
         return;
     }
 
-    const now = new Date().toISOString();
-    if (id) {
-        const u = userById(id);
-        if (!u) return;
-        u.name = name; u.email = email; u.dept = dept; u.status = status; u.mfaEnabled = mfaEnabled; u.roleIds = roleIds;
-        u.updatedAt = now;
-        saveUsers();
-        showToast("Usuário", "Atualizado com sucesso.");
-    } else {
-        const u = {
-            id: uid(),
-            name, email, dept,
-            status,
-            mfaEnabled,
-            roleIds,
-            createdAt: now,
-            updatedAt: now,
-            lastLoginAt: null
-        };
-        state.users.push(u);
-        saveUsers();
-        showToast("Usuário", "Criado com sucesso.");
+    if (!id && !password) {
+        showToast("Validacao", "Informe uma senha para o novo usuario.");
+        return;
     }
 
-    renderKPIs();
-    renderUsers();
+    if (id) {
+        const updated = await apiFetchJson(`${USERS_API_BASE}/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({
+                email,
+                fullName: name,
+                isActive: status === "active"
+            })
+        });
+
+        if (!updated) {
+            showToast("Usuario", "Falha ao atualizar usuario.");
+            return;
+        }
+
+        await apiFetchJson(`${USERS_API_BASE}/${id}/roles`, {
+            method: "PUT",
+            body: JSON.stringify({ roleIds })
+        });
+
+        await loadUsers();
+        renderKPIs();
+        renderUsers();
+        showToast("Usuario", "Atualizado com sucesso.");
+    } else {
+        const created = await apiFetchJson(USERS_API_BASE, {
+            method: "POST",
+            body: JSON.stringify({
+                email,
+                fullName: name,
+                password,
+                isActive: status === "active",
+                roleIds
+            })
+        });
+
+        if (!created) {
+            showToast("Usuario", "Falha ao criar usuario.");
+            return;
+        }
+
+        await loadUsers();
+        renderKPIs();
+        renderUsers();
+        showToast("Usuario", "Criado com sucesso.");
+    }
+
     bootstrap.Modal.getInstance($("#modalUser")).hide();
 }
 
-function toggleUserStatus(userId, keepDrawerOpen = false) {
+async function toggleUserStatus(userId, keepDrawerOpen = false) {
     const u = userById(userId);
     if (!u) return;
-    if (u.status === "disabled") u.status = "active";
-    else u.status = "disabled";
-    u.updatedAt = new Date().toISOString();
-    saveUsers();
+    const nextActive = u.status === "disabled";
+
+    const updated = await apiFetchJson(`${USERS_API_BASE}/${userId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: nextActive })
+    });
+
+    if (!updated) {
+        showToast("Status", "Falha ao atualizar status.");
+        return;
+    }
+
+    await loadUsers();
     renderKPIs();
     renderUsers();
-    showToast("Status", `Usuário agora está¡: ${u.status}.`);
+    showToast("Status", `Usuario agora esta: ${nextActive ? "active" : "disabled"}.`);
 
     if (keepDrawerOpen) openUserDrawer(userId);
 }
 
-// ========= Roles UI
 function renderRolesList() {
     const host = $("#rolesList");
     host.innerHTML = state.roles
@@ -403,17 +565,18 @@ function renderRolesList() {
                 <div class="iconbox"><i class="bi bi-shield-lock"></i></div>
                 <div>
                   <div class="fw-bold">${escapeHtml(r.name)}</div>
-                  <div class="text-muted small">${escapeHtml(r.desc || "•")}</div>
+                  <div class="text-muted small">${escapeHtml(r.desc || "?")}</div>
                 </div>
               </div>
-              ${r.builtIn ? `<span class="pill"><i class="bi bi-stars"></i>padrão</span>` : `<span class="pill"><i class="bi bi-person-badge"></i>custom</span>`}
+              ${r.builtIn ? `<span class="pill"><i class="bi bi-stars"></i>padrao</span>` : `<span class="pill"><i class="bi bi-person-badge"></i>custom</span>`}
             </div>
           </div>
         `).join("");
 
     $$(".role-item", host).forEach(el => {
-        el.addEventListener("click", () => {
+        el.addEventListener("click", async () => {
             state.selectedRoleId = el.getAttribute("data-id");
+            await loadRoleMenus(state.selectedRoleId);
             renderRolesList();
             renderRoleEditor();
         });
@@ -423,7 +586,7 @@ function renderRolesList() {
 function renderRoleEditor() {
     const r = roleById(state.selectedRoleId);
     if (!r) {
-        $("#roleEditorTitle").textContent = "•";
+        $("#roleEditorTitle").textContent = "?";
         $("#roleEditorDesc").textContent = "Selecione um perfil ao lado.";
         $("#roleName").value = "";
         $("#roleDesc").value = "";
@@ -432,20 +595,22 @@ function renderRoleEditor() {
     }
 
     $("#roleEditorTitle").textContent = `Editor de perfil: ${r.name}`;
-    $("#roleEditorDesc").textContent = r.desc || "•";
+    $("#roleEditorDesc").textContent = r.desc || "?";
     $("#roleName").value = r.name || "";
     $("#roleDesc").value = r.desc || "";
 
+    const rolePerms = new Set((state.roleMenus[r.id] || []).map(x => x.permissionKey));
     const tbody = $("#permTbody");
-    tbody.innerHTML = MODULES.map(m => {
-        const perms = r.perms?.[m.key] || { view: false, create: false, edit: false, delete: false, export: false, admin: false };
+
+    tbody.innerHTML = state.modules.map(m => {
         return `
           <tr>
             <td class="fw-bold">${escapeHtml(m.label)}</td>
             ${ACTIONS.map(a => {
-            const checked = !!perms[a.key];
-            const id = `p_${r.id}_${m.key}_${a.key}`;
-            return `
+                const permKey = permissionKeyFor(m.key, a.key);
+                const checked = rolePerms.has(permKey);
+                const id = `p_${r.id}_${m.key}_${a.key}`;
+                return `
                 <td>
                   <div class="form-check m-0">
                     <input class="form-check-input perm-cb" type="checkbox" id="${id}"
@@ -454,158 +619,172 @@ function renderRoleEditor() {
                   </div>
                 </td>
               `;
-        }).join("")}
+            }).join("")}
           </tr>
         `;
     }).join("");
 
-    // behavior: if admin checked => turn on all actions for that module
     $$(".perm-cb", tbody).forEach(cb => {
         cb.addEventListener("change", () => {
             const roleId = cb.dataset.role;
             const mod = cb.dataset.module;
             const act = cb.dataset.action;
 
-            const role = roleById(roleId);
-            if (!role) return;
-
-            role.perms = role.perms || {};
-            role.perms[mod] = role.perms[mod] || { view: false, create: false, edit: false, delete: false, export: false, admin: false };
-            role.perms[mod][act] = cb.checked;
-
             if (act === "admin" && cb.checked) {
-                role.perms[mod] = { view: true, create: true, edit: true, delete: true, export: true, admin: true };
-                // re-render quickly only this row's checkboxes
                 $$(".perm-cb", tbody).forEach(x => {
                     if (x.dataset.role === roleId && x.dataset.module === mod) x.checked = true;
                 });
             }
             if (act === "admin" && !cb.checked) {
-                role.perms[mod].admin = false;
+                cb.checked = false;
             }
-
-            role.updatedAt = new Date().toISOString();
         });
     });
 }
 
-function saveRoleEditor() {
+async function saveRoleEditor() {
     const r = roleById(state.selectedRoleId);
     if (!r) return;
 
     const name = ($("#roleName").value || "").trim();
     const desc = ($("#roleDesc").value || "").trim();
     if (!name) {
-        showToast("Validação", "Informe o nome do perfil.");
+        showToast("Validacao", "Informe o nome do perfil.");
         return;
     }
 
-    r.name = name;
-    r.desc = desc;
-    r.updatedAt = new Date().toISOString();
+    const updated = await apiFetchJson(`${ROLES_API_BASE}/${r.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name, description: desc, isActive: true })
+    });
 
-    saveRoles();
+    if (!updated) {
+        showToast("Perfil", "Falha ao salvar perfil.");
+        return;
+    }
+
+    const checked = $$(".perm-cb").filter(cb => cb.checked);
+    const items = checked.map(cb => {
+        const moduleKey = cb.dataset.module;
+        const permissionKey = permissionKeyFor(moduleKey, cb.dataset.action);
+        const menuId = state.moduleMenuMap.get(moduleKey);
+        if (!menuId) return null;
+        return { menuId, permissionKey };
+    }).filter(Boolean);
+
+    await apiFetchJson(`${ROLES_API_BASE}/${r.id}/menus`, {
+        method: "PUT",
+        body: JSON.stringify({ items })
+    });
+
+    await loadRoles();
+    await loadRoleMenus(r.id);
     renderRolesList();
+    renderRoleEditor();
     renderRoleFilterOptions();
-    renderUsers(); // para atualizar nomes de perfis nas linhas
-    showToast("Perfil", "Permissões salvas com sucesso.");
+    renderUsers();
+    showToast("Perfil", "Permissoes salvas com sucesso.");
 }
 
-function cloneSelectedRole() {
+async function cloneSelectedRole() {
     const r = roleById(state.selectedRoleId);
     if (!r) return;
-    const nr = {
-        id: uid(),
-        name: r.name + " (CÃ³pia)",
-        desc: r.desc || "",
-        perms: JSON.parse(JSON.stringify(r.perms || emptyPerms())),
-        builtIn: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-    state.roles.push(nr);
-    state.selectedRoleId = nr.id;
-    saveRoles();
+
+    const created = await apiFetchJson(ROLES_API_BASE, {
+        method: "POST",
+        body: JSON.stringify({ name: `${r.name} (Copia)`, description: r.desc || "", isActive: true })
+    });
+
+    if (!created) {
+        showToast("Perfil", "Falha ao clonar perfil.");
+        return;
+    }
+
+    const items = state.roleMenus[r.id] || [];
+    await apiFetchJson(`${ROLES_API_BASE}/${created.id}/menus`, {
+        method: "PUT",
+        body: JSON.stringify({ items })
+    });
+
+    await loadRoles();
+    state.selectedRoleId = created.id;
+    await loadRoleMenus(created.id);
     renderKPIs();
     renderRolesList();
     renderRoleEditor();
     renderRoleFilterOptions();
+    renderUsers();
     showToast("Perfil", "Clonado com sucesso.");
 }
 
-function deleteSelectedRole() {
+async function deleteSelectedRole() {
     const r = roleById(state.selectedRoleId);
     if (!r) return;
 
-    if (r.builtIn) {
-        showToast("Perfil", "Perfis padrão não podem ser excluÃ­dos (demo).");
+    const usedBy = state.users.filter(u => (u.roleIds || []).includes(r.id)).length;
+    const ok = confirm(`Excluir perfil "${r.name}"? Usuarios afetados: ${usedBy}.`);
+    if (!ok) return;
+
+    try {
+        await apiFetchJson(`${ROLES_API_BASE}/${r.id}`, { method: "DELETE" });
+    } catch {
+        showToast("Perfil", "Falha ao excluir perfil.");
         return;
     }
 
-    const usedBy = state.users.filter(u => (u.roleIds || []).includes(r.id)).length;
-    const ok = confirm(`Excluir perfil "${r.name}"? Usuários afetados: ${usedBy}. (demo)`);
-    if (!ok) return;
-
-    // remove role from users
-    state.users.forEach(u => {
-        u.roleIds = (u.roleIds || []).filter(id => id !== r.id);
-    });
-
-    state.roles = state.roles.filter(x => x.id !== r.id);
+    await loadRoles();
     state.selectedRoleId = state.roles[0]?.id || null;
+    if (state.selectedRoleId) await loadRoleMenus(state.selectedRoleId);
+    await loadUsers();
 
-    saveRoles();
-    saveUsers();
     renderKPIs();
     renderUsers();
     renderRoleFilterOptions();
     renderRolesList();
     renderRoleEditor();
-    showToast("Perfil", "ExcluÃ­do com sucesso.");
+    showToast("Perfil", "Excluido com sucesso.");
 }
 
-// ========= Create role modal
 function openRoleModal() {
     $("#newRoleName").value = "";
     $("#newRoleDesc").value = "";
     new bootstrap.Modal($("#modalRole")).show();
 }
-function createRoleFromModal() {
+
+async function createRoleFromModal() {
     const name = ($("#newRoleName").value || "").trim();
     const desc = ($("#newRoleDesc").value || "").trim();
     if (!name) {
-        showToast("Validação", "Informe o nome do perfil.");
+        showToast("Validacao", "Informe o nome do perfil.");
         return;
     }
-    const r = {
-        id: uid(),
-        name,
-        desc,
-        perms: emptyPerms(),
-        builtIn: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-    // perm mÃ­nima: dashboard.view
-    r.perms.dashboard.view = true;
 
-    state.roles.push(r);
-    state.selectedRoleId = r.id;
+    const created = await apiFetchJson(ROLES_API_BASE, {
+        method: "POST",
+        body: JSON.stringify({ name, description: desc, isActive: true })
+    });
 
-    saveRoles();
+    if (!created) {
+        showToast("Perfil", "Falha ao criar perfil.");
+        return;
+    }
+
+    await loadRoles();
+    state.selectedRoleId = created.id;
+    await loadRoleMenus(created.id);
+
     renderKPIs();
     renderRolesList();
     renderRoleEditor();
     renderRoleFilterOptions();
     renderUsers();
     bootstrap.Modal.getInstance($("#modalRole")).hide();
-    showToast("Perfil", "Criado com sucesso. Ajuste as permissões ao lado.");
+    showToast("Perfil", "Criado com sucesso. Ajuste as permissoes ao lado.");
 }
 
-// ========= CSV export (usuários)
 function exportUsersCsv() {
     const users = applyUserFilters(state.users);
-    const headers = ["Nome", "Email", "Departamento", "Status", "MFA", "Perfis", "Ãšltimo login", "Criado em"];
+    const headers = ["Nome", "Email", "Departamento", "Status", "MFA", "Perfis", "Ultimo login", "Criado em"];
     const strip = (s) => String(s ?? "").replace(/\s+/g, " ").trim().replaceAll('"', '""');
     const csv = [
         headers.map(h => `"${strip(h)}"`).join(";"),
@@ -635,20 +814,20 @@ function exportUsersCsv() {
     URL.revokeObjectURL(url);
 }
 
-// ========= Wire UI
 function initLogo() {
     $("#logoDesktop").src = LOGO_DATA_URI;
     $("#logoMobile").src = LOGO_DATA_URI;
 }
+
 function wireClock() {
     const now = new Date();
     const buildEl = $("#buildId");
-    if(buildEl){
-        buildEl.textContent = "build: demo-" + String(now.getFullYear()).slice(2) + "-" + String(now.getMonth() + 1).padStart(2, "0");
+    if (buildEl) {
+        buildEl.textContent = "build: api-" + String(now.getFullYear()).slice(2) + "-" + String(now.getMonth() + 1).padStart(2, "0");
     }
 
     const label = $("#nowLabel");
-    if(!label) return;
+    if (!label) return;
     const tick = () => {
         const d = new Date();
         label.textContent = d.toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -658,20 +837,8 @@ function wireClock() {
 }
 
 function wireTopButtons() {
-    $("#btnSeedReset").addEventListener("click", () => {
-        const ok = confirm("Restaurar demo? Isso recria roles/usuários iniciais.");
-        if (!ok) return;
-        localStorage.removeItem(USERS_KEY);
-        localStorage.removeItem(ROLES_KEY);
-        seedIfEmpty();
-        loadAll();
-        renderAll();
-        showToast("Demo", "Dados restaurados.");
-    });
-
     $("#btnExportUsers").addEventListener("click", exportUsersCsv);
 
-    // botão primário muda conforme aba
     $("#btnPrimaryAction").addEventListener("click", () => {
         const usersActive = $("#tab-users").classList.contains("active");
         if (usersActive) openUserModal(null);
@@ -680,7 +847,7 @@ function wireTopButtons() {
 
     $("#btnNewUser").addEventListener("click", () => openUserModal(null));
     $("#btnNewRole").addEventListener("click", () => openRoleModal());
-    $("#btnAuditMock").addEventListener("click", () => showToast("Auditoria", "Mock: em produção, listar ações (login, alteração de role, exportações)."));
+    $("#btnAuditMock").addEventListener("click", () => showToast("Auditoria", "Auditoria ainda nao implementada."));
 }
 
 function wireUsersFilters() {
@@ -713,7 +880,7 @@ function wireTabPrimaryAction() {
     const onTabShown = (ev) => {
         const id = ev.target?.id;
         if (id === "tab-users") {
-            $("#btnPrimaryAction").innerHTML = `<i class="bi bi-person-plus"></i><span class="d-none d-sm-inline ms-1">Novo usuário</span>`;
+            $("#btnPrimaryAction").innerHTML = `<i class="bi bi-person-plus"></i><span class="d-none d-sm-inline ms-1">Novo usuario</span>`;
         } else {
             $("#btnPrimaryAction").innerHTML = `<i class="bi bi-plus-circle"></i><span class="d-none d-sm-inline ms-1">Novo perfil</span>`;
         }
@@ -728,7 +895,7 @@ function refreshEnumDefaults() {
     DEFAULT_USER_STATUS_FILTER = enumFirstCode("usuarioStatusFilter", "all");
     DEFAULT_MFA_OPTION = enumFirstCode("usuarioMfaOption", "false");
 }
-// ========= Render all
+
 function renderAll() {
     renderKPIs();
     renderRoleFilterOptions();
@@ -737,7 +904,6 @@ function renderAll() {
     renderRoleEditor();
 }
 
-// ========= Init
 (async function init() {
     initLogo();
     wireClock();
@@ -746,8 +912,12 @@ function renderAll() {
     refreshEnumDefaults();
     applyEnumSelects();
 
-    seedIfEmpty();
-    loadAll();
+    await loadRoles();
+    await loadMenus();
+    await loadUsers();
+
+    state.selectedRoleId = state.roles[0]?.id || null;
+    if (state.selectedRoleId) await loadRoleMenus(state.selectedRoleId);
 
     wireTopButtons();
     wireUsersFilters();
@@ -758,4 +928,3 @@ function renderAll() {
 
     renderAll();
 })();
-

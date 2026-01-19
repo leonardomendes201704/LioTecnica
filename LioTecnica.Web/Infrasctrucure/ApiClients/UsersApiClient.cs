@@ -69,6 +69,12 @@ public sealed class UsersApiClient
         return await response.Content.ReadFromJsonAsync<UserResponseViewModel>(JsonOptions, ct);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
+    {
+        using var response = await _http.DeleteAsync($"api/users/{id}", ct);
+        return response.IsSuccessStatusCode;
+    }
+
     public sealed record UserCreateRequest(
         string Email,
         string FullName,
