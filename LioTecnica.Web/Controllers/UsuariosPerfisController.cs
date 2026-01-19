@@ -123,4 +123,32 @@ public class UsuariosPerfisController : Controller
         var menus = await _menusApi.ListAsync(ct);
         return Ok(menus);
     }
+
+    [HttpGet("/UsuariosPerfis/_api/menus/{id:guid}")]
+    public async Task<IActionResult> GetMenu([FromRoute] Guid id, CancellationToken ct)
+    {
+        var menu = await _menusApi.GetByIdAsync(id, ct);
+        return menu is null ? NotFound() : Ok(menu);
+    }
+
+    [HttpPost("/UsuariosPerfis/_api/menus")]
+    public async Task<IActionResult> CreateMenu([FromBody] MenusApiClient.MenuCreateRequest request, CancellationToken ct)
+    {
+        var created = await _menusApi.CreateAsync(request, ct);
+        return created is null ? BadRequest() : Ok(created);
+    }
+
+    [HttpPut("/UsuariosPerfis/_api/menus/{id:guid}")]
+    public async Task<IActionResult> UpdateMenu([FromRoute] Guid id, [FromBody] MenusApiClient.MenuUpdateRequest request, CancellationToken ct)
+    {
+        var updated = await _menusApi.UpdateAsync(id, request, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpDelete("/UsuariosPerfis/_api/menus/{id:guid}")]
+    public async Task<IActionResult> DeleteMenu([FromRoute] Guid id, CancellationToken ct)
+    {
+        var ok = await _menusApi.DeleteAsync(id, ct);
+        return ok ? NoContent() : NotFound();
+    }
 }

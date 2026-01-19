@@ -1,57 +1,222 @@
 @model LioTecnica.Web.ViewModels.Admin.RolesPageViewModel
+@using System.Text.Json
 @{
-    ViewData["Title"] = "Roles";
+    ViewData["Title"] = "Portal RH - Roles";
+    ViewData["SidebarSubtitle"] = "Roles";
+    var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 }
+
 @section Topbar {
-    <div class="d-flex align-items-center justify-content-between w-100">
-        <div>
-            <div class="h5 mb-0">Roles</div>
-            <div class="text-muted small">Manage role definitions.</div>
-        </div>
-        <a class="btn btn-primary" href="/Admin/Roles/New"><i class="bi bi-plus-lg"></i> New role</a>
+    @await Html.PartialAsync("_TopbarBrand", "Tela: Roles")
+
+    <div class="searchbox position-relative d-none d-md-block">
+        <i class="bi bi-search"></i>
+        <input id="globalSearchRoles" class="form-control" placeholder="Buscar perfil..." />
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-brand" href="/Admin/Roles/New">
+            <i class="bi bi-plus-lg"></i><span class="d-none d-sm-inline ms-1">Novo perfil</span>
+        </a>
+        @await Html.PartialAsync("_TopbarUserMenu", "Admin")
     </div>
 }
 
-<div class="container-fluid py-3">
-    <div class="card shadow-sm">
-        <div class="card-body">
-                        <lt-grid table-class="table align-middle">
-                <lt-grid-header>
-                    <tr>
-                        <th>Name</th>
-                        <th>Description</th>
-                        <th>Status</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </lt-grid-header>
-                <lt-grid-body>
-                    @foreach (var role in Model.Roles)
-                    {
-                        <tr>
-                            <td>@role.Name</td>
-                            <td>@role.Description</td>
-                            <td>
-                                <span class="badge @(role.IsActive ? "bg-success" : "bg-secondary")">
-                                    @(role.IsActive ? "Active" : "Inactive")
-                                </span>
-                            </td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="/Admin/Roles/Edit/@role.Id">Edit</a>
-                            </td>
-                        </tr>
-                    }
-                    @if (!Model.Roles.Any())
-                    {
-                        <tr>
-                            <td colspan="4" class="text-muted text-center py-4">No roles found.</td>
-                        </tr>
-                    }
-                </lt-grid-body>
-            </lt-grid>
+<section class="content">
+    <div class="page-title">
+        <div>
+            <h4>Roles</h4>
+            <div class="subtitle">Perfis e permissoes de acesso.</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge-soft"><i class="bi bi-clock me-1"></i><span id="nowLabel">-</span></span>
+            <span class="badge-soft"><i class="bi bi-hdd me-1"></i>API</span>
+        </div>
+    </div>
+
+    @{
+        var kpis = new[]
+        {
+            new { ColClass = "col-6 col-lg-3", Title = "Perfis", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiRolesTotal", Value = "0", PillIcon = "bi-shield-lock", PillText = "total", Hint = "Perfis cadastrados." },
+            new { ColClass = "col-6 col-lg-3", Title = "Ativos", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiRolesActive", Value = "0", PillIcon = "bi-check2-circle", PillText = "ok", Hint = "Perfis ativos." },
+            new { ColClass = "col-6 col-lg-3", Title = "Inativos", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiRolesInactive", Value = "0", PillIcon = "bi-slash-circle", PillText = "off", Hint = "Perfis inativos." },
+            new { ColClass = "col-6 col-lg-3", Title = "Administracao", ValueStyle = "font-size:1.6rem;color:var(--lt-primary);", ValueId = "kpiRolesAdmin", Value = "0", PillIcon = "bi-shield-check", PillText = "roles", Hint = "Perfis com gestao." }
+        };
+    }
+    @await Html.PartialAsync("_KpiMiniRow", kpis)
+
+    <div class="card-soft p-3 mb-3">
+        <div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
+            <div>
+                <div class="fw-bold">Lista de perfis</div>
+                <div class="text-muted small">Clique em um perfil para editar.</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 justify-content-end">
+                <div style="min-width:240px;">
+                    <label class="form-label small mb-1">Buscar</label>
+                    <div class="input-group">
+                        <span class="input-group-text" style="background:rgba(255,255,255,.65)"><i class="bi bi-search"></i></span>
+                        <input class="form-control" id="rSearch" placeholder="nome, descricao...">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label small mb-1">Status</label>
+                    <select class="form-select" id="rStatus">
+                        <option value="all">Todos</option>
+                        <option value="active">Ativo</option>
+                        <option value="inactive">Inativo</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-3 divider">
+
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Perfil</th>
+                    <th>Descricao</th>
+                    <th>Status</th>
+                    <th class="text-end">Acoes</th>
+                </tr>
+            </thead>
+            <tbody id="rolesTbody"></tbody>
+        </table>
+
+        <div class="d-flex align-items-center justify-content-between mt-2">
+            <div class="text-muted small" id="rolesHint">-</div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="pill"><i class="bi bi-table"></i><span id="rolesCount">0</span> exibidos</span>
+            </div>
+        </div>
+    </div>
+
+    <template id="tpl-role-row">
+        <tr>
+            <td>
+                <div class="fw-semibold" data-role="role-name"></div>
+                <div class="text-muted small mono" data-role="role-id"></div>
+            </td>
+            <td data-role="role-desc"></td>
+            <td><span data-role="role-status"></span></td>
+            <td class="text-end">
+                <button class="btn btn-ghost btn-sm me-1" type="button" data-act="detail"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-ghost btn-sm me-1" type="button" data-act="edit"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-ghost btn-sm text-danger" type="button" data-act="del"><i class="bi bi-trash3"></i></button>
+            </td>
+        </tr>
+    </template>
+
+    <template id="tpl-role-empty">
+        <tr>
+            <td colspan="4" class="text-center text-muted py-3">Nenhum perfil encontrado.</td>
+        </tr>
+    </template>
+
+    <div style="height:14px;"></div>
+</section>
+
+<div class="modal fade" id="modalAdminRole" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 18px; border: 1px solid var(--lt-border);">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold" id="modalAdminRoleTitle">Editar perfil</h5>
+                    <div class="text-muted small">Atualize nome e descricao do perfil.</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="adminRoleId">
+
+                <div class="row g-2">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small text-muted">Nome *</label>
+                        <input class="form-control" id="adminRoleName" placeholder="ex.: Recrutador">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small text-muted">Status</label>
+                        <select class="form-select" id="adminRoleStatus">
+                            <option value="active">Ativo</option>
+                            <option value="inactive">Inativo</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small text-muted">Descricao</label>
+                        <input class="form-control" id="adminRoleDesc" placeholder="Resumo das permissoes">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" type="button" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Cancelar
+                </button>
+                <button class="btn btn-brand" type="button" id="btnAdminRoleSave">
+                    <i class="bi bi-check2 me-1"></i>Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAdminRoleDetails" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 18px; border: 1px solid var(--lt-border);">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold">Detalhes do perfil</h5>
+                    <div class="text-muted small">Resumo e status do perfil.</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2">
+                    <div class="col-12 col-md-8">
+                        <div class="fw-bold" data-role="detail-name"></div>
+                        <div class="text-muted small mono" data-role="detail-id"></div>
+                    </div>
+                    <div class="col-12 col-md-4 text-md-end">
+                        <span data-role="detail-status"></span>
+                    </div>
+                    <div class="col-12">
+                        <div class="small text-muted">Descricao</div>
+                        <div class="fw-semibold" data-role="detail-desc"></div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="small text-muted">Criado em</div>
+                        <div class="fw-semibold" data-role="detail-created"></div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="small text-muted">Atualizado em</div>
+                        <div class="fw-semibold" data-role="detail-updated"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" type="button" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Fechar
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
 @section Footer {
-    @await Html.PartialAsync("_Footer", new[] { new { Text = "Roles", Class = "muted" } })
+    @{
+        var footerItems = new[]
+        {
+            new { Icon = "bi-shield-lock", Text = "Roles", Id = "", Class = "" },
+            new { Icon = "bi-shield-check", Text = "LGPD", Id = "", Class = "" },
+            new { Icon = "", Text = "build: api", Id = "buildId", Class = "mono muted" }
+        };
+    }
+    @await Html.PartialAsync("_Footer", footerItems)
+}
+
+@section Scripts {
+    <script>
+        window.__adminRolesData = @Html.Raw(JsonSerializer.Serialize(Model.Roles, jsonOptions));
+    </script>
+    <script src="~/js/views/admin-roles.js" asp-append-version="true"></script>
 }
