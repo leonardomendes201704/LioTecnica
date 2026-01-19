@@ -102,6 +102,18 @@ public static class DbSeeder
 
         await EnsureAreasAsync(db, areas);
 
+        var agendaTypes = new (string Code, string Label, string Color, string Icon, int SortOrder)[]
+        {
+            ("entrevista", "Entrevista", "#1f6feb", "bi-camera-video", 1),
+            ("reuniao", "Reuniao", "#0ea5e9", "bi-people", 2),
+            ("onboarding", "Onboarding", "#22c55e", "bi-stars", 3),
+            ("assessment", "Assessment", "#f59e0b", "bi-clipboard-check", 4),
+            ("followup", "Follow-up", "#8b5cf6", "bi-chat-dots", 5),
+            ("outro", "Outro", "#6b7280", "bi-calendar", 6)
+        };
+
+        await EnsureAgendaTypesAsync(db, agendaTypes);
+
         var requisitoCategorias = new RequisitoCategoriaSeed[]
         {
             new("competencia", "Competencia", "Habilidades comportamentais e competencias."),
@@ -1295,6 +1307,30 @@ BuildDemoRequisitos(string areaCode)
             db.RequisitoCategorias.AddRange(toAdd);
             await db.SaveChangesAsync();
         }
+    }
+
+    private static async Task EnsureAgendaTypesAsync(
+        AppDbContext db,
+        IEnumerable<(string Code, string Label, string Color, string Icon, int SortOrder)> seeds)
+    {
+        foreach (var seed in seeds)
+        {
+            var exists = await db.AgendaEventTypes.AnyAsync(x => x.Code == seed.Code);
+            if (exists) continue;
+
+            db.AgendaEventTypes.Add(new AgendaEventType
+            {
+                Id = Guid.NewGuid(),
+                Code = seed.Code,
+                Label = seed.Label,
+                Color = seed.Color,
+                Icon = seed.Icon,
+                SortOrder = seed.SortOrder,
+                IsActive = true
+            });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task EnsureCostCentersFromDepartmentsAsync(AppDbContext db)

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RhPortal.Api.Application.Authentication;
+using RhPortal.Api.Application.Agenda;
 using RhPortal.Api.Application.Candidatos;
 using RhPortal.Api.Application.Candidatos.Handlers;
 using RhPortal.Api.Application.Departments;
@@ -137,6 +138,7 @@ builder.Services.AddScoped<IJobPositionService, JobPositionService>();
 builder.Services.AddScoped<IManagerService, ManagerService>();
 builder.Services.AddScoped<IVagaService, VagaService>();
 builder.Services.AddScoped<ICandidatoService, CandidatoService>();
+builder.Services.AddScoped<AgendaService>();
 
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<UserAdministrationService>();

@@ -37,6 +37,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<CandidatoDocumento> CandidatoDocumentos => Set<CandidatoDocumento>();
     public DbSet<InboxItem> InboxItems => Set<InboxItem>();
     public DbSet<InboxAnexo> InboxAttachments => Set<InboxAnexo>();
+    public DbSet<AgendaEventType> AgendaEventTypes => Set<AgendaEventType>();
+    public DbSet<AgendaEvent> AgendaEvents => Set<AgendaEvent>();
 
 
 
@@ -497,6 +499,46 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
         });
 
+        modelBuilder.Entity<AgendaEventType>(b =>
+        {
+            b.ToTable("AgendaEventTypes");
+            b.HasKey(x => x.Id);
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Code).HasMaxLength(40).IsRequired();
+            b.Property(x => x.Label).HasMaxLength(120).IsRequired();
+            b.Property(x => x.Color).HasMaxLength(20).IsRequired();
+            b.Property(x => x.Icon).HasMaxLength(80).IsRequired();
+            b.Property(x => x.IsActive).IsRequired();
+
+            b.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<AgendaEvent>(b =>
+        {
+            b.ToTable("AgendaEvents");
+            b.HasKey(x => x.Id);
+
+            b.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            b.Property(x => x.Title).HasMaxLength(240).IsRequired();
+            b.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            b.Property(x => x.Location).HasMaxLength(160);
+            b.Property(x => x.Owner).HasMaxLength(120);
+            b.Property(x => x.Candidate).HasMaxLength(160);
+            b.Property(x => x.VagaTitle).HasMaxLength(200);
+            b.Property(x => x.VagaCode).HasMaxLength(40);
+            b.Property(x => x.Notes).HasMaxLength(2000);
+
+            b.HasOne(x => x.Type)
+                .WithMany()
+                .HasForeignKey(x => x.TypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasIndex(x => new { x.TenantId, x.StartAtUtc });
+            b.HasQueryFilter(x => x.TenantId == _tenantContext.TenantId);
+        });
+
 
     }
 
@@ -654,6 +696,18 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, Applicatio
             {
                 if (entry.State == EntityState.Added) inboxAnexo.CreatedAtUtc = now;
                 if (entry.State is EntityState.Added or EntityState.Modified) inboxAnexo.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is AgendaEventType agendaType)
+            {
+                if (entry.State == EntityState.Added) agendaType.CreatedAtUtc = now;
+                if (entry.State is EntityState.Added or EntityState.Modified) agendaType.UpdatedAtUtc = now;
+            }
+
+            if (entry.Entity is AgendaEvent agendaEvent)
+            {
+                if (entry.State == EntityState.Added) agendaEvent.CreatedAtUtc = now;
+                if (entry.State is EntityState.Added or EntityState.Modified) agendaEvent.UpdatedAtUtc = now;
             }
         }
         return await base.SaveChangesAsync(cancellationToken);
