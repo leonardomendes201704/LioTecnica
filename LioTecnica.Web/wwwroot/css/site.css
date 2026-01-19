@@ -417,7 +417,51 @@
   color: rgba(13,27,42,.70);
 }
 .grid2{display:grid;grid-template-columns: minmax(320px, 420px) 1fr;gap:1rem;min-width:0;}
-.muted{color:var(--lt-muted);}
+.muted{color:var(--lt-muted);} 
+.access-card{
+  cursor:pointer;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.access-card:hover{
+  transform:translateY(-1px);
+  box-shadow:0 12px 28px rgba(11,58,100,.12);
+  border-color:rgba(16,82,144,.35);
+}
+.access-icon{
+  min-width:52px;
+  border-right:1px dashed var(--lt-border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--lt-primary);
+  font-size:2.5rem;
+}
+.access-check-wrap{
+  width:52px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  flex-shrink:0;
+}
+.access-check{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  pointer-events:none;
+}
+.access-check-icon{
+  display:block;
+  font-size:2.5rem;
+  color:#9fbad3;
+  opacity:.55;
+  transition:opacity .12s ease, transform .12s ease, color .12s ease;
+}
+.access-item[data-selected="true"] .access-check-icon{
+  color:#27ae60;
+  opacity:1;
+  transform:scale(1.02);
+}
 .panel{min-width:0;}
 .row-item{
   border-radius:16px;
